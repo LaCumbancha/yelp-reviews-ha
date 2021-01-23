@@ -1,0 +1,12 @@
+# Datasets
+data/
+
+# GitHub
+.git/
+docs/
+.gitignore
+README.md
+LICENSE
+
+# Extras
+scripts/

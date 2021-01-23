@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+
+import sys
+import json
+import pika
+import socket
+import argparse
+
+from datetime import date
+
+# Protocol special messages
+END_MESSAGE = "END-MESSAGE"
+
+# RabbitMQ information
+EXCHANGE = "ReviewsScatter"
+TOPICS = ["Funbiz-Mapper", "Weekday-Mapper", "Hashes-Mapper", "Users-Mapper", "Stars-Mapper"]
+
+# Retries
+RETRIES = 25
+
+# JSON Object
+class Object:
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=False, indent=0)
+
+# Generating JSON for review
+def prepare(review):
+	return str.encode(review.toJSON().replace('\n', ''))
+
+def mainMenu():
+	exit = False
+	while not exit:
+		printHomeMenu()
+		option = input('Option: ').upper()
+		while True:
+			if option == 'S':
+				sendMenu()
+				break
+			elif option == 'C':
+				exit = True
+				closeConn()
+				break
+			elif option == 'X':
+				exit = True
+				break
+			else:
+				option = input('Wrong option. Retry: ')
+
+
+def printHomeMenu():
+	print()
+	print('Stream Reviews')
+	print('--------------')
+	print('[S] SEND')
+	print('[C] CLOSE')
+	print('[X] QUIT')
+
+
+def sendMenu():
+	print()
+	review = Object()
+	review.review_id = input('Review ID: ')
+	review.user_id = input('User ID: ')
+	review.business_id = input('Business ID: ')
+	review.stars = input('Stars [numeric]: ')
+	review.useful = input('Useful [numeric]: ')
+	review.funny = input('Funny [numeric]: ')
+	review.cool = input('Cool [numeric]: ')
+	review.date = date.today().strftime("%Y-%m-%d %H:%M:%S")
+	review.text = input('Text: ')
+	publish(prepare(review))
+
+
+def closeConn():
+	print()
+	print('Closing connection.')
+	publish(END_MESSAGE)
+
+
+def publish(message):
+	for topic in TOPICS:
+		channel.basic_publish(exchange=EXCHANGE, routing_key=topic, body=message)
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--ip', type=str, default='')
+parser.add_argument('--port', type=str, default='')
+args = parser.parse_args()
+
+if not args.ip:
+	args.ip = '127.0.0.1'
+
+if not args.port:
+	args.port = '5672'
+
+# Pika configuration
+connection = pika.BlockingConnection(pika.ConnectionParameters(host=args.ip))
+channel = connection.channel()
+channel.exchange_declare(exchange=EXCHANGE, exchange_type='direct')
+
+mainMenu()
+
+connection.close()

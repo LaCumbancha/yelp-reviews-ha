@@ -26,6 +26,14 @@ func NewBuilder(topSize int) *Builder {
 	return builder
 }
 
+func (builder *Builder) Clear() {
+	builder.mutex.Lock()
+	builder.data = []comms.FunnyCityData{}
+	builder.mutex.Unlock()
+
+	log.Infof("Builder storage cleared.")
+}
+
 func (builder *Builder) Save(rawData string) {
 	var funnyCity comms.FunnyCityData
 	json.Unmarshal([]byte(rawData), &funnyCity)

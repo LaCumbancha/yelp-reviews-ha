@@ -28,6 +28,18 @@ func NewCalculator() *Calculator {
 	return calculator
 }
 
+func (calculator *Calculator) Clear() {
+	calculator.mutex1.Lock()
+	calculator.data1 = make(map[string]int)
+	calculator.mutex1.Unlock()
+
+	calculator.mutex2.Lock()
+	calculator.data2 = make(map[string]int)
+	calculator.mutex2.Unlock()
+
+	log.Infof("Calculator storage cleared.")
+}
+
 func (calculator *Calculator) AddBestUser(bulkNumber int, rawBestUserDataBulk string) {
 	var bestUserDataList []comms.UserData
 	json.Unmarshal([]byte(rawBestUserDataBulk), &bestUserDataList)

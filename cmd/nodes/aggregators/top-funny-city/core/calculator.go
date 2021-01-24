@@ -27,6 +27,14 @@ func NewCalculator(topSize int) *Calculator {
 	return calculator
 }
 
+func (calculator *Calculator) Clear() {
+	calculator.mutex.Lock()
+	calculator.data = []comms.FunnyCityData{}
+	calculator.mutex.Unlock()
+
+	log.Infof("Calculator storage cleared.")
+}
+
 func (calculator *Calculator) Save(bulkNumber int, rawFuncitDataList string) {
 	var funcitDataList []comms.FunnyCityData
 	json.Unmarshal([]byte(rawFuncitDataList), &funcitDataList)

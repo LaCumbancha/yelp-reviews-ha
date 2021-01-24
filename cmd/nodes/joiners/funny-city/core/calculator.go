@@ -5,6 +5,7 @@ import (
 	"sync"
 	"encoding/json"
 
+	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
@@ -27,6 +28,18 @@ func NewCalculator(bulkSize int) *Calculator {
 	}
 
 	return calculator
+}
+
+func (calculator *Calculator) Clear() {
+	calculator.mutex1.Lock()
+	calculator.data1 = make(map[string]int)
+	calculator.mutex1.Unlock()
+
+	calculator.mutex2.Lock()
+	calculator.data2 = make(map[string]string)
+	calculator.mutex2.Unlock()
+
+	log.Infof("Calculator storage cleared.")
 }
 
 func (calculator *Calculator) AddFunnyBusiness(bulkNumber int, rawFunbizDataBulk string) {

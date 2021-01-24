@@ -5,6 +5,7 @@ import (
 	"sync"
 	"encoding/json"
 
+	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
@@ -23,6 +24,14 @@ func NewCalculator(bulkSize int) *Calculator {
 	}
 
 	return calculator
+}
+
+func (calculator *Calculator) Clear() {
+	calculator.mutex.Lock()
+	calculator.data = make(map[string]int)
+	calculator.mutex.Unlock()
+
+	log.Infof("Calculator storage cleared.")
 }
 
 func (calculator *Calculator) Aggregate(bulkNumber int, rawFunbizDataList string) {

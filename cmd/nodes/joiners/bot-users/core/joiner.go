@@ -94,6 +94,7 @@ func (joiner *Joiner) callback2(bulkNumber int, bulk string) {
 }
 
 func (joiner *Joiner) finishCallback() {
+	// Retrieving join matches.
 	joinMatches := joiner.calculator.RetrieveMatches()
 
 	if len(joinMatches) == 0 {
@@ -106,6 +107,10 @@ func (joiner *Joiner) finishCallback() {
 		joiner.sendJoinedData(messageCounter, joinedData)
 	}
 
+	// Clearing Calculator for next dataset.
+	joiner.calculator.Clear()
+
+	// Sending End-Message to consumers.
 	joiner.outputQueue.PublishFinish()
 }
 

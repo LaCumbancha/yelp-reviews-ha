@@ -71,7 +71,13 @@ func (prettier *Prettier) callback(bulkNumber int, bulk string) {
 }
 
 func (prettier *Prettier) finishCallback() {
+	// Sending results
 	prettier.sendResults()
+
+	// Clearing Calculator for next dataset.
+	prettier.builder.Clear()
+
+	// Sending End-Message to consumers.
     prettier.outputQueue.PublishFinish()
 }
 

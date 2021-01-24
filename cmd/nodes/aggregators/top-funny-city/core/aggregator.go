@@ -74,11 +74,15 @@ func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
 }
 
 func (aggregator *Aggregator) finishCallback() {
+	// Calculating aggregations
 	cityCounter := 0
 	for _, cityData := range aggregator.calculator.RetrieveTopTen() {
 		cityCounter++
 		aggregator.sendTopTenData(cityCounter, cityData)
 	}
+
+	// Clearing Calculator for next dataset.
+	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
 	aggregator.outputQueue.PublishFinish()

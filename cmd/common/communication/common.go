@@ -33,12 +33,20 @@ func IsCloseMessage(message string) bool {
 }
 
 // Detect if all end signals were received
-func LastEndMessage(message string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+func LastEndMessage(message string, datasetNumber int, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+	if specialMessageDatasetNumber(message) != datasetNumber {
+		return false, false
+	}
+
 	receivedSignals[message] = receivedSignals[message] + 1
 	newSignal := receivedSignals[message] == 1
 	distinctSignals := len(receivedSignals)
 
 	return newSignal, (distinctSignals == expectedSignals) && newSignal
+}
+
+func specialMessageDatasetNumber(message string) int {
+
 }
 
 // Detect if all close signals were received

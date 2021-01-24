@@ -75,9 +75,13 @@ func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
 }
 
 func (aggregator *Aggregator) finishCallback() {
+	// Calculating aggregations
 	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
 		aggregator.sendAggregatedData(aggregatedData)
 	}
+
+	// Clearing Calculator for next dataset.
+	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
 	aggregator.outputQueue.PublishFinish()

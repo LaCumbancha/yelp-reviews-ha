@@ -25,6 +25,14 @@ func NewCalculator() *Calculator {
 	return calculator
 }
 
+func (calculator *Calculator) Clear() {
+	calculator.mutex.Lock()
+	calculator.data = make(map[string]int)
+	calculator.mutex.Unlock()
+
+	log.Infof("Calculator storage cleared.")
+}
+
 func (calculator *Calculator) status(bulkNumber int) string {
 	statusResponse := fmt.Sprintf("Status by bulk #%d: ", bulkNumber)
 

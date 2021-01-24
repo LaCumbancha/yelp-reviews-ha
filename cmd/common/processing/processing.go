@@ -53,9 +53,9 @@ func InitializeProcessingWorkers(workersPool int, storingChannel chan amqp.Deliv
 	bulkNumber := 0
 	bulkNumberMutex := &sync.Mutex{}
 
-	log.Infof("Initializing %d workers.", workersPool)
+	log.Tracef("Initializing %d workers.", workersPool)
 	for worker := 1 ; worker <= workersPool ; worker++ {
-		log.Infof("Initializing worker #%d.", worker)
+		log.Tracef("Initializing worker #%d.", worker)
 		
 		go func() {
 			for message := range storingChannel {

@@ -23,6 +23,14 @@ func NewBuilder() *Builder {
 	return builder
 }
 
+func (builder *Builder) Clear() {
+	builder.mutex.Lock()
+	builder.data = make(map[string]int)
+	builder.mutex.Unlock()
+
+	log.Infof("Builder storage cleared.")
+}
+
 func (builder *Builder) Save(rawData string) {
 	var weekdayData comms.WeekdayData
 	json.Unmarshal([]byte(rawData), &weekdayData)

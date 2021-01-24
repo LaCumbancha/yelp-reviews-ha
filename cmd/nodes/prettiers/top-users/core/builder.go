@@ -25,6 +25,14 @@ func NewBuilder(minReviews int) *Builder {
 	return builder
 }
 
+func (builder *Builder) Clear() {
+	builder.mutex.Lock()
+	builder.data = make(map[string]int)
+	builder.mutex.Unlock()
+
+	log.Infof("Builder storage cleared.")
+}
+
 func (builder *Builder) Save(rawUserDataBulk string) {
 	var userDataList []comms.UserData
 	json.Unmarshal([]byte(rawUserDataBulk), &userDataList)

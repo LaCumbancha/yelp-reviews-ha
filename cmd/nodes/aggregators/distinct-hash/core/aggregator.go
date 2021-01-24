@@ -78,12 +78,16 @@ func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
 }
 
 func (aggregator *Aggregator) finishCallback() {
+	// Calculating aggregations
 	outputBulkCounter := 0
 	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
 		outputBulkCounter++
 		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkCounter), outputBulkCounter)
 		aggregator.sendAggregatedData(outputBulkCounter, aggregatedData)
 	}
+
+	// Clearing Calculator for next dataset.
+	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
 	aggregator.outputQueue.PublishFinish()

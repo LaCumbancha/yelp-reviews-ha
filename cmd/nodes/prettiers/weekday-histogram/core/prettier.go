@@ -51,24 +51,32 @@ func (prettier *Prettier) Run() {
 	log.Infof("Starting to listen for weekday reviews data.")
 	innerChannel := make(chan amqp.Delivery)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	go proc.InitializeProcessingWorkers(prettier.workersPool, innerChannel, prettier.callback, &wg)
-	go proc.ProcessInputs(prettier.inputQueue.ConsumeData(), innerChannel, prettier.endSignals, &wg)
-	
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are sent.
-    wg.Wait()
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-    // Sending results
-    prettier.sendResults()
+	var procWg sync.WaitGroup
+	procWg.Add(1)
 
-    // Publishing end messages.
-    prettier.outputQueue.PublishFinish()
+	go proc.InitializeProcessingWorkers(prettier.workersPool, innerChannel, prettier.callback, &procWg)
+	go proc.ProcessInputs(prettier.inputQueue.ConsumeData(), innerChannel, prettier.endSignals, &procWg, &connWg)
+	go proc.ProcessFinish(prettier.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(prettier.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
 func (prettier *Prettier) callback(bulkNumber int, bulk string) {
 	prettier.builder.Save(bulk)
+}
+
+func (prettier *Prettier) finishCallback() {
+	prettier.sendResults()
+    prettier.outputQueue.PublishFinish()
+}
+
+func (prettier *Prettier) closeCallback() {
+	// TODO
 }
 
 func (prettier *Prettier) sendResults() {

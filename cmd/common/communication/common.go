@@ -2,6 +2,7 @@ package communication
 
 // Protocol special messages.
 const endMessage = "END-MESSAGE"
+const closeMessage = "CLOSE-CONNECTION"
 
 // Retries finish attemps.
 const retries = 25
@@ -16,13 +17,32 @@ func EndMessage(instance string) string {
 	return endMessage + instance
 }
 
+// Defining custom Close-Message
+func CloseMessage(instance string) string {
+	return closeMessage + instance
+}
+
 // Detect all possible end messages (could be like 'END-MESSAGE1').
 func IsEndMessage(message string) bool {
 	return (len(message) > 10) && (message[0:11] == endMessage)
 }
 
+// Detect all possible close messages (could be like 'CLOSE-CONNECTION1').
+func IsCloseMessage(message string) bool {
+	return (len(message) > 15) && (message[0:16] == closeMessage)
+}
+
 // Detect if all end signals were received
 func LastEndMessage(message string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+	receivedSignals[message] = receivedSignals[message] + 1
+	newSignal := receivedSignals[message] == 1
+	distinctSignals := len(receivedSignals)
+
+	return newSignal, (distinctSignals == expectedSignals) && newSignal
+}
+
+// Detect if all close signals were received
+func LastCloseMessage(message string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
 	receivedSignals[message] = receivedSignals[message] + 1
 	newSignal := receivedSignals[message] == 1
 	distinctSignals := len(receivedSignals)

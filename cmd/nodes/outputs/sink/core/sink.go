@@ -5,10 +5,17 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
+	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
+
+const FUNCIT = "Funniest Cities"
+const WEEKDAY = "Weekday Histogram"
+const TOPUSERS = "Top-Users"
+const BOTUSERS = "Bot-Users"
+const BESTUSERS = "Best-Users"
 
 type SinkConfig struct {
 	RabbitIp					string
@@ -50,102 +57,59 @@ func NewSink(config SinkConfig) *Sink {
 func (sink *Sink) Run() {
 	log.Infof("Starting to listen for results.")
 
-	var wg sync.WaitGroup
-	wg.Add(5)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	// TODO: Use this same logic for this and the other queues.
-	go func() {
-		distinctEndSignals := make(map[string]int)
-		for message := range sink.funniestCitiesQueue.ConsumeData() {
-			messageBody := string(message.Body)
-			if comms.IsEndMessage(messageBody) {
-				_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
+	var procWg sync.WaitGroup
+	procWg.Add(5)
 
-				if allFinishReceived {
-					log.Infof("End-Message received from the Funniest Cities flow.")
-					wg.Done()
-				}
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-			} else {
-				log.Infof(messageBody)
+	go sink.retrieveFlowResults(TOPUSERS, sink.topUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(BOTUSERS, sink.botUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(BESTUSERS, sink.bestUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(FUNCIT, sink.funniestCitiesQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(WEEKDAY, sink.weekdayHistogramQueue, &procWg, &connWg)
+
+	go proc.ProcessFinish(sink.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(sink.closeCallback, &procWg, &connWg, closingConn, connMutex)
+}
+
+func (sink *Sink) retrieveFlowResults(flow string, inputQueue *rabbit.RabbitInputQueue, procWg *sync.WaitGroup, connWg * sync.WaitGroup) {
+	distinctEndSignals := make(map[string]int)
+	distinctCloseSignals := make(map[string]int)
+
+	for message := range inputQueue.ConsumeData() {
+		messageBody := string(message.Body)
+		if comms.IsCloseMessage(messageBody) {
+			_, allCloseReceived := comms.LastEndMessage(messageBody, distinctCloseSignals, 1)
+
+			if allCloseReceived {
+				log.Infof("End-Message received from the %s flow.", flow)
+				connWg.Done()
 			}
-		}
-	}()
 
-	go func() {
-		distinctEndSignals := make(map[string]int)
-		for message := range sink.weekdayHistogramQueue.ConsumeData() {
-			messageBody := string(message.Body)
-			if comms.IsEndMessage(messageBody) {
-				_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
+		} else if comms.IsEndMessage(messageBody) {
+			_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
 
-				if allFinishReceived {
-					log.Infof("End-Message received from the Weekday Histogram flow.")
-					wg.Done()
-				}
-
-			} else {
-				log.Infof(messageBody)
+			if allFinishReceived {
+				log.Infof("End-Message received from the %s flow.", flow)
+				procWg.Done()
 			}
+
+		} else {
+			log.Infof(messageBody)
 		}
-	}()
+	}
+}
 
-	go func() {
-		distinctEndSignals := make(map[string]int)
-		for message := range sink.topUsersQueue.ConsumeData() {
-			messageBody := string(message.Body)
-			if comms.IsEndMessage(messageBody) {
-				_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
+func (sink *Sink) finishCallback() {
+	log.Infof("Dataset analysis finished.")
+}
 
-				if allFinishReceived {
-					log.Infof("End-Message received from the Top-Users flow.")
-					wg.Done()
-				}
-
-			} else {
-				log.Infof(messageBody)
-			}
-		}
-	}()
-
-	go func() {
-		distinctEndSignals := make(map[string]int)
-		for message := range sink.bestUsersQueue.ConsumeData() {
-			messageBody := string(message.Body)
-			if comms.IsEndMessage(messageBody) {
-				_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
-
-				if allFinishReceived {
-					log.Infof("End-Message received from the Best-Users flow.")
-					wg.Done()
-				}
-
-			} else {
-				log.Infof(messageBody)
-			}
-		}
-	}()
-
-	go func() {
-		distinctEndSignals := make(map[string]int)
-		for message := range sink.botUsersQueue.ConsumeData() {
-			messageBody := string(message.Body)
-			if comms.IsEndMessage(messageBody) {
-				_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
-
-				if allFinishReceived {
-					log.Infof("End-Message received from the Bot-Users flow.")
-					wg.Done()
-				}
-
-			} else {
-				log.Infof(messageBody)
-			}
-		}
-	}()
-
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are received.
-    wg.Wait()
+func (sink *Sink) closeCallback() {
+	log.Infof("Closing process.")
 }
 
 func (sink *Sink) Stop() {

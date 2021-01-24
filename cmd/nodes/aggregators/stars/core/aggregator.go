@@ -61,30 +61,41 @@ func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for user stars data.")
 	innerChannel := make(chan amqp.Delivery)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.aggregateCallback, &wg)
-	go proc.ProcessInputs(aggregator.inputDirect.ConsumeData(), innerChannel, aggregator.endSignals, &wg)
-	
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are received.
-    wg.Wait()
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-    outputBulkNumber := 0
-    for _, aggregatedData := range aggregator.calculator.RetrieveData() {
+	var procWg sync.WaitGroup
+	procWg.Add(1)
+
+	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.callback, &procWg)
+	go proc.ProcessInputs(aggregator.inputDirect.ConsumeData(), innerChannel, aggregator.endSignals, &procWg, &connWg)
+	go proc.ProcessFinish(aggregator.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(aggregator.closeCallback, &procWg, &connWg, closingConn, connMutex)
+}
+
+func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
+	aggregator.calculator.Aggregate(bulkNumber, bulk)
+}
+
+func (aggregator *Aggregator) finishCallback() {
+	outputBulkNumber := 0
+	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
 		outputBulkNumber++
-    	logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkNumber), outputBulkNumber)
+		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkNumber), outputBulkNumber)
 		aggregator.sendAggregatedData(outputBulkNumber, aggregatedData)
 	}
 
-    // Sending End-Message to consumers.
-    for _, partition := range utils.GetMapDistinctValues(aggregator.outputPartitions) {
-    	aggregator.outputDirect.PublishFinish(partition)
-    }
+	// Sending End-Message to consumers.
+	for _, partition := range utils.GetMapDistinctValues(aggregator.outputPartitions) {
+		aggregator.outputDirect.PublishFinish(partition)
+	}
 }
 
-func (aggregator *Aggregator) aggregateCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Aggregate(bulkNumber, bulk)
+func (aggregator *Aggregator) closeCallback() {
+	// TODO
 }
 
 func (aggregator *Aggregator) sendAggregatedData(bulkNumber int, aggregatedBulk []comms.UserData) {

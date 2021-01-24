@@ -54,27 +54,38 @@ func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for funny-city data.")
 	innerChannel := make(chan amqp.Delivery)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.aggregateCallback, &wg)
-	go proc.ProcessInputs(aggregator.inputQueue.ConsumeData(), innerChannel, aggregator.endSignals, &wg)
-	
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are received.
-    wg.Wait()
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-    cityCounter := 0
-    for _, cityData := range aggregator.calculator.RetrieveTopTen() {
-    	cityCounter++
-    	aggregator.sendTopTenData(cityCounter, cityData)
-	}
+	var procWg sync.WaitGroup
+	procWg.Add(1)
 
-    // Sending End-Message to consumers.
-    aggregator.outputQueue.PublishFinish()
+	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.callback, &procWg)
+	go proc.ProcessInputs(aggregator.inputQueue.ConsumeData(), innerChannel, aggregator.endSignals, &procWg, &connWg)
+	go proc.ProcessFinish(aggregator.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(aggregator.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
-func (aggregator *Aggregator) aggregateCallback(bulkNumber int, bulk string) {
+func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
 	aggregator.calculator.Save(bulkNumber, bulk)
+}
+
+func (aggregator *Aggregator) finishCallback() {
+	cityCounter := 0
+	for _, cityData := range aggregator.calculator.RetrieveTopTen() {
+		cityCounter++
+		aggregator.sendTopTenData(cityCounter, cityData)
+	}
+
+	// Sending End-Message to consumers.
+	aggregator.outputQueue.PublishFinish()
+}
+
+func (aggregator *Aggregator) closeCallback() {
+	// TODO
 }
 
 func (aggregator *Aggregator) sendTopTenData(cityNumber int, topTenCity comms.FunnyCityData) {

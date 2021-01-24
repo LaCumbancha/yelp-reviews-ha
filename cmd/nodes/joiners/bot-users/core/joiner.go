@@ -57,54 +57,60 @@ func NewJoiner(config JoinerConfig) *Joiner {
 }
 
 func (joiner *Joiner) Run() {
-	var wg sync.WaitGroup
+	var procWg sync.WaitGroup
+	var connWg sync.WaitGroup
+	connWg.Add(1)
+
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
 	log.Infof("Starting to listen for bot users with only one text.")
 	innerChannel1 := make(chan amqp.Delivery)
-	wg.Add(1)
+	procWg.Add(1)
 
 	// Receiving and processing messages from the best-users flow.
-	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel1, joiner.storeCallback1, &wg)
-	go proc.ProcessInputs(joiner.inputDirect1.ConsumeData(), innerChannel1, joiner.endSignals1, &wg)
+	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel1, joiner.callback1, &procWg)
+	go proc.ProcessInputs(joiner.inputDirect1.ConsumeData(), innerChannel1, joiner.endSignals1, &procWg, &connWg)
 
 	log.Infof("Starting to listen for users reviews data.")
 	innerChannel2 := make(chan amqp.Delivery)
-	wg.Add(1)
+	procWg.Add(1)
 
 	// Receiving and processing messages from the common-users flow.
-	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel2, joiner.storeCallback2, &wg)
-	go proc.ProcessInputs(joiner.inputDirect2.ConsumeData(), innerChannel2, joiner.endSignals2, &wg)
+	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel2, joiner.callback2, &procWg)
+	go proc.ProcessInputs(joiner.inputDirect2.ConsumeData(), innerChannel2, joiner.endSignals2, &procWg, &connWg)
 
-	// Using WaitGroups to avoid closing the RabbitMQ connection before all messages are received.
-    wg.Wait()
-
-    // Processing last join matches.
-    joiner.fetchJoinMatches()
-
-    // Sending End-Message to consumers.
-    joiner.outputQueue.PublishFinish()
+	// Retrieving joined data and closing connection.
+	go proc.ProcessFinish(joiner.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(joiner.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
-func (joiner *Joiner) storeCallback1(bulkNumber int, bulk string) {
+func (joiner *Joiner) callback1(bulkNumber int, bulk string) {
 	joiner.calculator.AddBotUser(bulkNumber, bulk)
 }
 
-func (joiner *Joiner) storeCallback2(bulkNumber int, bulk string) {
+func (joiner *Joiner) callback2(bulkNumber int, bulk string) {
 	joiner.calculator.AddUser(bulkNumber, bulk)
 }
 
-func (joiner *Joiner) fetchJoinMatches() {
+func (joiner *Joiner) finishCallback() {
 	joinMatches := joiner.calculator.RetrieveMatches()
 
 	if len(joinMatches) == 0 {
-    	log.Warnf("No join match to send.")
-    }
+		log.Warnf("No join match to send.")
+	}
 
-    messageCounter := 0
-    for _, joinedData := range joinMatches {
-    	messageCounter++
+	messageCounter := 0
+	for _, joinedData := range joinMatches {
+		messageCounter++
 		joiner.sendJoinedData(messageCounter, joinedData)
 	}
+
+	joiner.outputQueue.PublishFinish()
+}
+
+func (joiner *Joiner) closeCallback() {
+	// TODO
 }
 
 func (joiner *Joiner) sendJoinedData(messageNumber int, joinedData comms.UserData) {

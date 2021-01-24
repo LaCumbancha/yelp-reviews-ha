@@ -57,24 +57,34 @@ func (filter *Filter) Run() {
 	log.Infof("Starting to listen for funny-business data.")
 	innerChannel := make(chan amqp.Delivery)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	go proc.InitializeProcessingWorkers(filter.workersPool, innerChannel, filter.callback, &wg)
-	go proc.ProcessInputs(filter.inputQueue.ConsumeData(), innerChannel, filter.endSignals, &wg)
-	
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are sent.
-    wg.Wait()
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-    // Publishing end messages.
-    for _, partition := range utils.GetMapDistinctValues(filter.outputPartitions) {
-    	filter.outputDirect.PublishFinish(partition)
-    }
+	var procWg sync.WaitGroup
+	procWg.Add(1)
+
+	go proc.InitializeProcessingWorkers(filter.workersPool, innerChannel, filter.callback, &procWg)
+	go proc.ProcessInputs(filter.inputQueue.ConsumeData(), innerChannel, filter.endSignals, &procWg, &connWg)
+	go proc.ProcessFinish(filter.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(filter.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
 func (filter *Filter) callback(bulkNumber int, bulk string) {
 	filteredData := filter.filterData(bulkNumber, bulk)
 	filter.sendFilteredData(bulkNumber, filteredData)
+}
+
+func (filter *Filter) finishCallback() {
+	for _, partition := range utils.GetMapDistinctValues(filter.outputPartitions) {
+		filter.outputDirect.PublishFinish(partition)
+	}
+}
+
+func (filter *Filter) closeCallback() {
+	// TODO
 }
 
 func (filter *Filter) filterData(bulkNumber int, rawFunbizDataBulk string) []comms.FunnyBusinessData {

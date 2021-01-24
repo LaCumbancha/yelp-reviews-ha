@@ -11,13 +11,26 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delivery, endSignals int, wg *sync.WaitGroup) {
+func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delivery, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
 	distinctEndSignals := make(map[string]int)
+	distinctCloseSignals := make(map[string]int)
 
 	for message := range inputs {
 		messageBody := string(message.Body)
 
-		if comms.IsEndMessage(messageBody) {
+		if comms.IsCloseMessage(messageBody) {
+			newCloseReceived, allCloseReceived := comms.LastEndMessage(messageBody, distinctCloseSignals, endSignals)
+
+			if newCloseReceived {
+				log.Infof("Close-Message #%d received.", len(distinctCloseSignals))
+			}
+
+			if allCloseReceived {
+				log.Infof("All Close-Messages were received.")
+				connWg.Done()
+			}
+
+		} else if comms.IsEndMessage(messageBody) {
 			newFinishReceived, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, endSignals)
 
 			if newFinishReceived {
@@ -26,11 +39,11 @@ func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delive
 
 			if allFinishReceived {
 				log.Infof("All End-Messages were received.")
-				wg.Done()
+				procWg.Done()
 			}
 
 		} else {
-			wg.Add(1)
+			procWg.Add(1)
 			storingChannel <- message
 		}
 	}
@@ -59,4 +72,35 @@ func InitializeProcessingWorkers(workersPool int, storingChannel chan amqp.Deliv
 			}
 		}()
 	}
+}
+
+func ProcessFinish(callback func(), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+	for true {
+		procWg.Wait()
+
+		connMutex.Lock()
+		if closingConn {
+			break
+		} else {
+			callback()
+			procWg.Add(1)
+		}
+		connMutex.Unlock()
+	}
+}
+
+func CloseConnection(callback func(), procWg *sync.WaitGroup, connWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+	// Waiting to recieve the close connection signal.
+	connWg.Wait()
+	connMutex.Lock()
+	closingConn = true
+	connMutex.Unlock()
+
+	// Releasing the starting gorouting wait.
+	procWg.Done()
+
+	// Waiting for any possible last processing message.
+	procWg.Wait()
+
+	callback()
 }

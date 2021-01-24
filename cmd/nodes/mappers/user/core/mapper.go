@@ -58,24 +58,34 @@ func (mapper *Mapper) Run() {
 	log.Infof("Starting to listen for reviews.")
 	innerChannel := make(chan amqp.Delivery)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
+	closingConn := false
+	connMutex := &sync.Mutex{}
 
-	go proc.InitializeProcessingWorkers(mapper.workersPool, innerChannel, mapper.callback, &wg)
-	go proc.ProcessInputs(mapper.inputDirect.ConsumeData(), innerChannel, mapper.endSignals, &wg)
-	
-    // Using WaitGroups to avoid closing the RabbitMQ connection before all messages are sent.
-    wg.Wait()
+	var connWg sync.WaitGroup
+	connWg.Add(1)
 
-    // Publishing end messages.
-    for _, partition := range utils.GetMapDistinctValues(mapper.outputPartitions) {
-    	mapper.outputDirect.PublishFinish(partition)
-    }
+	var procWg sync.WaitGroup
+	procWg.Add(1)
+
+	go proc.InitializeProcessingWorkers(mapper.workersPool, innerChannel, mapper.callback, &procWg)
+	go proc.ProcessInputs(mapper.inputDirect.ConsumeData(), innerChannel, mapper.endSignals, &procWg, &connWg)
+	go proc.ProcessFinish(mapper.finishCallback, &procWg, closingConn, connMutex)
+	proc.CloseConnection(mapper.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
 func (mapper *Mapper) callback(bulkNumber int, bulk string) {
 	mappedData := mapper.mapData(bulkNumber, bulk)
 	mapper.sendMappedData(bulkNumber, mappedData)
+}
+
+func (mapper *Mapper) finishCallback() {
+	for _, partition := range utils.GetMapDistinctValues(mapper.outputPartitions) {
+		mapper.outputDirect.PublishFinish(partition)
+	}
+}
+
+func (mapper *Mapper) closeCallback() {
+	// TODO
 }
 
 func (mapper *Mapper) mapData(bulkNumber int, rawReviewsBulk string) []comms.UserData {

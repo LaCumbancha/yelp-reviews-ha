@@ -1,8 +1,13 @@
 package communication
 
+import (
+	"strings"
+	"strconv"
+)
+
 // Protocol special messages.
-const endMessage = "END-MESSAGE"
-const closeMessage = "CLOSE-CONNECTION"
+const endMessage = "FINISH-MESSAGE"
+const closeMessage = "CLOSE-MESSAGE"
 
 // Retries finish attemps.
 const retries = 25
@@ -13,8 +18,8 @@ func EndSignals(outputs int) int {
 }
 
 // Defining custom End-Message
-func EndMessage(instance string) []byte {
-	return []byte(endMessage + instance)
+func EndMessage(instance string, datasetNumber int) []byte {
+	return []byte(endMessage + instance + "|" + strconv.Itoa(datasetNumber))
 }
 
 // Defining custom Close-Message
@@ -22,14 +27,25 @@ func CloseMessage(instance string) string {
 	return closeMessage + instance
 }
 
-// Detect all possible end messages (could be like 'END-MESSAGE1').
+// Detect all possible end messages (could be like 'FINISH1|1').
 func IsEndMessage(message string) bool {
-	return (len(message) > 10) && (message[0:11] == endMessage)
+	return strings.HasPrefix(message, endMessage)
 }
 
-// Detect all possible close messages (could be like 'CLOSE-CONNECTION1').
+// Detect all possible close messages (could be like 'CLOSE1|1').
 func IsCloseMessage(message string) bool {
-	return (len(message) > 15) && (message[0:16] == closeMessage)
+	return strings.HasPrefix(message, closeMessage)
+}
+
+func specialMessageDatasetNumber(message string) int {
+	separatorIdx := strings.Index(message, "|")
+	datasetNumber, err := strconv.Atoi(message[separatorIdx+1:len(message)])
+
+	if err != nil {
+		return 0
+	} else {
+		return datasetNumber
+	}
 }
 
 // Detect if all end signals were received
@@ -43,10 +59,6 @@ func LastEndMessage(message string, datasetNumber int, receivedSignals map[strin
 	distinctSignals := len(receivedSignals)
 
 	return newSignal, (distinctSignals == expectedSignals) && newSignal
-}
-
-func specialMessageDatasetNumber(message string) int {
-	return 0
 }
 
 // Detect if all close signals were received

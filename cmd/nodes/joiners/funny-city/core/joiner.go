@@ -102,7 +102,7 @@ func (joiner *Joiner) callback2(bulkNumber int, bulk string) {
 	joiner.calculator.AddCityBusiness(bulkNumber, bulk)
 }
 
-func (joiner *Joiner) finishCallback() {
+func (joiner *Joiner) finishCallback(datasetNumber int) {
 	// Retrieving join matches.
 	joinMatches := joiner.calculator.RetrieveMatches()
 
@@ -120,7 +120,7 @@ func (joiner *Joiner) finishCallback() {
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.EndMessage(joiner.instance), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectFinish(comms.EndMessage(joiner.instance, datasetNumber), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) closeCallback() {

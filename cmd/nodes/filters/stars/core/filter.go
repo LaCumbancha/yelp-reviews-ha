@@ -79,8 +79,8 @@ func (filter *Filter) callback(bulkNumber int, bulk string) {
 	filter.sendFilteredData(bulkNumber, filteredData)
 }
 
-func (filter *Filter) finishCallback() {
-	rabbit.OutputDirectFinish(comms.EndMessage(filter.instance), filter.outputPartitions, filter.outputDirect)
+func (filter *Filter) finishCallback(datasetNumber int) {
+	rabbit.OutputDirectFinish(comms.EndMessage(filter.instance, datasetNumber), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {

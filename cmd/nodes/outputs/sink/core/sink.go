@@ -77,23 +77,28 @@ func (sink *Sink) Run() {
 }
 
 func (sink *Sink) retrieveFlowResults(flow string, inputQueue *rabbit.RabbitInputQueue, procWg *sync.WaitGroup, connWg * sync.WaitGroup) {
+	datasetNumber := 1
 	distinctEndSignals := make(map[string]int)
 	distinctCloseSignals := make(map[string]int)
 
 	for message := range inputQueue.ConsumeData() {
 		messageBody := string(message.Body)
 		if comms.IsCloseMessage(messageBody) {
-			_, allCloseReceived := comms.LastEndMessage(messageBody, distinctCloseSignals, 1)
+			_, allCloseReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctCloseSignals, 1)
 
 			if allCloseReceived {
-				log.Infof("End-Message received from the %s flow.", flow)
+				log.Infof("Close-Message received from the %s flow.", flow)
 				connWg.Done()
 			}
 
 		} else if comms.IsEndMessage(messageBody) {
-			_, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, 1)
+			_, allFinishReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctEndSignals, 1)
 
 			if allFinishReceived {
+				// Clearing End-Messages flags.
+				datasetNumber++
+				distinctEndSignals = make(map[string]int)
+
 				log.Infof("End-Message received from the %s flow.", flow)
 				procWg.Done()
 			}
@@ -104,8 +109,8 @@ func (sink *Sink) retrieveFlowResults(flow string, inputQueue *rabbit.RabbitInpu
 	}
 }
 
-func (sink *Sink) finishCallback() {
-	log.Infof("Dataset analysis finished.")
+func (sink *Sink) finishCallback(datasetNumber int) {
+	log.Infof("Dataset #%d analysis finished.", datasetNumber)
 }
 
 func (sink *Sink) closeCallback() {

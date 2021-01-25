@@ -100,7 +100,7 @@ func (scatter *Scatter) Run() {
     for _, partition := range PartitionableValues {
     	errors := false
     	for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-    		err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance), partition)
+    		err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, 1), partition)
 
     		if err != nil {
 				errors = true
@@ -111,106 +111,6 @@ func (scatter *Scatter) Run() {
     	if !errors {
 			log.Infof("End-Message sent to direct-exchange %s (partition %s).", scatter.outputDirect.Exchange, partition)
 		}
-    }
-
-    log.Infof("Time: %s.", time.Now().Sub(start).String())
-
-
-
-
-
-
-
-    time.Sleep(180000 * time.Millisecond)
-    log.Infof("Starting to load reviews from second file.")
-
-    file, err = os.Open("reviews2.json")
-    if err != nil {
-        log.Fatalf("Error opening reviews data file. Err: '%s'", err)
-    }
-    defer file.Close()
-
-    bulkNumber = 0
-    chunkNumber = 0
-    scanner = bufio.NewScanner(file)
-    buffer = bytes.NewBufferString("")
-    for scanner.Scan() {
-        buffer.WriteString(scanner.Text())
-        buffer.WriteString("\n")
-
-        chunkNumber++
-        if chunkNumber == scatter.bulkSize {
-            bulkNumber++
-            bulk := buffer.String()
-            scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-
-            buffer = bytes.NewBufferString("")
-            chunkNumber = 0
-        }
-    }
-
-    if err := scanner.Err(); err != nil {
-        log.Fatalf("Error reading reviews data from file %s. Err: '%s'", scatter.data, err)
-    }
-
-    bulkNumber++
-    bulk := buffer.String()
-    if bulk != "" {
-    	scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-    }
-
-    // Publishing end messages.
-    for _, partition = range PartitionableValues {
-    	for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-    		scatter.outputDirect.PublishFinish(partition)
-    	}
-    }
-
-    log.Infof("Time: %s.", time.Now().Sub(start).String())
-
-    time.Sleep(180000 * time.Millisecond)
-    log.Infof("Starting to load reviews from third file.")
-
-    file, err := os.Open("reviews3.json")
-    if err != nil {
-        log.Fatalf("Error opening reviews data file. Err: '%s'", err)
-    }
-    defer file.Close()
-
-    bulkNumber = 0
-    chunkNumber = 0
-    scanner = bufio.NewScanner(file)
-    buffer = bytes.NewBufferString("")
-    for scanner.Scan() {
-        buffer.WriteString(scanner.Text())
-        buffer.WriteString("\n")
-
-        chunkNumber++
-        if chunkNumber == scatter.bulkSize {
-            bulkNumber++
-            bulk := buffer.String()
-            scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-
-            buffer = bytes.NewBufferString("")
-            chunkNumber = 0
-        }
-    }
-
-    if err := scanner.Err(); err != nil {
-        log.Fatalf("Error reading reviews data from file %s. Err: '%s'", scatter.data, err)
-    }
-
-    bulkNumber++
-    bulk := buffer.String()
-    if bulk != "" {
-    	scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-    }
-
-    // Publishing end messages.
-    for _, partition = range PartitionableValues {
-    	for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-    		scatter.outputDirect.PublishFinish(partition)
-    	}
     }
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())

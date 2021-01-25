@@ -77,8 +77,8 @@ func (mapper *Mapper) callback(bulkNumber int, bulk string) {
 	mapper.sendMappedData(bulkNumber, mappedData)
 }
 
-func (mapper *Mapper) finishCallback() {
-	rabbit.OutputQueueFinish(comms.EndMessage(mapper.instance), mapper.outputQueue)
+func (mapper *Mapper) finishCallback(datasetNumber int) {
+	rabbit.OutputQueueFinish(comms.EndMessage(mapper.instance, datasetNumber), mapper.outputQueue)
 }
 
 func (mapper *Mapper) closeCallback() {

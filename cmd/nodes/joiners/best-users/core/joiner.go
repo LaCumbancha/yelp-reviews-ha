@@ -95,7 +95,7 @@ func (joiner *Joiner) callback2(bulkNumber int, bulk string) {
 	joiner.calculator.AddUser(bulkNumber, bulk)
 }
 
-func (joiner *Joiner) finishCallback() {
+func (joiner *Joiner) finishCallback(datasetNumber int) {
 	// Retrieving join matches.
 	joinMatches := joiner.calculator.RetrieveMatches()
 
@@ -113,7 +113,7 @@ func (joiner *Joiner) finishCallback() {
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(joiner.instance), joiner.outputQueue)
+	rabbit.OutputQueueFinish(comms.EndMessage(joiner.instance, datasetNumber), joiner.outputQueue)
 }
 
 func (joiner *Joiner) closeCallback() {

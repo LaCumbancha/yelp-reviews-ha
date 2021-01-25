@@ -71,7 +71,7 @@ func (prettier *Prettier) callback(bulkNumber int, bulk string) {
 	prettier.builder.Save(bulk)
 }
 
-func (prettier *Prettier) finishCallback() {
+func (prettier *Prettier) finishCallback(datasetNumber int) {
 	// Sending results
 	prettier.sendResults()
 
@@ -79,7 +79,7 @@ func (prettier *Prettier) finishCallback() {
 	prettier.builder.Clear()
 
     // There's no need for an instance definition in the End-Message because there's only one Prettier
-	rabbit.OutputQueueFinish(comms.EndMessage(""), prettier.outputQueue)
+	rabbit.OutputQueueFinish(comms.EndMessage("", datasetNumber), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {

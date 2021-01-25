@@ -93,7 +93,7 @@ func (scatter *Scatter) Run() {
     }
 
     // Publishing end messages.
-    rabbit.OutputQueueFinish(comms.EndMessage(""), scatter.outputQueue)
+    rabbit.OutputQueueFinish(comms.EndMessage("", 1), scatter.outputQueue)
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())
 }

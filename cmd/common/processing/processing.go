@@ -79,15 +79,18 @@ func InitializeProcessingWorkers(workersPool int, storingChannel chan amqp.Deliv
 	}
 }
 
-func ProcessFinish(callback func(), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+func ProcessFinish(callback func(int), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+	datasetNumber := 1
+
 	for true {
 		procWg.Wait()
+		datasetNumber++
 
 		connMutex.Lock()
 		if closingConn {
 			break
 		} else {
-			callback()
+			callback(datasetNumber)
 			procWg.Add(1)
 		}
 		connMutex.Unlock()

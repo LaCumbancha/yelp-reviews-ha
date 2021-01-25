@@ -82,7 +82,7 @@ func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
 	aggregator.calculator.Aggregate(bulkNumber, bulk)
 }
 
-func (aggregator *Aggregator) finishCallback() {
+func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
 	outputBulkNumber := 0
 	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
@@ -95,7 +95,7 @@ func (aggregator *Aggregator) finishCallback() {
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.EndMessage(aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) closeCallback() {

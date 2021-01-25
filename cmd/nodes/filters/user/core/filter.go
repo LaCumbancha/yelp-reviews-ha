@@ -26,6 +26,7 @@ type FilterConfig struct {
 }
 
 type Filter struct {
+	instance 			string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
@@ -41,10 +42,11 @@ func NewFilter(config FilterConfig) *Filter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.UserAggregatorOutput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.UserFilterOutput, comms.EndMessage(config.Instance), comms.EndSignals(1))
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.BestUsersFilterOutput, comms.EndMessage(config.Instance))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.UserFilterOutput, comms.EndSignals(1))
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.BestUsersFilterOutput)
 
 	filter := &Filter {
+		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
@@ -84,11 +86,8 @@ func (filter *Filter) callback(bulkNumber int, bulk string) {
 }
 
 func (filter *Filter) finishCallback() {
-	filter.outputQueue.PublishFinish()
-	
-	for _, partition := range utils.GetMapDistinctValues(filter.outputPartitions) {
-		filter.outputDirect.PublishFinish(partition)
-	}
+	rabbit.OutputQueueFinish(comms.EndMessage(filter.instance), filter.outputQueue)
+	rabbit.OutputDirectFinish(comms.EndMessage(filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {

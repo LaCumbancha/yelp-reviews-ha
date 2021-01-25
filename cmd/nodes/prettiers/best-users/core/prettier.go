@@ -33,7 +33,7 @@ func NewPrettier(config PrettierConfig) *Prettier {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.BestUsersJoinerOutput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.BestUsersPrettierOutput, comms.EndMessage(""), comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.BestUsersPrettierOutput, comms.EndSignals(1))
 
 	prettier := &Prettier {
 		connection:			connection,
@@ -77,9 +77,9 @@ func (prettier *Prettier) finishCallback() {
 
 	// Clearing Calculator for next dataset.
 	prettier.builder.Clear()
-
-	// Sending End-Message to consumers.
-    prettier.outputQueue.PublishFinish()
+	
+	// There's no need for an instance definition in the End-Message because there's only one Prettier
+	rabbit.OutputQueueFinish(comms.EndMessage(""), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {

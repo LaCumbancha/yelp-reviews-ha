@@ -12,6 +12,7 @@ import (
 )
 
 func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delivery, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
+	datasetNumber := 1
 	distinctEndSignals := make(map[string]int)
 	distinctCloseSignals := make(map[string]int)
 
@@ -19,7 +20,7 @@ func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delive
 		messageBody := string(message.Body)
 
 		if comms.IsCloseMessage(messageBody) {
-			newCloseReceived, allCloseReceived := comms.LastEndMessage(messageBody, distinctCloseSignals, endSignals)
+			newCloseReceived, allCloseReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctCloseSignals, endSignals)
 
 			if newCloseReceived {
 				log.Infof("Close-Message #%d received.", len(distinctCloseSignals))
@@ -31,13 +32,17 @@ func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delive
 			}
 
 		} else if comms.IsEndMessage(messageBody) {
-			newFinishReceived, allFinishReceived := comms.LastEndMessage(messageBody, distinctEndSignals, endSignals)
+			newFinishReceived, allFinishReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctEndSignals, endSignals)
 
 			if newFinishReceived {
 				log.Infof("End-Message #%d received.", len(distinctEndSignals))
 			}
 
 			if allFinishReceived {
+				// Clearing End-Messages flags.
+				datasetNumber++
+				distinctEndSignals = make(map[string]int)
+
 				log.Infof("All End-Messages were received.")
 				procWg.Done()
 			}

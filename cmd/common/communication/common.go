@@ -13,8 +13,8 @@ func EndSignals(outputs int) int {
 }
 
 // Defining custom End-Message
-func EndMessage(instance string) string {
-	return endMessage + instance
+func EndMessage(instance string) []byte {
+	return []byte(endMessage + instance)
 }
 
 // Defining custom Close-Message
@@ -46,7 +46,7 @@ func LastEndMessage(message string, datasetNumber int, receivedSignals map[strin
 }
 
 func specialMessageDatasetNumber(message string) int {
-
+	return 0
 }
 
 // Detect if all close signals were received

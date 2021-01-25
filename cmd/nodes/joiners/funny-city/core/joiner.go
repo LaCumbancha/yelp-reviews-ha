@@ -28,6 +28,7 @@ type JoinerConfig struct {
 }
 
 type Joiner struct {
+	instance 			string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
@@ -45,9 +46,10 @@ func NewJoiner(config JoinerConfig) *Joiner {
 
 	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.FunbizAggregatorOutput, config.InputTopic, "")
 	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.CitbizMapperOutput, config.InputTopic, "")
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FuncitJoinerOutput, comms.EndMessage(config.Instance))
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FuncitJoinerOutput)
 
 	joiner := &Joiner {
+		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
@@ -118,9 +120,7 @@ func (joiner *Joiner) finishCallback() {
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	for _, partition := range utils.GetMapDistinctValues(joiner.outputPartitions) {
-		joiner.outputDirect.PublishFinish(partition)
-	}
+	rabbit.OutputDirectFinish(comms.EndMessage(joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) closeCallback() {

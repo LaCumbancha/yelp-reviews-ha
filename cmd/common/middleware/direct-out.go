@@ -8,14 +8,12 @@ import (
 type RabbitOutputDirect struct {
 	Exchange 		string
 	channel 		*amqp.Channel
-	finishMessage	string
 }
 
-func NewRabbitOutputDirect(channel *amqp.Channel, name string, endMessage string) *RabbitOutputDirect {
+func NewRabbitOutputDirect(channel *amqp.Channel, name string) *RabbitOutputDirect {
 	direct := &RabbitOutputDirect {
 		Exchange:			name,
 		channel: 			channel,
-		finishMessage:		endMessage,
 	}
 
 	direct.initialize()
@@ -51,23 +49,4 @@ func (direct *RabbitOutputDirect) PublishData(data []byte, partition string) err
 		    Body:        	data,
 		},
 	)
-}
-
-func (direct *RabbitOutputDirect) PublishFinish(partition string) {
-	err := direct.channel.Publish(
-  		direct.Exchange, 					// Exchange
-  		partition,     						// Routing Key
-  		false,  							// Mandatory
-  		false,  							// Immediate
-  		amqp.Publishing{
-  		    ContentType: 	"text/plain",
-  		    Body:        	[]byte(direct.finishMessage),
-  		},
-  	)
-
-	if err != nil {
-		log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", direct.Exchange, partition, err)
-	} else {
-		log.Infof("End-Message sent to direct-exchange %s (partition %s).", direct.Exchange, partition)
-	}	
 }

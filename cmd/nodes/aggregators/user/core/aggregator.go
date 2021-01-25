@@ -27,6 +27,7 @@ type AggregatorConfig struct {
 }
 
 type Aggregator struct {
+	instance 			string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
@@ -41,10 +42,11 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.UserMapperOutput, config.InputTopic, "")
-	outputQueue1 := rabbit.NewRabbitOutputQueue(channel, props.UserAggregatorOutput, comms.EndMessage(config.Instance), comms.EndSignals(config.UserFilters))
-	outputQueue2 := rabbit.NewRabbitOutputQueue(channel, props.BotUsersAggregatorOutput, comms.EndMessage(config.Instance), comms.EndSignals(config.BotUserFilters))
+	outputQueue1 := rabbit.NewRabbitOutputQueue(channel, props.UserAggregatorOutput, comms.EndSignals(config.UserFilters))
+	outputQueue2 := rabbit.NewRabbitOutputQueue(channel, props.BotUsersAggregatorOutput, comms.EndSignals(config.BotUserFilters))
 
 	aggregator := &Aggregator {
+		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
@@ -90,8 +92,8 @@ func (aggregator *Aggregator) finishCallback() {
 	}
 
 	// Sending End-Message to consumers.
-	aggregator.outputQueue1.PublishFinish()
-	aggregator.outputQueue2.PublishFinish()
+	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance), aggregator.outputQueue1)
+	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance), aggregator.outputQueue2)
 }
 
 func (aggregator *Aggregator) closeCallback() {

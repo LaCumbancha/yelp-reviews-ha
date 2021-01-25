@@ -29,6 +29,7 @@ type ScatterConfig struct {
 }
 
 type Scatter struct {
+	instance 			string
 	data 				string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
@@ -40,9 +41,10 @@ type Scatter struct {
 func NewScatter(config ScatterConfig) *Scatter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.ReviewsScatterOutput, comms.EndMessage(config.Instance))
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.ReviewsScatterOutput)
 	
 	scatter := &Scatter {
+		instance:			config.Instance,
 		data: 				config.Data,
 		connection:			connection,
 		channel:			channel,
@@ -96,9 +98,19 @@ func (scatter *Scatter) Run() {
 
     // Publishing end messages.
     for _, partition := range PartitionableValues {
+    	errors := false
     	for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-    		scatter.outputDirect.PublishFinish(partition)
+    		err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance), partition)
+
+    		if err != nil {
+				errors = true
+				log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", scatter.outputDirect.Exchange, partition, err)
+			}
     	}
+
+    	if !errors {
+			log.Infof("End-Message sent to direct-exchange %s (partition %s).", scatter.outputDirect.Exchange, partition)
+		}
     }
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())

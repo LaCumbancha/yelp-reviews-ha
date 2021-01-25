@@ -22,6 +22,7 @@ type AggregatorConfig struct {
 }
 
 type Aggregator struct {
+	instance 			string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
@@ -35,9 +36,10 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.FuncitAggregatorOutput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.FuncitTopOutput, comms.EndMessage(config.Instance), comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.FuncitTopOutput, comms.EndSignals(1))
 
 	aggregator := &Aggregator {
+		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
@@ -81,7 +83,7 @@ func (aggregator *Aggregator) finishCallback() {
 	}
 
 	// Sending End-Message to consumers.
-	aggregator.outputQueue.PublishFinish()
+	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {

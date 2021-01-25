@@ -25,6 +25,7 @@ type MapperConfig struct {
 }
 
 type Mapper struct {
+	instance 			string
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
@@ -37,9 +38,10 @@ func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.ReviewsScatterOutput, props.StarsMapperTopic, props.StarsMapperInput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.StarsMapperOutput, comms.EndMessage(config.Instance), comms.EndSignals(config.StarsFilters))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.StarsMapperOutput, comms.EndSignals(config.StarsFilters))
 
 	mapper := &Mapper {
+		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
@@ -76,7 +78,7 @@ func (mapper *Mapper) callback(bulkNumber int, bulk string) {
 }
 
 func (mapper *Mapper) finishCallback() {
-	mapper.outputQueue.PublishFinish()
+	rabbit.OutputQueueFinish(comms.EndMessage(mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) closeCallback() {

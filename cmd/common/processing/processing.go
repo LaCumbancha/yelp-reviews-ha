@@ -84,7 +84,7 @@ func ProcessFinish(callback func(int), procWg *sync.WaitGroup, closingConn bool,
 
 	for true {
 		procWg.Wait()
-		datasetNumber++
+		log.Infof("Starting finish process in Processing!")
 
 		connMutex.Lock()
 		if closingConn {
@@ -94,6 +94,8 @@ func ProcessFinish(callback func(int), procWg *sync.WaitGroup, closingConn bool,
 			procWg.Add(1)
 		}
 		connMutex.Unlock()
+
+		datasetNumber++
 	}
 }
 

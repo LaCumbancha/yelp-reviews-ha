@@ -9,7 +9,8 @@ import argparse
 from datetime import date
 
 # Protocol special messages
-END_MESSAGE = "END-MESSAGE"
+END_MESSAGE = "FINISH-MESSAGE"
+CLOSE_MESSAGE = "CLOSE-MESSAGE"
 
 # RabbitMQ information
 EXCHANGE = "ReviewsScatter"
@@ -28,6 +29,7 @@ def prepare(review):
 	return str.encode(review.toJSON().replace('\n', ''))
 
 def mainMenu():
+	dataset = 1
 	exit = False
 	while not exit:
 		printHomeMenu()
@@ -36,12 +38,14 @@ def mainMenu():
 			if option == 'S':
 				sendMenu()
 				break
-			elif option == 'C':
+			elif option == 'F':
 				exit = True
-				closeConn()
+				finishDataset(dataset)
+				dataset += 1
 				break
 			elif option == 'X':
 				exit = True
+				closeConn()
 				break
 			else:
 				option = input('Wrong option. Retry: ')
@@ -49,11 +53,11 @@ def mainMenu():
 
 def printHomeMenu():
 	print()
-	print('Stream Reviews')
-	print('--------------')
+	print('Reviews Streamer')
+	print('----------------')
 	print('[S] SEND')
-	print('[C] CLOSE')
-	print('[X] QUIT')
+	print('[F] FINISH SET')
+	print('[X] CLOSE')
 
 
 def sendMenu():
@@ -71,10 +75,16 @@ def sendMenu():
 	publish(prepare(review))
 
 
+def finishDataset(dataset):
+	print()
+	print('Finishing dataset.')
+	publish(END_MESSAGE + "1|" + dataset)
+
+
 def closeConn():
 	print()
 	print('Closing connection.')
-	publish(END_MESSAGE)
+	publish(CLOSE_MESSAGE + "1")
 
 
 def publish(message):

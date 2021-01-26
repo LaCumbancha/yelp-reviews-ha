@@ -1,13 +1,12 @@
-# Testing.
-testing_mode: false
-test_file_size: 1000
+# Logging
+log_level: "INFO"
+log_bulk_rate: 50
 
 # System configuration.
 reviews_streaming: false
 common_pool_size: 16
 
 # Bulks.
-log_bulk_rate: 50
 reviews_bulk_size: 10000
 business_bulk_size: 10000
 funbizagg_bulk_size: 10000

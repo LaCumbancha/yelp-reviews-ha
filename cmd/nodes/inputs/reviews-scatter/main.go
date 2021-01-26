@@ -32,6 +32,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("users", "mappers")
 	configEnv.BindEnv("stars", "mappers")
 	configEnv.BindEnv("log", "bulk", "rate")
+	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
@@ -53,15 +54,16 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 }
 
 func main() {
-	log.SetLevel(log.DebugLevel)
 	configEnv, configFile, err := InitConfig()
 
 	if err != nil {
 		log.Fatalf("Fatal error loading configuration. Err: '%s'", err)
 	}
 
+	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
+	utils.SetLogLevel(logLevel)
+
 	instance := utils.GetConfigString(configEnv, configFile, "instance")
-	reviewsData := utils.GetConfigString(configEnv, configFile, "reviews_data")
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")
 	rabbitPort := utils.GetConfigString(configEnv, configFile, "rabbitmq_port")
 	bulkSize := utils.GetConfigInt(configEnv, configFile, "bulk_size")
@@ -73,7 +75,6 @@ func main() {
 
 	scatterConfig := core.ScatterConfig {
 		Instance:				instance,
-		Data:					reviewsData,
 		RabbitIp:				rabbitIp,
 		RabbitPort:				rabbitPort,
 		BulkSize:				bulkSize,

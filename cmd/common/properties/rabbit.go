@@ -4,7 +4,6 @@ package properties
 // Funniest Cities flow.
 const BusinessesScatterOutput = "BusinessesScatter"
 const CitbizMapperOutput = "CityBusinessMapper"
-const ReviewsScatterOutput = "ReviewsScatter"
 const FunbizMapperOutput = "FunbizMapper"
 const FunbizFilterOutput = "FunbizFilter"
 const FunbizAggregatorOutput = "FunbizAggregator"
@@ -41,6 +40,9 @@ const StarsAggregatorOutput = "StarsAggregator"
 const BestUsersFilterOutput = "BestUsersFilter"
 const BestUsersJoinerOutput = "BestUsersJoiner"
 const BestUsersPrettierOutput = "BestUsersResults"
+
+// Common
+const ReviewsScatterOutput = "ReviewsScatter"
 
 //// NODES INPUTS QUEUES
 // Common queues.

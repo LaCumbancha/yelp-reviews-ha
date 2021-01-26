@@ -29,6 +29,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("funcit", "aggregators")
 	configEnv.BindEnv("log", "bulk", "rate")
 	configEnv.BindEnv("output", "bulk", "size")
+	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
@@ -50,12 +51,14 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 }
 
 func main() {
-	log.SetLevel(log.InfoLevel)
 	configEnv, configFile, err := InitConfig()
 
 	if err != nil {
 		log.Fatalf("Fatal error loading configuration. Err: '%s'", err)
 	}
+
+	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
+	utils.SetLogLevel(logLevel)
 
 	instance := utils.GetConfigString(configEnv, configFile, "instance")
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")

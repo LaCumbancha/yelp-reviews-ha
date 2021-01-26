@@ -27,6 +27,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("workers", "pool")
 	configEnv.BindEnv("citbiz", "mappers")
 	configEnv.BindEnv("log", "bulk", "rate")
+	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
 
 	// Read config file if it's present
@@ -48,12 +49,14 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 }
 
 func main() {
-	log.SetLevel(log.DebugLevel)
 	configEnv, configFile, err := InitConfig()
 
 	if err != nil {
 		log.Fatalf("Fatal error loading configuration. Err: '%s'", err)
 	}
+
+	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
+	utils.SetLogLevel(logLevel)
 
 	businessData := utils.GetConfigString(configEnv, configFile, "business_data")
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")

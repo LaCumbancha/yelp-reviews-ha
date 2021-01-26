@@ -15,7 +15,6 @@ deps:
 
 build: deps
 	# Inputs
-	GOOS=linux go build -o bin/review-scatter $(GIT_REMOTE)/cmd/nodes/inputs/reviews-scatter
 	GOOS=linux go build -o bin/business-scatter $(GIT_REMOTE)/cmd/nodes/inputs/business-scatter
 
 	# Mappers
@@ -63,7 +62,6 @@ docker-image:
 	docker build -f ./cmd/nodes/rabbitmq/Dockerfile -t "rabbitmq:custom" .
 
 	# Inputs
-	docker build -f ./cmd/nodes/inputs/reviews-scatter/Dockerfile -t "rvw_scatter:latest" .
 	docker build -f ./cmd/nodes/inputs/business-scatter/Dockerfile -t "biz_scatter:latest" .
 
 	# Mappers

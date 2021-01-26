@@ -10,16 +10,7 @@ def config_logs(*flows, service):
 
 input_yaml_file = open("./scripts/system-config.yaml")
 input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
-
-if input_yaml['testing_mode']:
-	reviews_data = '/data/test-reviews.json'
-	business_data = '/data/test-business.json'
-
-	import subprocess
-	subprocess.call(['./scripts/test-builder', str(input_yaml["test_file_size"])])
-else: 
-	reviews_data = '/data/reviews.json'
-	business_data = '/data/business.json'
+business_data = '/data/business.json'	
 
 reviews_inputs = 2 if input_yaml["reviews_streaming"] else 1
 
@@ -84,7 +75,7 @@ file['services']['sink'] = {
 	'image': 'sink:latest',
 	'entrypoint': '/sink',
 	'restart': 'on-failure',
-	'environment': ['SINK_RABBITMQ_IP=rabbitmq', 'SINK_RABBITMQ_PORT=5672'],
+	'environment': ['SINK_RABBITMQ_IP=rabbitmq', 'SINK_RABBITMQ_PORT=5672', f'SINK_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(SINK_DEPS),
 	'networks': ['testing_net'],
@@ -97,7 +88,7 @@ file['services']['top_funniest_cities_prettier'] = {
 	'image': 'top_funniest_cities_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'FUNCITPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'FUNCITPRE_RABBITMQ_IP=rabbitmq', 'FUNCITPRE_RABBITMQ_PORT=5672', f'FUNCITPRE_TOP_SIZE={input_yaml["funniest_cities_top_size"]}', f'FUNCITPRE_FUNCIT_FILTERS={input_yaml["funcit_tops"]}'],
+	'environment': [f'FUNCITPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'FUNCITPRE_RABBITMQ_IP=rabbitmq', 'FUNCITPRE_RABBITMQ_PORT=5672', f'FUNCITPRE_TOP_SIZE={input_yaml["funniest_cities_top_size"]}', f'FUNCITPRE_FUNCIT_FILTERS={input_yaml["funcit_tops"]}', f'FUNCITPRE_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(FUNCITPRE_DEPS),
 	'networks': ['testing_net'],
@@ -112,7 +103,7 @@ for idx in range(0, input_yaml['funcit_tops']):
 		'image': 'funcit_top:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITTOP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITTOP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITTOP_INSTANCE={idx}', 'FUNCITTOP_RABBITMQ_IP=rabbitmq', 'FUNCITTOP_RABBITMQ_PORT=5672', f'FUNCITTOP_TOP_SIZE={input_yaml["funniest_cities_top_size"]}', f'FUNCITTOP_FUNCIT_AGGREGATORS={input_yaml["funcit_aggregators"]}'],
+		'environment': [f'FUNCITTOP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITTOP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITTOP_INSTANCE={idx}', 'FUNCITTOP_RABBITMQ_IP=rabbitmq', 'FUNCITTOP_RABBITMQ_PORT=5672', f'FUNCITTOP_TOP_SIZE={input_yaml["funniest_cities_top_size"]}', f'FUNCITTOP_FUNCIT_AGGREGATORS={input_yaml["funcit_aggregators"]}', f'FUNCITTOP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNCITTOP_DEPS),
 		'networks': ['testing_net'],
@@ -127,7 +118,7 @@ for idx in range(0, input_yaml['funcit_aggregators']):
 		'image': 'funcit_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITAGG_INSTANCE={idx}', 'FUNCITAGG_RABBITMQ_IP=rabbitmq', 'FUNCITAGG_RABBITMQ_PORT=5672', f'FUNCITAGG_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}', f'FUNCITAGG_FUNCIT_FILTERS={input_yaml["funcit_tops"]}', f'FUNCITAGG_INPUT_TOPIC={idx}', f'FUNCITAGG_OUTPUT_BULK_SIZE={input_yaml["funcitagg_bulk_size"]}'],
+		'environment': [f'FUNCITAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITAGG_INSTANCE={idx}', 'FUNCITAGG_RABBITMQ_IP=rabbitmq', 'FUNCITAGG_RABBITMQ_PORT=5672', f'FUNCITAGG_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}', f'FUNCITAGG_FUNCIT_FILTERS={input_yaml["funcit_tops"]}', f'FUNCITAGG_INPUT_TOPIC={idx}', f'FUNCITAGG_OUTPUT_BULK_SIZE={input_yaml["funcitagg_bulk_size"]}', f'FUNCITAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNCITAGG_DEPS),
 		'networks': ['testing_net'],
@@ -143,7 +134,7 @@ for idx in range(0, input_yaml['funcit_joiners']):
 		'image': 'funcit_joiner:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITJOIN_INSTANCE={idx}', 'FUNCITJOIN_RABBITMQ_IP=rabbitmq', 'FUNCITJOIN_RABBITMQ_PORT=5672', f'FUNCITJOIN_FUNBIZ_AGGREGATORS={input_yaml["funbiz_aggregators"]}', f'FUNCITJOIN_CITBIZ_MAPPERS={input_yaml["citbiz_mappers"]}', f'FUNCITJOIN_FUNCIT_AGGREGATORS={input_yaml["funcit_aggregators"]}', f'FUNCITJOIN_INPUT_TOPIC={idx}', f'FUNCITJOIN_OUTPUT_BULK_SIZE={input_yaml["funcitjoin_bulk_size"]}'],
+		'environment': [f'FUNCITJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNCITJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNCITJOIN_INSTANCE={idx}', 'FUNCITJOIN_RABBITMQ_IP=rabbitmq', 'FUNCITJOIN_RABBITMQ_PORT=5672', f'FUNCITJOIN_FUNBIZ_AGGREGATORS={input_yaml["funbiz_aggregators"]}', f'FUNCITJOIN_CITBIZ_MAPPERS={input_yaml["citbiz_mappers"]}', f'FUNCITJOIN_FUNCIT_AGGREGATORS={input_yaml["funcit_aggregators"]}', f'FUNCITJOIN_INPUT_TOPIC={idx}', f'FUNCITJOIN_OUTPUT_BULK_SIZE={input_yaml["funcitjoin_bulk_size"]}', f'FUNCITJOIN_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNCITJOIN_DEPS),
 		'networks': ['testing_net']
@@ -158,7 +149,7 @@ for idx in range(0, input_yaml['citbiz_mappers']):
 		'image': 'citbiz_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'CITBIZMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'CITBIZMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'CITBIZMAP_INSTANCE={idx}', 'CITBIZMAP_RABBITMQ_IP=rabbitmq', 'CITBIZMAP_RABBITMQ_PORT=5672', 'CITBIZMAP_BUSINESSES_INPUTS=1', f'CITBIZMAP_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}'],
+		'environment': [f'CITBIZMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'CITBIZMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'CITBIZMAP_INSTANCE={idx}', 'CITBIZMAP_RABBITMQ_IP=rabbitmq', 'CITBIZMAP_RABBITMQ_PORT=5672', 'CITBIZMAP_BUSINESSES_INPUTS=1', f'CITBIZMAP_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}', f'CITBIZMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(CITBIZMAP_DEPS),
 		'networks': ['testing_net']
@@ -170,7 +161,7 @@ file['services']['biz_scatter'] = {
 	'image': 'biz_scatter:latest',
 	'entrypoint': '/scatter',
 	'restart': 'on-failure',
-	'environment': [f'BIZSCA_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BIZSCA_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', 'BIZSCA_INSTANCE=0', f'BIZSCA_BUSINESS_DATA={business_data}', 'BIZSCA_RABBITMQ_IP=rabbitmq', 'BIZSCA_RABBITMQ_PORT=5672', f'BIZSCA_BULK_SIZE={input_yaml["business_bulk_size"]}', f'BIZSCA_CITBIZ_MAPPERS={input_yaml["citbiz_mappers"]}'],
+	'environment': [f'BIZSCA_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BIZSCA_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', 'BIZSCA_INSTANCE=0', f'BIZSCA_BUSINESS_DATA={business_data}', 'BIZSCA_RABBITMQ_IP=rabbitmq', 'BIZSCA_RABBITMQ_PORT=5672', f'BIZSCA_BULK_SIZE={input_yaml["business_bulk_size"]}', f'BIZSCA_CITBIZ_MAPPERS={input_yaml["citbiz_mappers"]}', f'BIZSCA_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(BIZSCA_DEPS),
 	'networks': ['testing_net'],
@@ -186,7 +177,7 @@ for idx in range(0, input_yaml['funbiz_aggregators']):
 		'image': 'funbiz_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZAGG_INSTANCE={idx}', 'FUNBIZAGG_RABBITMQ_IP=rabbitmq', 'FUNBIZAGG_RABBITMQ_PORT=5672', f'FUNBIZAGG_FUNBIZ_FILTERS={input_yaml["funbiz_filters"]}', f'FUNBIZAGG_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}', f'FUNBIZAGG_INPUT_TOPIC={idx}', f'FUNBIZAGG_OUTPUT_BULK_SIZE={input_yaml["funbizagg_bulk_size"]}'],
+		'environment': [f'FUNBIZAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZAGG_INSTANCE={idx}', 'FUNBIZAGG_RABBITMQ_IP=rabbitmq', 'FUNBIZAGG_RABBITMQ_PORT=5672', f'FUNBIZAGG_FUNBIZ_FILTERS={input_yaml["funbiz_filters"]}', f'FUNBIZAGG_FUNCIT_JOINERS={input_yaml["funcit_joiners"]}', f'FUNBIZAGG_INPUT_TOPIC={idx}', f'FUNBIZAGG_OUTPUT_BULK_SIZE={input_yaml["funbizagg_bulk_size"]}', f'FUNBIZAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNBIZAGG_DEPS),
 		'networks': ['testing_net']
@@ -201,7 +192,7 @@ for idx in range(0, input_yaml['funbiz_filters']):
 		'image': 'funbiz_filter:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZFIL_INSTANCE={idx}', 'FUNBIZFIL_RABBITMQ_IP=rabbitmq', 'FUNBIZFIL_RABBITMQ_PORT=5672', f'FUNBIZFIL_FUNBIZ_MAPPERS={input_yaml["funbiz_mappers"]}', f'FUNBIZFIL_FUNBIZ_AGGREGATORS={input_yaml["funbiz_aggregators"]}'],
+		'environment': [f'FUNBIZFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZFIL_INSTANCE={idx}', 'FUNBIZFIL_RABBITMQ_IP=rabbitmq', 'FUNBIZFIL_RABBITMQ_PORT=5672', f'FUNBIZFIL_FUNBIZ_MAPPERS={input_yaml["funbiz_mappers"]}', f'FUNBIZFIL_FUNBIZ_AGGREGATORS={input_yaml["funbiz_aggregators"]}', f'FUNBIZFIL_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNBIZFIL_DEPS),
 		'networks': ['testing_net']
@@ -216,7 +207,7 @@ for idx in range(0, input_yaml['funbiz_mappers']):
 		'image': 'funbiz_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZMAP_INSTANCE={idx}', 'FUNBIZMAP_RABBITMQ_IP=rabbitmq', 'FUNBIZMAP_RABBITMQ_PORT=5672', f'FUNBIZMAP_REVIEWS_INPUTS={reviews_inputs}', f'FUNBIZMAP_FUNBIZ_FILTERS={input_yaml["funbiz_filters"]}'],
+		'environment': [f'FUNBIZMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'FUNBIZMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'FUNBIZMAP_INSTANCE={idx}', 'FUNBIZMAP_RABBITMQ_IP=rabbitmq', 'FUNBIZMAP_RABBITMQ_PORT=5672', f'FUNBIZMAP_REVIEWS_INPUTS={reviews_inputs}', f'FUNBIZMAP_FUNBIZ_FILTERS={input_yaml["funbiz_filters"]}', f'FUNBIZMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNBIZMAP_DEPS),
 		'networks': ['testing_net']
@@ -230,7 +221,7 @@ file['services']['weekday_histogram_prettier'] = {
 	'image': 'weekday_histogram_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'HISTOPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'HISTOPRE_INSTANCE=0', 'HISTOPRE_RABBITMQ_IP=rabbitmq', 'HISTOPRE_RABBITMQ_PORT=5672', f'HISTOPRE_WEEKDAY_AGGREGATORS={input_yaml["weekday_aggregators"]}'],
+	'environment': [f'HISTOPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'HISTOPRE_INSTANCE=0', 'HISTOPRE_RABBITMQ_IP=rabbitmq', 'HISTOPRE_RABBITMQ_PORT=5672', f'HISTOPRE_WEEKDAY_AGGREGATORS={input_yaml["weekday_aggregators"]}', f'HISTOPRE_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(HISTOPRE_DEPS),
 	'networks': ['testing_net']
@@ -245,7 +236,7 @@ for idx in range(0, input_yaml['weekday_aggregators']):
 		'image': 'weekday_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'WEEKDAYAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'WEEKDAYAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'WEEKDAYAGG_INSTANCE={idx}', 'WEEKDAYAGG_RABBITMQ_IP=rabbitmq', 'WEEKDAYAGG_RABBITMQ_PORT=5672', f'WEEKDAYAGG_INPUT_TOPIC={idx}', f'WEEKDAYAGG_WEEKDAY_MAPPERS={input_yaml["weekday_mappers"]}'],
+		'environment': [f'WEEKDAYAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'WEEKDAYAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'WEEKDAYAGG_INSTANCE={idx}', 'WEEKDAYAGG_RABBITMQ_IP=rabbitmq', 'WEEKDAYAGG_RABBITMQ_PORT=5672', f'WEEKDAYAGG_INPUT_TOPIC={idx}', f'WEEKDAYAGG_WEEKDAY_MAPPERS={input_yaml["weekday_mappers"]}', f'WEEKDAYAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(WEEKDAYAGG_DEPS),
 		'networks': ['testing_net']
@@ -260,7 +251,7 @@ for idx in range(0, input_yaml['weekday_mappers']):
 		'image': 'weekday_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'WEEKDAYMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'WEEKDAYMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'WEEKDAYMAP_INSTANCE={idx}', 'WEEKDAYMAP_RABBITMQ_IP=rabbitmq', 'WEEKDAYMAP_RABBITMQ_PORT=5672', f'WEEKDAYMAP_REVIEWS_INPUTS={reviews_inputs}', f'WEEKDAYMAP_WEEKDAY_AGGREGATORS={input_yaml["weekday_aggregators"]}'],
+		'environment': [f'WEEKDAYMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'WEEKDAYMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'WEEKDAYMAP_INSTANCE={idx}', 'WEEKDAYMAP_RABBITMQ_IP=rabbitmq', 'WEEKDAYMAP_RABBITMQ_PORT=5672', f'WEEKDAYMAP_REVIEWS_INPUTS={reviews_inputs}', f'WEEKDAYMAP_WEEKDAY_AGGREGATORS={input_yaml["weekday_aggregators"]}', f'WEEKDAYMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(WEEKDAYMAP_DEPS),
 		'networks': ['testing_net']
@@ -274,7 +265,7 @@ file['services']['best_users_prettier'] = {
 	'image': 'best_users_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'BESTUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'BESTUSERPRE_RABBITMQ_IP=rabbitmq', 'BESTUSERPRE_RABBITMQ_PORT=5672', f'BESTUSERPRE_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'BESTUSERPRE_BESTUSER_JOINERS={input_yaml["bestuser_joiners"]}'],
+	'environment': [f'BESTUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'BESTUSERPRE_RABBITMQ_IP=rabbitmq', 'BESTUSERPRE_RABBITMQ_PORT=5672', f'BESTUSERPRE_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'BESTUSERPRE_BESTUSER_JOINERS={input_yaml["bestuser_joiners"]}', f'BESTUSERPRE_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(BESTUSERPRE_DEPS),
 	'networks': ['testing_net']
@@ -290,7 +281,7 @@ for idx in range(0, input_yaml['bestuser_joiners']):
 		'image': 'bestuser_joiner:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'BESTUSERJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BESTUSERJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BESTUSERJOIN_INSTANCE={idx}', 'BESTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BESTUSERJOIN_RABBITMQ_PORT=5672', f'BESTUSERJOIN_INPUT_TOPIC={idx}', f'BESTUSERJOIN_STARS_AGGREGATORS={input_yaml["stars_aggregators"]}', f'BESTUSERJOIN_USER_FILTERS={input_yaml["user_filters"]}'],
+		'environment': [f'BESTUSERJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BESTUSERJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BESTUSERJOIN_INSTANCE={idx}', 'BESTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BESTUSERJOIN_RABBITMQ_PORT=5672', f'BESTUSERJOIN_INPUT_TOPIC={idx}', f'BESTUSERJOIN_STARS_AGGREGATORS={input_yaml["stars_aggregators"]}', f'BESTUSERJOIN_USER_FILTERS={input_yaml["user_filters"]}', f'BESTUSERJOIN_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(BESTUSERJOIN_DEPS),
 		'networks': ['testing_net']
@@ -305,7 +296,7 @@ for idx in range(0, input_yaml['stars_aggregators']):
 		'image': 'stars_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'STARSAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSAGG_INSTANCE={idx}', 'STARSAGG_RABBITMQ_IP=rabbitmq', 'STARSAGG_RABBITMQ_PORT=5672', f'STARSAGG_INPUT_TOPIC={idx}', f'STARSAGG_STARS_FILTERS={input_yaml["stars_filters"]}', f'STARSAGG_STARS_JOINERS={input_yaml["bestuser_joiners"]}', f'STARSAGG_OUTPUT_BULK_SIZE={input_yaml["starsagg_bulk_size"]}'],
+		'environment': [f'STARSAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSAGG_INSTANCE={idx}', 'STARSAGG_RABBITMQ_IP=rabbitmq', 'STARSAGG_RABBITMQ_PORT=5672', f'STARSAGG_INPUT_TOPIC={idx}', f'STARSAGG_STARS_FILTERS={input_yaml["stars_filters"]}', f'STARSAGG_STARS_JOINERS={input_yaml["bestuser_joiners"]}', f'STARSAGG_OUTPUT_BULK_SIZE={input_yaml["starsagg_bulk_size"]}', f'STARSAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(STARSAGG_DEPS),
 		'networks': ['testing_net']
@@ -320,7 +311,7 @@ for idx in range(0, input_yaml['stars_filters']):
 		'image': 'stars_filter:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'STARSFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSFIL_INSTANCE={idx}', 'STARSFIL_RABBITMQ_IP=rabbitmq', 'STARSFIL_RABBITMQ_PORT=5672', f'STARSFIL_STARS_MAPPERS={input_yaml["stars_mappers"]}', f'STARSFIL_STARS_AGGREGATORS={input_yaml["stars_aggregators"]}'],
+		'environment': [f'STARSFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSFIL_INSTANCE={idx}', 'STARSFIL_RABBITMQ_IP=rabbitmq', 'STARSFIL_RABBITMQ_PORT=5672', f'STARSFIL_STARS_MAPPERS={input_yaml["stars_mappers"]}', f'STARSFIL_STARS_AGGREGATORS={input_yaml["stars_aggregators"]}', f'STARSFIL_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(STARSFIL_DEPS),
 		'networks': ['testing_net']
@@ -335,7 +326,7 @@ for idx in range(0, input_yaml['stars_mappers']):
 		'image': 'stars_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'STARSMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSMAP_INSTANCE={idx}', 'STARSMAP_RABBITMQ_IP=rabbitmq', 'STARSMAP_RABBITMQ_PORT=5672', f'STARSMAP_REVIEWS_INPUTS={reviews_inputs}', f'STARSMAP_STARS_FILTERS={input_yaml["stars_filters"]}'],
+		'environment': [f'STARSMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'STARSMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'STARSMAP_INSTANCE={idx}', 'STARSMAP_RABBITMQ_IP=rabbitmq', 'STARSMAP_RABBITMQ_PORT=5672', f'STARSMAP_REVIEWS_INPUTS={reviews_inputs}', f'STARSMAP_STARS_FILTERS={input_yaml["stars_filters"]}', f'STARSMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(STARSMAP_DEPS),
 		'networks': ['testing_net']
@@ -349,7 +340,7 @@ file['services']['bot_users_prettier'] = {
 	'image': 'bot_users_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'BOTUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'BOTUSERPRE_RABBITMQ_IP=rabbitmq', 'BOTUSERPRE_RABBITMQ_PORT=5672', f'BOTUSERPRE_MIN_REVIEWS={input_yaml["bots_min_reviews"]}', f'BOTUSERPRE_BOTUSER_JOINERS={input_yaml["botuser_joiners"]}'],
+	'environment': [f'BOTUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', 'BOTUSERPRE_RABBITMQ_IP=rabbitmq', 'BOTUSERPRE_RABBITMQ_PORT=5672', f'BOTUSERPRE_MIN_REVIEWS={input_yaml["bots_min_reviews"]}', f'BOTUSERPRE_BOTUSER_JOINERS={input_yaml["botuser_joiners"]}', f'BOTUSERPRE_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(BOTUSERPRE_DEPS),
 	'networks': ['testing_net']
@@ -365,7 +356,7 @@ for idx in range(0, input_yaml['botuser_joiners']):
 		'image': 'botuser_joiner:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'BOTUSERJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BOTUSERJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BOTUSERJOIN_INSTANCE={idx}', 'BOTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BOTUSERJOIN_RABBITMQ_PORT=5672', f'BOTUSERJOIN_INPUT_TOPIC={idx}', f'BOTUSERJOIN_DISHASH_FILTERS={input_yaml["dishash_filters"]}', f'BOTUSERJOIN_BOTUSERS_FILTERS={input_yaml["botuser_filters"]}'],
+		'environment': [f'BOTUSERJOIN_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BOTUSERJOIN_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BOTUSERJOIN_INSTANCE={idx}', 'BOTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BOTUSERJOIN_RABBITMQ_PORT=5672', f'BOTUSERJOIN_INPUT_TOPIC={idx}', f'BOTUSERJOIN_DISHASH_FILTERS={input_yaml["dishash_filters"]}', f'BOTUSERJOIN_BOTUSERS_FILTERS={input_yaml["botuser_filters"]}', f'BOTUSERJOIN_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(BOTUSERJOIN_DEPS),
 		'networks': ['testing_net']
@@ -380,7 +371,7 @@ for idx in range(0, input_yaml['botuser_filters']):
 		'image': 'botuser_filter:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'BOTUSERFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BOTUSERFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BOTUSERFIL_INSTANCE={idx}', 'BOTUSERFIL_RABBITMQ_IP=rabbitmq', 'BOTUSERFIL_RABBITMQ_PORT=5672', f'BOTUSERFIL_MIN_REVIEWS={input_yaml["bots_min_reviews"]}', f'BOTUSERFIL_USER_AGGREGATORS={input_yaml["user_aggregators"]}', f'BOTUSERFIL_DISHASH_JOINERS={input_yaml["botuser_joiners"]}'],
+		'environment': [f'BOTUSERFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'BOTUSERFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'BOTUSERFIL_INSTANCE={idx}', 'BOTUSERFIL_RABBITMQ_IP=rabbitmq', 'BOTUSERFIL_RABBITMQ_PORT=5672', f'BOTUSERFIL_MIN_REVIEWS={input_yaml["bots_min_reviews"]}', f'BOTUSERFIL_USER_AGGREGATORS={input_yaml["user_aggregators"]}', f'BOTUSERFIL_DISHASH_JOINERS={input_yaml["botuser_joiners"]}', f'BOTUSERFIL_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(BOTUSERFIL_DEPS),
 		'networks': ['testing_net']
@@ -395,7 +386,7 @@ for idx in range(0, input_yaml['dishash_filters']):
 		'image': 'dishash_filter:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'DISHASHFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'DISHASHFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'DISHASHFIL_INSTANCE={idx}', 'DISHASHFIL_RABBITMQ_IP=rabbitmq', 'DISHASHFIL_RABBITMQ_PORT=5672', f'DISHASHFIL_DISHASH_AGGREGATORS={input_yaml["dishash_aggregators"]}', f'DISHASHFIL_DISHASH_JOINERS={input_yaml["botuser_joiners"]}'],
+		'environment': [f'DISHASHFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'DISHASHFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'DISHASHFIL_INSTANCE={idx}', 'DISHASHFIL_RABBITMQ_IP=rabbitmq', 'DISHASHFIL_RABBITMQ_PORT=5672', f'DISHASHFIL_DISHASH_AGGREGATORS={input_yaml["dishash_aggregators"]}', f'DISHASHFIL_DISHASH_JOINERS={input_yaml["botuser_joiners"]}', f'DISHASHFIL_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(DISHASHFIL_DEPS),
 		'networks': ['testing_net']
@@ -410,7 +401,7 @@ for idx in range(0, input_yaml['dishash_aggregators']):
 		'image': 'dishash_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'DISHASHAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'DISHASHAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'DISHASHAGG_INSTANCE={idx}', 'DISHASHAGG_RABBITMQ_IP=rabbitmq', 'DISHASHAGG_RABBITMQ_PORT=5672', f'DISHASHAGG_INPUT_TOPIC={idx}', f'DISHASHAGG_HASH_AGGREGATORS={input_yaml["hash_aggregators"]}', f'DISHASHAGG_DISHASH_FILTERS={input_yaml["dishash_filters"]}', f'DISHASHAGG_OUTPUT_BULK_SIZE={input_yaml["dishashagg_bulk_size"]}'],
+		'environment': [f'DISHASHAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'DISHASHAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'DISHASHAGG_INSTANCE={idx}', 'DISHASHAGG_RABBITMQ_IP=rabbitmq', 'DISHASHAGG_RABBITMQ_PORT=5672', f'DISHASHAGG_INPUT_TOPIC={idx}', f'DISHASHAGG_HASH_AGGREGATORS={input_yaml["hash_aggregators"]}', f'DISHASHAGG_DISHASH_FILTERS={input_yaml["dishash_filters"]}', f'DISHASHAGG_OUTPUT_BULK_SIZE={input_yaml["dishashagg_bulk_size"]}', f'DISHASHAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(DISHASHAGG_DEPS),
 		'networks': ['testing_net']
@@ -425,7 +416,7 @@ for idx in range(0, input_yaml['hash_aggregators']):
 		'image': 'hash_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'HASHAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'HASHAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'HASHAGG_INSTANCE={idx}', 'HASHAGG_RABBITMQ_IP=rabbitmq', 'HASHAGG_RABBITMQ_PORT=5672', f'HASHAGG_INPUT_TOPIC={idx}', f'HASHAGG_HASH_MAPPERS={input_yaml["hash_mappers"]}', f'HASHAGG_DISHASH_AGGREGATORS={input_yaml["dishash_aggregators"]}', f'HASHAGG_OUTPUT_BULK_SIZE={input_yaml["hashagg_bulk_size"]}'],
+		'environment': [f'HASHAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'HASHAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'HASHAGG_INSTANCE={idx}', 'HASHAGG_RABBITMQ_IP=rabbitmq', 'HASHAGG_RABBITMQ_PORT=5672', f'HASHAGG_INPUT_TOPIC={idx}', f'HASHAGG_HASH_MAPPERS={input_yaml["hash_mappers"]}', f'HASHAGG_DISHASH_AGGREGATORS={input_yaml["dishash_aggregators"]}', f'HASHAGG_OUTPUT_BULK_SIZE={input_yaml["hashagg_bulk_size"]}', f'HASHAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(HASHAGG_DEPS),
 		'networks': ['testing_net']
@@ -440,7 +431,7 @@ for idx in range(0, input_yaml['hash_mappers']):
 		'image': 'hash_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'HASHMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'HASHMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'HASHMAP_INSTANCE={idx}', 'HASHMAP_RABBITMQ_IP=rabbitmq', 'HASHMAP_RABBITMQ_PORT=5672', f'HASHMAP_REVIEWS_INPUTS={reviews_inputs}', f'HASHMAP_HASH_AGGREGATORS={input_yaml["hash_aggregators"]}'],
+		'environment': [f'HASHMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'HASHMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'HASHMAP_INSTANCE={idx}', 'HASHMAP_RABBITMQ_IP=rabbitmq', 'HASHMAP_RABBITMQ_PORT=5672', f'HASHMAP_REVIEWS_INPUTS={reviews_inputs}', f'HASHMAP_HASH_AGGREGATORS={input_yaml["hash_aggregators"]}', f'HASHMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(HASHMAP_DEPS),
 		'networks': ['testing_net']
@@ -454,7 +445,7 @@ file['services']['top_users_prettier'] = {
 	'image': 'top_users_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'TOPUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', f'TOPUSERPRE_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', 'TOPUSERPRE_RABBITMQ_IP=rabbitmq', 'TOPUSERPRE_RABBITMQ_PORT=5672', f'TOPUSERPRE_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'TOPUSERPRE_USER_FILTERS={input_yaml["user_filters"]}'],
+	'environment': [f'TOPUSERPRE_WORKERS_POOL={input_yaml["common_pool_size"]}', f'TOPUSERPRE_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', 'TOPUSERPRE_RABBITMQ_IP=rabbitmq', 'TOPUSERPRE_RABBITMQ_PORT=5672', f'TOPUSERPRE_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'TOPUSERPRE_USER_FILTERS={input_yaml["user_filters"]}', f'TOPUSERPRE_LOG_LEVEL={input_yaml["log_level"]}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(TOPUSERPRE_DEPS),
 	'networks': ['testing_net']
@@ -469,7 +460,7 @@ for idx in range(0, input_yaml['user_filters']):
 		'image': 'user_filter:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'USERFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERFIL_INSTANCE={idx}', 'USERFIL_RABBITMQ_IP=rabbitmq', 'USERFIL_RABBITMQ_PORT=5672', f'USERFIL_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'USERFIL_USER_AGGREGATORS={input_yaml["user_aggregators"]}', f'USERFIL_STARS_JOINERS={input_yaml["bestuser_joiners"]}'],
+		'environment': [f'USERFIL_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERFIL_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERFIL_INSTANCE={idx}', 'USERFIL_RABBITMQ_IP=rabbitmq', 'USERFIL_RABBITMQ_PORT=5672', f'USERFIL_MIN_REVIEWS={input_yaml["users_min_reviews"]}', f'USERFIL_USER_AGGREGATORS={input_yaml["user_aggregators"]}', f'USERFIL_STARS_JOINERS={input_yaml["bestuser_joiners"]}', f'USERFIL_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(USERFIL_DEPS),
 		'networks': ['testing_net']
@@ -484,7 +475,7 @@ for idx in range(0, input_yaml['user_aggregators']):
 		'image': 'user_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'USERAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERAGG_INSTANCE={idx}', 'USERAGG_RABBITMQ_IP=rabbitmq', 'USERAGG_RABBITMQ_PORT=5672', f'USERAGG_INPUT_TOPIC={idx}', f'USERAGG_USER_MAPPERS={input_yaml["user_mappers"]}', f'USERAGG_USER_FILTERS={input_yaml["user_filters"]}', f'USERAGG_BOTUSER_FILTERS={input_yaml["botuser_filters"]}', f'USERAGG_OUTPUT_BULK_SIZE={input_yaml["useragg_bulk_size"]}'],
+		'environment': [f'USERAGG_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERAGG_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERAGG_INSTANCE={idx}', 'USERAGG_RABBITMQ_IP=rabbitmq', 'USERAGG_RABBITMQ_PORT=5672', f'USERAGG_INPUT_TOPIC={idx}', f'USERAGG_USER_MAPPERS={input_yaml["user_mappers"]}', f'USERAGG_USER_FILTERS={input_yaml["user_filters"]}', f'USERAGG_BOTUSER_FILTERS={input_yaml["botuser_filters"]}', f'USERAGG_OUTPUT_BULK_SIZE={input_yaml["useragg_bulk_size"]}', f'USERAGG_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(USERAGG_DEPS),
 		'networks': ['testing_net']
@@ -499,37 +490,15 @@ for idx in range(0, input_yaml['user_mappers']):
 		'image': 'user_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'USERMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERMAP_INSTANCE={idx}', 'USERMAP_RABBITMQ_IP=rabbitmq', 'USERMAP_RABBITMQ_PORT=5672', f'USERMAP_REVIEWS_INPUTS={reviews_inputs}', f'USERMAP_USER_AGGREGATORS={input_yaml["user_aggregators"]}'],
+		'environment': [f'USERMAP_WORKERS_POOL={input_yaml["common_pool_size"]}', f'USERMAP_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', f'USERMAP_INSTANCE={idx}', 'USERMAP_RABBITMQ_IP=rabbitmq', 'USERMAP_RABBITMQ_PORT=5672', f'USERMAP_REVIEWS_INPUTS={reviews_inputs}', f'USERMAP_USER_AGGREGATORS={input_yaml["user_aggregators"]}', f'USERMAP_LOG_LEVEL={input_yaml["log_level"]}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(USERMAP_DEPS),
 		'networks': ['testing_net']
 	}
 	config_logs('top_users_logging', 'best_users_logging', 'bot_users_logging', service=file['services'][container_name])
 
-## Reviews Scatter
-file['services']['rvw_scatter'] = {
-	'container_name': 'rvw_scatter',
-	'image': 'rvw_scatter:latest',
-	'entrypoint': '/scatter',
-	'restart': 'on-failure',
-	'environment': [f'RVWSCA_WORKERS_POOL={input_yaml["common_pool_size"]}', f'RVWSCA_LOG_BULK_RATE={input_yaml["log_bulk_rate"]}', 'RVWSCA_INSTANCE=0', f'RVWSCA_REVIEWS_DATA={reviews_data}', 'RVWSCA_RABBITMQ_IP=rabbitmq', 'RVWSCA_RABBITMQ_PORT=5672', f'RVWSCA_BULK_SIZE={input_yaml["reviews_bulk_size"]}', f'RVWSCA_FUNBIZ_MAPPERS={input_yaml["funbiz_mappers"]}', f'RVWSCA_WEEKDAYS_MAPPERS={input_yaml["weekday_mappers"]}', f'RVWSCA_HASHES_MAPPERS={input_yaml["hash_mappers"]}', f'RVWSCA_USERS_MAPPERS={input_yaml["user_mappers"]}', f'RVWSCA_STARS_MAPPERS={input_yaml["stars_mappers"]}'],
-	'links': ['rabbitmq'],
-	'depends_on': list(RVWSCA_DEPS),
-	'networks': ['testing_net'],
-	'volumes': ['reviews_dataset:/data']
-}
-config_logs('funniest_cities_logging', 'weekday_histogram_logging', 'top_users_logging', 'best_users_logging', 'bot_users_logging', service=file['services']['rvw_scatter'])
-
 #### VOLUMES
 file['volumes'] = {
-	'reviews_dataset': {
-		'driver': 'local',
-		'driver_opts': {
-			'type': 'none',
-			'device': '$PWD/data/reviews',
-			'o': 'bind'
-		}
-	},
 	'business_dataset': {
 		'driver': 'local',
 		'driver_opts': {

@@ -16,6 +16,7 @@ services:
     - BESTUSERPRE_RABBITMQ_PORT=5672
     - BESTUSERPRE_MIN_REVIEWS=50
     - BESTUSERPRE_BESTUSER_JOINERS=1
+    - BESTUSERPRE_LOG_LEVEL=INFO
     image: best_users_prettier:latest
     links:
     - rabbitmq
@@ -36,6 +37,7 @@ services:
     - BESTUSERJOIN_INPUT_TOPIC=0
     - BESTUSERJOIN_STARS_AGGREGATORS=1
     - BESTUSERJOIN_USER_FILTERS=1
+    - BESTUSERJOIN_LOG_LEVEL=INFO
     image: bestuser_joiner:latest
     links:
     - rabbitmq
@@ -56,6 +58,7 @@ services:
     - BIZSCA_RABBITMQ_PORT=5672
     - BIZSCA_BULK_SIZE=10000
     - BIZSCA_CITBIZ_MAPPERS=1
+    - BIZSCA_LOG_LEVEL=INFO
     image: biz_scatter:latest
     links:
     - rabbitmq
@@ -75,6 +78,7 @@ services:
     - BOTUSERPRE_RABBITMQ_PORT=5672
     - BOTUSERPRE_MIN_REVIEWS=5
     - BOTUSERPRE_BOTUSER_JOINERS=1
+    - BOTUSERPRE_LOG_LEVEL=INFO
     image: bot_users_prettier:latest
     links:
     - rabbitmq
@@ -95,6 +99,7 @@ services:
     - BOTUSERFIL_MIN_REVIEWS=5
     - BOTUSERFIL_USER_AGGREGATORS=1
     - BOTUSERFIL_DISHASH_JOINERS=1
+    - BOTUSERFIL_LOG_LEVEL=INFO
     image: botuser_filter:latest
     links:
     - rabbitmq
@@ -115,6 +120,7 @@ services:
     - BOTUSERJOIN_INPUT_TOPIC=0
     - BOTUSERJOIN_DISHASH_FILTERS=1
     - BOTUSERJOIN_BOTUSERS_FILTERS=1
+    - BOTUSERJOIN_LOG_LEVEL=INFO
     image: botuser_joiner:latest
     links:
     - rabbitmq
@@ -134,6 +140,7 @@ services:
     - CITBIZMAP_RABBITMQ_PORT=5672
     - CITBIZMAP_BUSINESSES_INPUTS=1
     - CITBIZMAP_FUNCIT_JOINERS=1
+    - CITBIZMAP_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
@@ -155,6 +162,7 @@ services:
     - DISHASHAGG_HASH_AGGREGATORS=1
     - DISHASHAGG_DISHASH_FILTERS=1
     - DISHASHAGG_OUTPUT_BULK_SIZE=10000
+    - DISHASHAGG_LOG_LEVEL=INFO
     image: dishash_aggregator:latest
     links:
     - rabbitmq
@@ -174,6 +182,7 @@ services:
     - DISHASHFIL_RABBITMQ_PORT=5672
     - DISHASHFIL_DISHASH_AGGREGATORS=1
     - DISHASHFIL_DISHASH_JOINERS=1
+    - DISHASHFIL_LOG_LEVEL=INFO
     image: dishash_filter:latest
     links:
     - rabbitmq
@@ -195,6 +204,7 @@ services:
     - FUNBIZAGG_FUNCIT_JOINERS=1
     - FUNBIZAGG_INPUT_TOPIC=0
     - FUNBIZAGG_OUTPUT_BULK_SIZE=10000
+    - FUNBIZAGG_LOG_LEVEL=INFO
     image: funbiz_aggregator:latest
     links:
     - rabbitmq
@@ -214,6 +224,7 @@ services:
     - FUNBIZFIL_RABBITMQ_PORT=5672
     - FUNBIZFIL_FUNBIZ_MAPPERS=1
     - FUNBIZFIL_FUNBIZ_AGGREGATORS=1
+    - FUNBIZFIL_LOG_LEVEL=INFO
     image: funbiz_filter:latest
     links:
     - rabbitmq
@@ -233,6 +244,7 @@ services:
     - FUNBIZMAP_RABBITMQ_PORT=5672
     - FUNBIZMAP_REVIEWS_INPUTS=1
     - FUNBIZMAP_FUNBIZ_FILTERS=1
+    - FUNBIZMAP_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
     links:
     - rabbitmq
@@ -254,6 +266,7 @@ services:
     - FUNCITAGG_FUNCIT_FILTERS=1
     - FUNCITAGG_INPUT_TOPIC=0
     - FUNCITAGG_OUTPUT_BULK_SIZE=10000
+    - FUNCITAGG_LOG_LEVEL=INFO
     image: funcit_aggregator:latest
     links:
     - rabbitmq
@@ -276,6 +289,7 @@ services:
     - FUNCITJOIN_FUNCIT_AGGREGATORS=1
     - FUNCITJOIN_INPUT_TOPIC=0
     - FUNCITJOIN_OUTPUT_BULK_SIZE=10000
+    - FUNCITJOIN_LOG_LEVEL=INFO
     image: funcit_joiner:latest
     links:
     - rabbitmq
@@ -295,6 +309,7 @@ services:
     - FUNCITTOP_RABBITMQ_PORT=5672
     - FUNCITTOP_TOP_SIZE=10
     - FUNCITTOP_FUNCIT_AGGREGATORS=1
+    - FUNCITTOP_LOG_LEVEL=INFO
     image: funcit_top:latest
     links:
     - rabbitmq
@@ -316,6 +331,7 @@ services:
     - HASHAGG_HASH_MAPPERS=3
     - HASHAGG_DISHASH_AGGREGATORS=1
     - HASHAGG_OUTPUT_BULK_SIZE=10000
+    - HASHAGG_LOG_LEVEL=INFO
     image: hash_aggregator:latest
     links:
     - rabbitmq
@@ -335,6 +351,7 @@ services:
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
     - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -354,6 +371,7 @@ services:
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
     - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -373,6 +391,7 @@ services:
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
     - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -394,38 +413,6 @@ services:
     ports:
     - 15672:15672
     - 5672:5672
-  rvw_scatter:
-    container_name: rvw_scatter
-    depends_on:
-    - funbiz_mapper0
-    - weekday_mapper0
-    - stars_mapper0
-    - hash_mapper0
-    - hash_mapper1
-    - hash_mapper2
-    - user_mapper0
-    entrypoint: /scatter
-    environment:
-    - RVWSCA_WORKERS_POOL=16
-    - RVWSCA_LOG_BULK_RATE=50
-    - RVWSCA_INSTANCE=0
-    - RVWSCA_REVIEWS_DATA=/data/reviews.json
-    - RVWSCA_RABBITMQ_IP=rabbitmq
-    - RVWSCA_RABBITMQ_PORT=5672
-    - RVWSCA_BULK_SIZE=10000
-    - RVWSCA_FUNBIZ_MAPPERS=1
-    - RVWSCA_WEEKDAYS_MAPPERS=1
-    - RVWSCA_HASHES_MAPPERS=3
-    - RVWSCA_USERS_MAPPERS=1
-    - RVWSCA_STARS_MAPPERS=1
-    image: rvw_scatter:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-    volumes:
-    - reviews_dataset:/data
   sink:
     container_name: sink
     depends_on:
@@ -434,6 +421,7 @@ services:
     environment:
     - SINK_RABBITMQ_IP=rabbitmq
     - SINK_RABBITMQ_PORT=5672
+    - SINK_LOG_LEVEL=INFO
     image: sink:latest
     links:
     - rabbitmq
@@ -455,6 +443,7 @@ services:
     - STARSAGG_STARS_FILTERS=1
     - STARSAGG_STARS_JOINERS=1
     - STARSAGG_OUTPUT_BULK_SIZE=10000
+    - STARSAGG_LOG_LEVEL=INFO
     image: stars_aggregator:latest
     links:
     - rabbitmq
@@ -474,6 +463,7 @@ services:
     - STARSFIL_RABBITMQ_PORT=5672
     - STARSFIL_STARS_MAPPERS=1
     - STARSFIL_STARS_AGGREGATORS=1
+    - STARSFIL_LOG_LEVEL=INFO
     image: stars_filter:latest
     links:
     - rabbitmq
@@ -493,6 +483,7 @@ services:
     - STARSMAP_RABBITMQ_PORT=5672
     - STARSMAP_REVIEWS_INPUTS=1
     - STARSMAP_STARS_FILTERS=1
+    - STARSMAP_LOG_LEVEL=INFO
     image: stars_mapper:latest
     links:
     - rabbitmq
@@ -510,6 +501,7 @@ services:
     - FUNCITPRE_RABBITMQ_PORT=5672
     - FUNCITPRE_TOP_SIZE=10
     - FUNCITPRE_FUNCIT_FILTERS=1
+    - FUNCITPRE_LOG_LEVEL=INFO
     image: top_funniest_cities_prettier:latest
     links:
     - rabbitmq
@@ -528,6 +520,7 @@ services:
     - TOPUSERPRE_RABBITMQ_PORT=5672
     - TOPUSERPRE_MIN_REVIEWS=50
     - TOPUSERPRE_USER_FILTERS=1
+    - TOPUSERPRE_LOG_LEVEL=INFO
     image: top_users_prettier:latest
     links:
     - rabbitmq
@@ -551,6 +544,7 @@ services:
     - USERAGG_USER_FILTERS=1
     - USERAGG_BOTUSER_FILTERS=1
     - USERAGG_OUTPUT_BULK_SIZE=10000
+    - USERAGG_LOG_LEVEL=INFO
     image: user_aggregator:latest
     links:
     - rabbitmq
@@ -572,6 +566,7 @@ services:
     - USERFIL_MIN_REVIEWS=50
     - USERFIL_USER_AGGREGATORS=1
     - USERFIL_STARS_JOINERS=1
+    - USERFIL_LOG_LEVEL=INFO
     image: user_filter:latest
     links:
     - rabbitmq
@@ -591,6 +586,7 @@ services:
     - USERMAP_RABBITMQ_PORT=5672
     - USERMAP_REVIEWS_INPUTS=1
     - USERMAP_USER_AGGREGATORS=1
+    - USERMAP_LOG_LEVEL=INFO
     image: user_mapper:latest
     links:
     - rabbitmq
@@ -610,6 +606,7 @@ services:
     - WEEKDAYAGG_RABBITMQ_PORT=5672
     - WEEKDAYAGG_INPUT_TOPIC=0
     - WEEKDAYAGG_WEEKDAY_MAPPERS=1
+    - WEEKDAYAGG_LOG_LEVEL=INFO
     image: weekday_aggregator:latest
     links:
     - rabbitmq
@@ -627,6 +624,7 @@ services:
     - HISTOPRE_RABBITMQ_IP=rabbitmq
     - HISTOPRE_RABBITMQ_PORT=5672
     - HISTOPRE_WEEKDAY_AGGREGATORS=1
+    - HISTOPRE_LOG_LEVEL=INFO
     image: weekday_histogram_prettier:latest
     links:
     - rabbitmq
@@ -646,6 +644,7 @@ services:
     - WEEKDAYMAP_RABBITMQ_PORT=5672
     - WEEKDAYMAP_REVIEWS_INPUTS=1
     - WEEKDAYMAP_WEEKDAY_AGGREGATORS=1
+    - WEEKDAYMAP_LOG_LEVEL=INFO
     image: weekday_mapper:latest
     links:
     - rabbitmq
@@ -658,11 +657,5 @@ volumes:
     driver: local
     driver_opts:
       device: $PWD/data/business
-      o: bind
-      type: none
-  reviews_dataset:
-    driver: local
-    driver_opts:
-      device: $PWD/data/reviews
       o: bind
       type: none

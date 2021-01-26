@@ -7,6 +7,7 @@ import (
     "bufio"
     "bytes"
     "github.com/streadway/amqp"
+    "github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 
     log "github.com/sirupsen/logrus"
     logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
@@ -17,7 +18,6 @@ import (
 
 type ScatterConfig struct {
     Instance            string
-    Data                string
     RabbitIp            string
     RabbitPort          string
     BulkSize            int
@@ -45,7 +45,6 @@ func NewScatter(config ScatterConfig) *Scatter {
     
     scatter := &Scatter {
         instance:           config.Instance,
-        data:               config.Data,
         connection:         connection,
         channel:            channel,
         bulkSize:           config.BulkSize,
@@ -57,13 +56,56 @@ func NewScatter(config ScatterConfig) *Scatter {
 }
 
 func (scatter *Scatter) Run() {
+    reader := bufio.NewReader(os.Stdin)
+    datasetNumber := 1
+    exitFlag := false
+
+    for !exitFlag {
+        scatter.printMenu()
+        fmt.Print("Option: ")
+        option := utils.ReadInput(reader)
+
+        for {
+            if option == "S" {
+                fmt.Print("Dataset path: ")
+                datasetPath := utils.ReadInput(reader)
+
+                if _, err := os.Stat(datasetPath); os.IsNotExist(err) {
+                    fmt.Printf("Dataset %s doesn't exist!\n", datasetPath)
+                } else {
+                    scatter.processFile(datasetPath, datasetNumber)
+                    datasetNumber++
+                }
+                
+                break
+            } else if option == "X" {
+                fmt.Println("Closing connection!")
+                exitFlag = true
+                break
+            } else {
+                fmt.Print("Wrong option. Retry: ")
+                option = utils.ReadInput(reader)
+            }
+        }
+    }
+}
+
+func (scatter *Scatter) printMenu() {
+    fmt.Println()
+    fmt.Println("Reviews Scatter")
+    fmt.Println("---------------")
+    fmt.Println("[S] SEND DATASET")
+    fmt.Println("[X] CLOSE")
+}
+
+func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
     start := time.Now()
+    fmt.Println()
 
-    log.Infof("Starting to load reviews.")
-
-    file, err := os.Open(scatter.data)
+    log.Infof("Starting to load reviews from dataset %s (#%d).", filePath, datasetNumber)
+    file, err := os.Open(filePath)
     if err != nil {
-        log.Fatalf("Error opening reviews data file. Err: '%s'", err)
+        log.Fatalf("Error opening file %s. Err: '%s'", filePath, err)
     }
     defer file.Close()
 
@@ -97,174 +139,38 @@ func (scatter *Scatter) Run() {
     }
 
     // Publishing end messages.
+    finishErr := false
     for _, partition := range PartitionableValues {
-        errors := false
         for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, 1), partition)
+            err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, datasetNumber), partition)
 
             if err != nil {
-                errors = true
+                finishErr = true
                 log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", scatter.outputDirect.Exchange, partition, err)
             }
         }
-
-        if !errors {
-            log.Infof("End-Message sent to direct-exchange %s (partition %s).", scatter.outputDirect.Exchange, partition)
-        }
     }
 
-    log.Infof("Time: %s.", time.Now().Sub(start).String())
-
-
-
-
-
-
-
-
-
-
-    start = time.Now()
-    time.Sleep(180000 * time.Millisecond)
-    log.Infof("Starting to load reviews from second file.")
-
-    file, err = os.Open(scatter.data)
-    if err != nil {
-        log.Fatalf("Error opening reviews data file. Err: '%s'", err)
-    }
-    defer file.Close()
-
-    bulkNumber = 0
-    chunkNumber = 0
-    scanner = bufio.NewScanner(file)
-    buffer = bytes.NewBufferString("")
-    for scanner.Scan() {
-        buffer.WriteString(scanner.Text())
-        buffer.WriteString("\n")
-
-        chunkNumber++
-        if chunkNumber == scatter.bulkSize {
-            bulkNumber++
-            bulk := buffer.String()
-            scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-
-            buffer = bytes.NewBufferString("")
-            chunkNumber = 0
-        }
-
-        if bulkNumber >= 400 {
-            break
-        }
+    if !finishErr {
+        log.Infof("End-Message sent to direct-exchange %s (all partitions).", scatter.outputDirect.Exchange)
     }
 
-    if err := scanner.Err(); err != nil {
-        log.Fatalf("Error reading reviews data from file %s. Err: '%s'", scatter.data, err)
-    }
-
-    bulkNumber++
-    bulk = buffer.String()
-    if bulk != "" {
-        scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-    }
-
-    // Publishing end messages.
-    for _, partition := range PartitionableValues {
-        errors := false
-        for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, 2), partition)
-
-            if err != nil {
-                errors = true
-                log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", scatter.outputDirect.Exchange, partition, err)
-            }
-        }
-
-        if !errors {
-            log.Infof("End-Message sent to direct-exchange %s (partition %s).", scatter.outputDirect.Exchange, partition)
-        }
-    }
-
-    log.Infof("Time: %s.", time.Now().Sub(start).String())
-
-
-
-
-
-
-
-
-    start = time.Now()
-    time.Sleep(180000 * time.Millisecond)
-    log.Infof("Starting to load reviews from third file.")
-
-    file, err = os.Open(scatter.data)
-    if err != nil {
-        log.Fatalf("Error opening reviews data file. Err: '%s'", err)
-    }
-    defer file.Close()
-
-    bulkNumber = 0
-    chunkNumber = 0
-    scanner = bufio.NewScanner(file)
-    buffer = bytes.NewBufferString("")
-    for scanner.Scan() {
-        buffer.WriteString(scanner.Text())
-        buffer.WriteString("\n")
-
-        chunkNumber++
-        if chunkNumber == scatter.bulkSize {
-            bulkNumber++
-            bulk := buffer.String()
-            scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-
-            buffer = bytes.NewBufferString("")
-            chunkNumber = 0
-        }
-
-        if bulkNumber >= 200 {
-            break
-        }
-    }
-
-    if err := scanner.Err(); err != nil {
-        log.Fatalf("Error reading reviews data from file %s. Err: '%s'", scatter.data, err)
-    }
-
-    bulkNumber++
-    bulk = buffer.String()
-    if bulk != "" {
-        scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
-    }
-
-    // Publishing end messages.
-    for _, partition := range PartitionableValues {
-        errors := false
-        for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, 3), partition)
-
-            if err != nil {
-                errors = true
-                log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", scatter.outputDirect.Exchange, partition, err)
-            }
-        }
-
-        if !errors {
-            log.Infof("End-Message sent to direct-exchange %s (partition %s).", scatter.outputDirect.Exchange, partition)
-        }
-    }
-
-    log.Infof("Time: %s.", time.Now().Sub(start).String())
+    log.Infof("Total time: %s.", time.Now().Sub(start).String())
 }
 
 func (scatter *Scatter) sendBulk(bulkNumber int, bulk string) {
+    errors := false
     for _, partition := range PartitionableValues {
         err := scatter.outputDirect.PublishData([]byte(bulk), partition)
 
         if err != nil {
+            errors = true
             log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, scatter.outputDirect.Exchange, partition, err)
-        } else {
-            logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulkNumber, scatter.outputDirect.Exchange, partition), bulkNumber)
         }
+    }
+
+    if !errors {
+        logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (all partitions).", bulkNumber, scatter.outputDirect.Exchange), bulkNumber)
     }
 }
 

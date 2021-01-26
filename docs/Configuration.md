@@ -2,11 +2,6 @@
 
 Dentro del directorio `scripts` se podrá encontrar el archivo de configuración `system-config.yaml` con el que podrá jugar con las distintas partes del sistema. Por un lado, dentro de las secciones de cada flujo podrá editarse la cantidad de nodos de cada uno de los componentes. Por otro lado, en las 5 primeras secciones se podrán editar las siguientes configuraciones del sistema:
 
-#### Testing
-
-* `testing_mode`: Define si el sistema correrá con el set de datos productivo o con uno de testing.
-* `test_file_size`: En caso de que se corra en modo test, se podrá especificar el tamaño del set de datos que se generará con el script `test-builder`.
-
 #### System configuration
 * `reviews_streaming`: Para activar o desactivar el envío de reviews desde el cliente de streaming.
 * `reviews_pool_size`: Tamaño del pool de goroutines para el ReviewsScatter.
@@ -14,7 +9,6 @@ Dentro del directorio `scripts` se podrá encontrar el archivo de configuración
 
 #### Bulks
 * `log_bulk_rate`: Cantidad de bulks entre los que se registrá un log.
-* `reviews_bulk_size`: Tamaño del bulk de reviews que envía el ReviewsScatter.
 * `business_bulk_size`: Tamaño del bulk de reviews que envía el BusinessesScatter.
 * `funbizagg_bulk_size`: Tamaño del bulk de reviews que envía el Funny-Business aggregator.
 * `funcitjoin_bulk_size`: Tamaño del bulk de reviews que envía el Funny-City joiner.
@@ -35,3 +29,8 @@ Dentro del directorio `scripts` se podrá encontrar el archivo de configuración
 * `users_min_reviews`: Mínimo de reviews esperadas para considerar a un usuario dentro de los 'Top Users'.
 * `bots_min_reviews`: Mínimo de reviews de texto idéntico esperadas para considerar a un usuario dentro de los 'Bot Users'.
 * `funniest_cities_top_size`: Tamaño del top de Funniest Cities.
+
+
+### Testing
+
+Para poder realizar tests con set de datos más chicos, se podrá ejecutar el script `test-builder` el cual recibe como parámetro el tamaño de dicho set. El mismo podrá demorar unos minutos pero generará un set de reviews del tamaño pedido, junto al set de businesses de dichas reviews.

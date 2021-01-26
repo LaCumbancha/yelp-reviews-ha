@@ -66,24 +66,22 @@ func (joiner *Joiner) Run() {
 	closingConn := false
 	connMutex := &sync.Mutex{}
 
-	log.Infof("Starting to listen for bot users with only one text.")
-	innerChannel1 := make(chan amqp.Delivery)
-	procWg.Add(1)
+	initialProcWait := 2
+	procWg.Add(initialProcWait)
 
-	// Receiving and processing messages from the best-users flow.
+	innerChannel1 := make(chan amqp.Delivery)
+	innerChannel2 := make(chan amqp.Delivery)
+
+	log.Infof("Starting to listen for bot users with only one text.")
 	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel1, joiner.callback1, &procWg)
 	go proc.ProcessInputs(joiner.inputDirect1.ConsumeData(), innerChannel1, joiner.endSignals1, &procWg, &connWg)
 
 	log.Infof("Starting to listen for users reviews data.")
-	innerChannel2 := make(chan amqp.Delivery)
-	procWg.Add(1)
-
-	// Receiving and processing messages from the common-users flow.
 	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel2, joiner.callback2, &procWg)
 	go proc.ProcessInputs(joiner.inputDirect2.ConsumeData(), innerChannel2, joiner.endSignals2, &procWg, &connWg)
 
 	// Retrieving joined data and closing connection.
-	go proc.ProcessFinish(joiner.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(joiner.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(joiner.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

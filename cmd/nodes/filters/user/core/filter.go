@@ -71,12 +71,13 @@ func (filter *Filter) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
+	initialProcWait := 1
 	var procWg sync.WaitGroup
-	procWg.Add(1)
+	procWg.Add(initialProcWait)
 
 	go proc.InitializeProcessingWorkers(filter.workersPool, innerChannel, filter.callback, &procWg)
 	go proc.ProcessInputs(filter.inputQueue.ConsumeData(), innerChannel, filter.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(filter.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(filter.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(filter.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

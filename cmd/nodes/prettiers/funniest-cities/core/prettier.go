@@ -58,12 +58,13 @@ func (prettier *Prettier) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
+	initialProcWait := 1
 	var procWg sync.WaitGroup
-	procWg.Add(1)
+	procWg.Add(initialProcWait)
 
 	go proc.InitializeProcessingWorkers(prettier.workersPool, innerChannel, prettier.callback, &procWg)
 	go proc.ProcessInputs(prettier.inputQueue.ConsumeData(), innerChannel, prettier.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(prettier.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(prettier.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(prettier.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

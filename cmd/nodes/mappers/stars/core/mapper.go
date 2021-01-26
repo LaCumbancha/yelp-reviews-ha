@@ -63,12 +63,13 @@ func (mapper *Mapper) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
+	initialProcWait := 1
 	var procWg sync.WaitGroup
-	procWg.Add(1)
+	procWg.Add(initialProcWait)
 
 	go proc.InitializeProcessingWorkers(mapper.workersPool, innerChannel, mapper.callback, &procWg)
 	go proc.ProcessInputs(mapper.inputDirect.ConsumeData(), innerChannel, mapper.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(mapper.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(mapper.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(mapper.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

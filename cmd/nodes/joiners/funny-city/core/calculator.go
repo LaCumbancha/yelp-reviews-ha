@@ -30,14 +30,11 @@ func NewCalculator(bulkSize int) *Calculator {
 	return calculator
 }
 
+// Just the funny-businesses information is cleared because city-businesses data is needed for futures datasets.
 func (calculator *Calculator) Clear() {
 	calculator.mutex1.Lock()
 	calculator.data1 = make(map[string]int)
 	calculator.mutex1.Unlock()
-
-	calculator.mutex2.Lock()
-	calculator.data2 = make(map[string]string)
-	calculator.mutex2.Unlock()
 
 	log.Infof("Calculator storage cleared.")
 }

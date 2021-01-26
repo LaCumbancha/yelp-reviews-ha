@@ -60,11 +60,12 @@ func (sink *Sink) Run() {
 	closingConn := false
 	connMutex := &sync.Mutex{}
 
-	var procWg sync.WaitGroup
-	procWg.Add(5)
-
 	var connWg sync.WaitGroup
 	connWg.Add(1)
+
+	initialProcWait := 5
+	var procWg sync.WaitGroup
+	procWg.Add(initialProcWait)
 
 	go sink.retrieveFlowResults(TOPUSERS, sink.topUsersQueue, &procWg, &connWg)
 	go sink.retrieveFlowResults(BOTUSERS, sink.botUsersQueue, &procWg, &connWg)
@@ -72,7 +73,7 @@ func (sink *Sink) Run() {
 	go sink.retrieveFlowResults(FUNCIT, sink.funniestCitiesQueue, &procWg, &connWg)
 	go sink.retrieveFlowResults(WEEKDAY, sink.weekdayHistogramQueue, &procWg, &connWg)
 
-	go proc.ProcessFinish(sink.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(sink.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(sink.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

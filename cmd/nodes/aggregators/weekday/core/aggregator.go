@@ -63,12 +63,13 @@ func (aggregator *Aggregator) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
+	initialProcWait := 1
 	var procWg sync.WaitGroup
-	procWg.Add(1)
+	procWg.Add(initialProcWait)
 
 	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.callback, &procWg)
 	go proc.ProcessInputs(aggregator.inputDirect.ConsumeData(), innerChannel, aggregator.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(aggregator.finishCallback, &procWg, closingConn, connMutex)
+	go proc.ProcessFinish(aggregator.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
 	proc.CloseConnection(aggregator.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 

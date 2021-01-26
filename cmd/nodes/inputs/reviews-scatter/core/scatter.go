@@ -79,7 +79,7 @@ func (scatter *Scatter) Run() {
                 
                 break
             } else if option == "X" {
-                fmt.Println("Closing connection!")
+                scatter.closeConnection()
                 exitFlag = true
                 break
             } else {
@@ -172,6 +172,11 @@ func (scatter *Scatter) sendBulk(bulkNumber int, bulk string) {
     if !errors {
         logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (all partitions).", bulkNumber, scatter.outputDirect.Exchange), bulkNumber)
     }
+}
+
+func (scatter *Scatter) closeConnection() {
+    fmt.Println()
+    // TODO
 }
 
 func (scatter *Scatter) Stop() {

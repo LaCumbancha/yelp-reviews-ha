@@ -1,7 +1,6 @@
 package core
 
 import (
-	"sync"
 	"encoding/json"
 	"github.com/streadway/amqp"
 
@@ -54,25 +53,17 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 
 func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for funny-city data.")
-	innerChannel := make(chan amqp.Delivery)
-
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	initialProcWait := 1
-	var procWg sync.WaitGroup
-	procWg.Add(initialProcWait)
-
-	go proc.InitializeProcessingWorkers(aggregator.workersPool, innerChannel, aggregator.callback, &procWg)
-	go proc.ProcessInputs(aggregator.inputQueue.ConsumeData(), innerChannel, aggregator.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(aggregator.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
-	proc.CloseConnection(aggregator.closeCallback, &procWg, &connWg, closingConn, connMutex)
+	proc.Transformation(
+		aggregator.workersPool,
+		aggregator.endSignals,
+		aggregator.inputQueue.ConsumeData(),
+		aggregator.mainCallback,
+		aggregator.finishCallback,
+		aggregator.closeCallback,
+	)
 }
 
-func (aggregator *Aggregator) callback(bulkNumber int, bulk string) {
+func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
 	aggregator.calculator.Save(bulkNumber, bulk)
 }
 

@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"sync"
 	"encoding/json"
 	"github.com/streadway/amqp"
 
@@ -66,37 +65,27 @@ func NewJoiner(config JoinerConfig) *Joiner {
 }
 
 func (joiner *Joiner) Run() {
-	var procWg sync.WaitGroup
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
-	initialProcWait := 2
-	procWg.Add(initialProcWait)
-
-	innerChannel1 := make(chan amqp.Delivery)
-	innerChannel2 := make(chan amqp.Delivery)
-
-	log.Infof("Starting to listen for funny-business data.")
-	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel1, joiner.callback1, &procWg)
-	go proc.ProcessInputs(joiner.inputDirect1.ConsumeData(), innerChannel1, joiner.endSignals1, &procWg, &connWg)
-
-	log.Infof("Starting to listen for city-business data.")
-	go proc.InitializeProcessingWorkers(int(joiner.workersPool/2), innerChannel2, joiner.callback2, &procWg)
-	go proc.ProcessInputs(joiner.inputDirect2.ConsumeData(), innerChannel2, joiner.endSignals2, &procWg, &connWg)
-
-	// Retrieving joined data and closing connection (the wait-count is reseted at 1 because businesses are already loaded).
-	go proc.ProcessFinish(joiner.finishCallback, &procWg, 1, closingConn, connMutex)
-	proc.CloseConnection(joiner.closeCallback, &procWg, &connWg, closingConn, connMutex)
+	reloadWaitCount := 1
+	log.Infof("Starting to listen for funny-business and city-business data.")
+	proc.Join(
+		joiner.workersPool,
+		joiner.endSignals1,
+		joiner.endSignals2,
+		joiner.inputDirect1.ConsumeData(),
+		joiner.inputDirect2.ConsumeData(),
+		joiner.mainCallback1,
+		joiner.mainCallback2,
+		joiner.finishCallback,
+		joiner.closeCallback,
+		reloadWaitCount,
+	)
 }
 
-func (joiner *Joiner) callback1(bulkNumber int, bulk string) {
+func (joiner *Joiner) mainCallback1(bulkNumber int, bulk string) {
 	joiner.calculator.AddFunnyBusiness(bulkNumber, bulk)
 }
 
-func (joiner *Joiner) callback2(bulkNumber int, bulk string) {
+func (joiner *Joiner) mainCallback2(bulkNumber int, bulk string) {
 	joiner.calculator.AddCityBusiness(bulkNumber, bulk)
 }
 

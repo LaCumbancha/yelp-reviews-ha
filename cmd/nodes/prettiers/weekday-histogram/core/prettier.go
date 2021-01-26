@@ -1,7 +1,6 @@
 package core
 
 import (
-	"sync"
 	"github.com/streadway/amqp"
 	
 	log "github.com/sirupsen/logrus"
@@ -49,25 +48,17 @@ func NewPrettier(config PrettierConfig) *Prettier {
 
 func (prettier *Prettier) Run() {
 	log.Infof("Starting to listen for weekday reviews data.")
-	innerChannel := make(chan amqp.Delivery)
-
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	initialProcWait := 1
-	var procWg sync.WaitGroup
-	procWg.Add(initialProcWait)
-
-	go proc.InitializeProcessingWorkers(prettier.workersPool, innerChannel, prettier.callback, &procWg)
-	go proc.ProcessInputs(prettier.inputQueue.ConsumeData(), innerChannel, prettier.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(prettier.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
-	proc.CloseConnection(prettier.closeCallback, &procWg, &connWg, closingConn, connMutex)
+	proc.Transformation(
+		prettier.workersPool,
+		prettier.endSignals,
+		prettier.inputQueue.ConsumeData(),
+		prettier.mainCallback,
+		prettier.finishCallback,
+		prettier.closeCallback,
+	)
 }
 
-func (prettier *Prettier) callback(bulkNumber int, bulk string) {
+func (prettier *Prettier) mainCallback(bulkNumber int, bulk string) {
 	prettier.builder.Save(bulk)
 }
 

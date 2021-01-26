@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"sync"
 	"encoding/json"
 	"github.com/streadway/amqp"
 
@@ -59,26 +58,18 @@ func NewFilter(config FilterConfig) *Filter {
 }
 
 func (filter *Filter) Run() {
-	log.Infof("Starting to listen for funny-business data.")
-	innerChannel := make(chan amqp.Delivery)
-
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	initialProcWait := 1
-	var procWg sync.WaitGroup
-	procWg.Add(initialProcWait)
-
-	go proc.InitializeProcessingWorkers(filter.workersPool, innerChannel, filter.callback, &procWg)
-	go proc.ProcessInputs(filter.inputQueue.ConsumeData(), innerChannel, filter.endSignals, &procWg, &connWg)
-	go proc.ProcessFinish(filter.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
-	proc.CloseConnection(filter.closeCallback, &procWg, &connWg, closingConn, connMutex)
+	log.Infof("Starting to listen for bot-users data.")
+	proc.Transformation(
+		filter.workersPool,
+		filter.endSignals,
+		filter.inputQueue.ConsumeData(),
+		filter.mainCallback,
+		filter.finishCallback,
+		filter.closeCallback,
+	)
 }
 
-func (filter *Filter) callback(bulkNumber int, bulk string) {
+func (filter *Filter) mainCallback(bulkNumber int, bulk string) {
 	filteredData := filter.filterData(bulkNumber, bulk)
 	filter.sendFilteredData(bulkNumber, filteredData)
 }

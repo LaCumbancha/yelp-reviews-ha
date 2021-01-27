@@ -70,31 +70,31 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Aggregate(bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
 	outputBulkNumber := 0
-	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
+	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
 		outputBulkNumber++
 		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkNumber), outputBulkNumber)
-		aggregator.sendAggregatedData(outputBulkNumber, aggregatedData)
+		aggregator.sendAggregatedData(datasetNumber, outputBulkNumber, aggregatedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(bulkNumber int, aggregatedBulk []comms.FunnyBusinessData) {
+func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber int, aggregatedBulk []comms.FunnyBusinessData) {
 	dataListByPartition := make(map[string][]comms.FunnyBusinessData)
 
 	for _, data := range aggregatedBulk {
@@ -115,13 +115,13 @@ func (aggregator *Aggregator) sendAggregatedData(bulkNumber int, aggregatedBulk 
 	}
 
 	for partition, funbizDataListPartitioned := range dataListByPartition {
-		outputData, err := json.Marshal(funbizDataListPartitioned)
+		bytes, err := json.Marshal(funbizDataListPartitioned)
 
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", funbizDataListPartitioned, err)
 		} else {
-
-			err := aggregator.outputDirect.PublishData(outputData, partition)
+			data := comms.SignMessage(datasetNumber, aggregator.instance, bulkNumber, string(bytes))
+			err := aggregator.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
 				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, aggregator.outputDirect.Exchange, partition, err)

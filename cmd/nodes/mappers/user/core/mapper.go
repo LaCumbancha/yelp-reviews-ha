@@ -67,20 +67,20 @@ func (mapper *Mapper) Run() {
 	)
 }
 
-func (mapper *Mapper) mainCallback(bulkNumber int, bulk string) {
-	mappedData := mapper.mapData(bulkNumber, bulk)
-	mapper.sendMappedData(bulkNumber, mappedData)
+func (mapper *Mapper) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	mappedData := mapper.mapData(bulk)
+	mapper.sendMappedData(datasetNumber, bulkNumber, mappedData)
 }
 
 func (mapper *Mapper) finishCallback(datasetNumber int) {
-	rabbit.OutputDirectFinish(comms.EndMessage(mapper.instance, datasetNumber), mapper.outputPartitions, mapper.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, mapper.instance), mapper.outputPartitions, mapper.outputDirect)
 }
 
 func (mapper *Mapper) closeCallback() {
 	// TODO
 }
 
-func (mapper *Mapper) mapData(bulkNumber int, rawReviewsBulk string) []comms.UserData {
+func (mapper *Mapper) mapData(rawReviewsBulk string) []comms.UserData {
 	var review comms.FullReview
 	var userDataList []comms.UserData
 
@@ -102,7 +102,7 @@ func (mapper *Mapper) mapData(bulkNumber int, rawReviewsBulk string) []comms.Use
 	return userDataList
 }
 
-func (mapper *Mapper) sendMappedData(bulkNumber int, mappedBulk []comms.UserData) {
+func (mapper *Mapper) sendMappedData(datasetNumber int, bulkNumber int, mappedBulk []comms.UserData) {
 	dataListByPartition := make(map[string][]comms.UserData)
 
 	for _, data := range mappedBulk {
@@ -123,13 +123,13 @@ func (mapper *Mapper) sendMappedData(bulkNumber int, mappedBulk []comms.UserData
 	}
 
 	for partition, userDataListPartitioned := range dataListByPartition {
-		outputData, err := json.Marshal(userDataListPartitioned)
+		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-
-			err := mapper.outputDirect.PublishData(outputData, partition)
+			outputData := comms.SignMessage(datasetNumber, mapper.instance, bulkNumber, string(bytes))
+			err := mapper.outputDirect.PublishData([]byte(outputData), partition)
 
 			if err != nil {
 				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, mapper.outputDirect.Exchange, partition, err)

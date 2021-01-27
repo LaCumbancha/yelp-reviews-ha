@@ -7,75 +7,124 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
+	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
 type Calculator struct {
-	data1 			map[string]int
-	data2 			map[string]int
-	mutex1 			*sync.Mutex
-	mutex2 			*sync.Mutex
+	data1 				map[string]int
+	data2 				map[string]int
+	dataMutex1 			*sync.Mutex
+	dataMutex2 			*sync.Mutex
+	received1			map[int]bool
+	received2			map[int]bool
+	receivedMutex1 		*sync.Mutex
+	receivedMutex2 		*sync.Mutex
+	dataset				int
 }
 
 func NewCalculator() *Calculator {
 	calculator := &Calculator {
-		data1:		make(map[string]int),
-		data2:		make(map[string]int),
-		mutex1:		&sync.Mutex{},
-		mutex2:		&sync.Mutex{},
+		data1:				make(map[string]int),
+		data2:				make(map[string]int),
+		dataMutex1:			&sync.Mutex{},
+		dataMutex2:			&sync.Mutex{},
+		received1:			make(map[int]bool),
+		received2:			make(map[int]bool),
+		receivedMutex1:		&sync.Mutex{},
+		receivedMutex2:		&sync.Mutex{},
+		dataset:			comms.DefaultDataset,
 	}
 
 	return calculator
 }
 
 func (calculator *Calculator) Clear() {
-	calculator.mutex1.Lock()
+	calculator.dataMutex1.Lock()
 	calculator.data1 = make(map[string]int)
-	calculator.mutex1.Unlock()
+	calculator.dataMutex1.Unlock()
 
-	calculator.mutex2.Lock()
+	calculator.receivedMutex1.Lock()
+	calculator.received1 = make(map[int]bool)
+	calculator.receivedMutex1.Unlock()
+
+	calculator.dataMutex2.Lock()
 	calculator.data2 = make(map[string]int)
-	calculator.mutex2.Unlock()
+	calculator.dataMutex2.Unlock()
+
+	calculator.receivedMutex2.Lock()
+	calculator.received2 = make(map[int]bool)
+	calculator.receivedMutex2.Unlock()
 
 	log.Infof("Calculator storage cleared.")
 }
 
-func (calculator *Calculator) AddBotUser(bulkNumber int, rawBotUserDataBulk string) {
+func (calculator *Calculator) AddBotUser(datasetNumber int, bulkNumber int, rawData string) {
+	proc.ValidateDataSaving(
+		datasetNumber,
+		bulkNumber,
+		rawData,
+		&calculator.dataset,
+		calculator.received1,
+		calculator.receivedMutex1,
+		calculator.Clear,
+		calculator.saveBotUser,
+	)
+
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d bot users stored.", datasetNumber, len(calculator.data1), bulkNumber), bulkNumber)
+}
+
+func (calculator *Calculator) saveBotUser(rawBotUserDataBulk string) {
 	var botUserDataList []comms.UserData
 	json.Unmarshal([]byte(rawBotUserDataBulk), &botUserDataList)
 
 	for _, botUserData := range botUserDataList {
-		calculator.mutex1.Lock()
+		calculator.dataMutex1.Lock()
 		calculator.data1[botUserData.UserId] = 1
-		calculator.mutex1.Unlock()
+		calculator.dataMutex1.Unlock()
 	}
-
-	logb.Instance().Infof(fmt.Sprintf("Bot users data bulk #%d stored in Joiner", bulkNumber), bulkNumber)
 }
 
-func (calculator *Calculator) AddUser(bulkNumber int, rawUserDataBulk string) {
+func (calculator *Calculator) AddUser(datasetNumber int, bulkNumber int, rawData string) {
+	proc.ValidateDataSaving(
+		datasetNumber,
+		bulkNumber,
+		rawData,
+		&calculator.dataset,
+		calculator.received1,
+		calculator.receivedMutex1,
+		calculator.Clear,
+		calculator.saveUser,
+	)
+
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d common users stored.", datasetNumber, len(calculator.data2), bulkNumber), bulkNumber)
+}
+
+func (calculator *Calculator) saveUser(rawUserDataBulk string) {
 	var userDataList []comms.UserData
 	json.Unmarshal([]byte(rawUserDataBulk), &userDataList)
 
 	for _, userData := range userDataList {
-		calculator.mutex2.Lock()
+		calculator.dataMutex2.Lock()
 		calculator.data2[userData.UserId] = userData.Reviews
-		calculator.mutex2.Unlock()
+		calculator.dataMutex2.Unlock()
 	}
-
-	logb.Instance().Infof(fmt.Sprintf("Common users data bulk #%d stored in Joiner", bulkNumber), bulkNumber)
 }
 
-func (calculator *Calculator) RetrieveMatches() []comms.UserData {
+func (calculator *Calculator) RetrieveMatches(datasetNumber int) []comms.UserData {
+	if datasetNumber != calculator.dataset {
+		log.Warnf("Joining data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, datasetNumber)
+		return make([]comms.UserData, 0)
+	}
+
 	var list []comms.UserData
-
-	calculator.mutex1.Lock()
+	calculator.dataMutex1.Lock()
 	for userId, _ := range calculator.data1 {
-		calculator.mutex1.Unlock()
+		calculator.dataMutex1.Unlock()
 
-		calculator.mutex2.Lock()
+		calculator.dataMutex2.Lock()
 		if reviews, found := calculator.data2[userId]; found {
-			calculator.mutex2.Unlock()
+			calculator.dataMutex2.Unlock()
 
 			log.Infof("User %s has posted %d reviews, all with the same text.", userId, reviews)
 			joinedData := comms.UserData {
@@ -84,21 +133,21 @@ func (calculator *Calculator) RetrieveMatches() []comms.UserData {
 			}
 			list = append(list, joinedData)
 
-			calculator.mutex1.Lock()
+			calculator.dataMutex1.Lock()
 			delete(calculator.data1, userId);
-			calculator.mutex1.Unlock()
+			calculator.dataMutex1.Unlock()
 
-			calculator.mutex2.Lock()
+			calculator.dataMutex2.Lock()
 			delete(calculator.data2, userId);
-			calculator.mutex2.Unlock()
+			calculator.dataMutex2.Unlock()
 			
 		} else {
-			calculator.mutex2.Unlock()
+			calculator.dataMutex2.Unlock()
 		}
 
-		calculator.mutex1.Lock()
+		calculator.dataMutex1.Lock()
 	}
 
-	calculator.mutex1.Unlock()
+	calculator.dataMutex1.Unlock()
 	return list
 }

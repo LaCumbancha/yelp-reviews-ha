@@ -11,16 +11,16 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delivery, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
-	datasetNumber := 1
-	distinctEndSignals := make(map[string]int)
+func ProcessInputs(inputs <- chan amqp.Delivery, mainChannel chan amqp.Delivery, endingChannel chan int, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
 	distinctCloseSignals := make(map[string]int)
+	distinctFinishSignals := make(map[int]map[string]int)
 
 	for message := range inputs {
 		messageBody := string(message.Body)
+		dataset, instance, _, mainMessage := comms.UnsignMessage(messageBody)
 
-		if comms.IsCloseMessage(messageBody) {
-			newCloseReceived, allCloseReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctCloseSignals, endSignals)
+		if comms.IsCloseMessage(mainMessage) {
+			newCloseReceived, allCloseReceived := comms.CloseControl(instance, distinctCloseSignals, endSignals)
 
 			if newCloseReceived {
 				log.Infof("Close-Message #%d received.", len(distinctCloseSignals))
@@ -31,70 +31,89 @@ func ProcessInputs(inputs <- chan amqp.Delivery, storingChannel chan amqp.Delive
 				connWg.Done()
 			}
 
-		} else if comms.IsEndMessage(messageBody) {
-			newFinishReceived, allFinishReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctEndSignals, endSignals)
+		} else if comms.IsFinishMessage(mainMessage) {
+			newFinishReceived, allFinishReceived := comms.FinishControl(dataset, instance, distinctFinishSignals, endSignals)
 
 			if newFinishReceived {
-				log.Infof("End-Message #%d received.", len(distinctEndSignals))
+				log.Infof("Finish-Message #%d received.", len(distinctFinishSignals))
 			}
 
 			if allFinishReceived {
-				// Clearing End-Messages flags.
-				datasetNumber++
-				distinctEndSignals = make(map[string]int)
-
-				log.Infof("All End-Messages were received.")
-				procWg.Done()
+				log.Infof("All Finish-Messages were received.")
+				endingChannel <- dataset
 			}
 
 		} else {
 			procWg.Add(1)
-			storingChannel <- message
+			mainChannel <- message
 		}
 	}
 }
 
-func InitializeProcessingWorkers(workersPool int, storingChannel chan amqp.Delivery, callback func(int, string), wg *sync.WaitGroup) {
-	bulkNumber := 0
-	bulkNumberMutex := &sync.Mutex{}
-
+func InitializeProcessingWorkers(workersPool int, mainChannel chan amqp.Delivery, callback func(int, int, string), wg *sync.WaitGroup) {
 	log.Tracef("Initializing %d workers.", workersPool)
 	for worker := 1 ; worker <= workersPool ; worker++ {
 		log.Tracef("Initializing worker #%d.", worker)
 		
 		go func() {
-			for message := range storingChannel {
-				bulkNumberMutex.Lock()
-				bulkNumber++
-				innerBulk := bulkNumber
-				bulkNumberMutex.Unlock()
+			for message := range mainChannel {
+				messageBody := string(message.Body)
+				dataset, _, bulk, data := comms.UnsignMessage(messageBody)
 
-				logb.Instance().Infof(fmt.Sprintf("Data bulk #%d received.", innerBulk), innerBulk)
-
-				callback(bulkNumber, string(message.Body))
-				rabbit.AckMessage(message)
-    			wg.Done()
+				if data != "" {
+					logb.Instance().Infof(fmt.Sprintf("Data bulk #%d.%d received.", dataset, bulk), bulk)
+					callback(dataset, bulk, data)
+					rabbit.AckMessage(message)
+    				wg.Done()
+				} else {
+					log.Warnf("Unexpected message received: '%s'", messageBody)
+				}
+				
 			}
 		}()
 	}
 }
 
-func ProcessFinish(callback func(int), procWg *sync.WaitGroup, waitCount int, closingConn bool, connMutex *sync.Mutex) {
-	datasetNumber := 1
-
-	for true {
-		procWg.Wait()
+func ProcessSingleFinish(endingChannel chan int, callback func(int), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+	// Send finish message each time a dataset is completed.
+	for datasetFinished := range endingChannel {
+		callback(datasetFinished)
+		procWg.Done()
 
 		connMutex.Lock()
 		if closingConn {
 			break
 		} else {
-			callback(datasetNumber)
-			procWg.Add(waitCount)
+			procWg.Add(1)
 		}
 		connMutex.Unlock()
+	}
+}
 
-		datasetNumber++
+func ProcessMultipleFinish(neededInputs int, savedInputs int, endingChannel chan int, callback func(int), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
+	finishSignals := make(map[int]int)
+
+	// Send finish message each time a dataset is completed.
+	for datasetFinished := range endingChannel {
+		if received, found := finishSignals[datasetFinished]; found {
+			if received + 1 == neededInputs {
+				callback(datasetFinished)
+				procWg.Done()
+				finishSignals[datasetFinished] = savedInputs
+			} else {
+				finishSignals[datasetFinished] = received + 1
+			}
+
+			connMutex.Lock()
+			if closingConn {
+				break
+			} else {
+				procWg.Add(1)
+			}
+			connMutex.Unlock()
+		} else {
+			finishSignals[datasetFinished] = 1
+		}
 	}
 }
 

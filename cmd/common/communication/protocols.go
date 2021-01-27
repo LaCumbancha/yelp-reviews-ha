@@ -5,6 +5,9 @@ import (
 	"strconv"
 )
 
+// Datasets information
+const DefaultDataset = 0
+
 // Protocol special messages.
 const endMessage = "FINISH-MESSAGE"
 const closeMessage = "CLOSE-MESSAGE"
@@ -18,54 +21,45 @@ func EndSignals(outputs int) int {
 }
 
 // Defining custom End-Message
-func EndMessage(instance string, datasetNumber int) []byte {
-	return []byte(endMessage + instance + "|" + strconv.Itoa(datasetNumber))
+func FinishMessageSigned(datasetNumber int, instance string) []byte {
+	return []byte(SignMessage(datasetNumber, instance, 0, endMessage))
 }
 
 // Defining custom Close-Message
-func CloseMessage(instance string) string {
-	return closeMessage + instance
+func CloseMessageSigned(instance string) string {
+	return []byte(SignMessage(0, instance, 0, closeMessage))
 }
 
-// Detect all possible end messages (could be like 'FINISH1|1').
-func IsEndMessage(message string) bool {
-	return strings.HasPrefix(message, endMessage)
+// Detect all end messages.
+func IsFinishMessage(message string) bool {
+	return message == endMessage
 }
 
-// Detect all possible close messages (could be like 'CLOSE1|1').
+// Detect all close messages.
 func IsCloseMessage(message string) bool {
-	return strings.HasPrefix(message, closeMessage)
+	return message == closeMessage
 }
 
-func specialMessageDatasetNumber(message string) int {
-	separatorIdx := strings.Index(message, "|")
-	datasetNumber, err := strconv.Atoi(message[separatorIdx+1:len(message)])
+// Signaling control, for closing and finishin.
+func signalsControl(signaledInstance string, storedSignals map[string]int, expectedSignals int) {
+	storedSignals[instance] = storedSignals[instance] + 1
+	distinctSignals := len(storedSignals)
 
-	if err != nil {
-		return 0
-	} else {
-		return datasetNumber
-	}
+	newSignal := storedSignals[instance] == 1
+	allSignals := (distinctSignals == expectedSignals) && newSignal
+	return newSignal, allSignals
 }
 
 // Detect if all end signals were received
-func LastEndMessage(message string, datasetNumber int, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
-	if specialMessageDatasetNumber(message) != datasetNumber {
-		return false, false
+func FinishControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool) {
+	if datasetSignals, found := receivedSignals[dataset]; !found {
+		receivedSignals[dataset] := make(map[string]int)
 	}
 
-	receivedSignals[message] = receivedSignals[message] + 1
-	newSignal := receivedSignals[message] == 1
-	distinctSignals := len(receivedSignals)
-
-	return newSignal, (distinctSignals == expectedSignals) && newSignal
+	return signalsControl(instance, receivedSignals[dataset], expectedSignals)
 }
 
 // Detect if all close signals were received
-func LastCloseMessage(message string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
-	receivedSignals[message] = receivedSignals[message] + 1
-	newSignal := receivedSignals[message] == 1
-	distinctSignals := len(receivedSignals)
-
-	return newSignal, (distinctSignals == expectedSignals) && newSignal
+func CloseControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+	return signalsControl(instance, receivedSignals, expectedSignals)
 }

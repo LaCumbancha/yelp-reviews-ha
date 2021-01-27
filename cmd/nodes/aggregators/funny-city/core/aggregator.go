@@ -67,36 +67,37 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Aggregate(bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
 	outputBulkCounter := 0
-	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
+	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
 		outputBulkCounter++
 		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkCounter), outputBulkCounter)
-		aggregator.sendAggregatedData(outputBulkCounter, aggregatedData)
+		aggregator.sendAggregatedData(datasetNumber, outputBulkCounter, aggregatedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(bulkNumber int, aggregatedBulk []comms.FunnyCityData) {
-	data, err := json.Marshal(aggregatedBulk)
+func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber int, aggregatedBulk []comms.FunnyCityData) {
+	bytes, err := json.Marshal(aggregatedBulk)
 	if err != nil {
 		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulkNumber, err)
 	} else {
-		err := aggregator.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, aggregator.instance, bulkNumber, string(bytes))
+		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
 			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulkNumber, aggregator.outputQueue.Name, err)

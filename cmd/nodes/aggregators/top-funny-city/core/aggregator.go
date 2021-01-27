@@ -63,35 +63,36 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Save(bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
 	cityCounter := 0
-	for _, cityData := range aggregator.calculator.RetrieveTopTen() {
+	for _, cityData := range aggregator.calculator.AggregateData(datasetNumber) {
 		cityCounter++
-		aggregator.sendTopTenData(cityCounter, cityData)
+		aggregator.sendTopTenData(datasetNumber, cityCounter, cityData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendTopTenData(cityNumber int, topTenCity comms.FunnyCityData) {
-	data, err := json.Marshal(topTenCity)
+func (aggregator *Aggregator) sendTopTenData(datasetNumber int, cityNumber int, topTenCity comms.FunnyCityData) {
+	bytes, err := json.Marshal(topTenCity)
 	if err != nil {
 		log.Errorf("Error generating Json from funniest city #%d data. Err: '%s'", cityNumber, err)
 	} else {
-		err := aggregator.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, aggregator.instance, cityNumber, string(bytes))
+		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
 			log.Errorf("Error sending funniest city #%d data to output queue %s. Err: '%s'", cityNumber, aggregator.outputQueue.Name, err)

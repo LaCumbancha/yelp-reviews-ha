@@ -56,6 +56,7 @@ func NewSink(config SinkConfig) *Sink {
 
 func (sink *Sink) Run() {
 	log.Infof("Starting to listen for results.")
+	endingChannel := make(chan int)
 
 	closingConn := false
 	connMutex := &sync.Mutex{}
@@ -63,45 +64,43 @@ func (sink *Sink) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	initialProcWait := 5
 	var procWg sync.WaitGroup
-	procWg.Add(initialProcWait)
+	procWg.Add(1)
 
-	go sink.retrieveFlowResults(TOPUSERS, sink.topUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(BOTUSERS, sink.botUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(BESTUSERS, sink.bestUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(FUNCIT, sink.funniestCitiesQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(WEEKDAY, sink.weekdayHistogramQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(TOPUSERS, endingChannel, sink.topUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(BOTUSERS, endingChannel, sink.botUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(BESTUSERS, endingChannel, sink.bestUsersQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(FUNCIT, endingChannel, sink.funniestCitiesQueue, &procWg, &connWg)
+	go sink.retrieveFlowResults(WEEKDAY, endingChannel, sink.weekdayHistogramQueue, &procWg, &connWg)
 
-	go proc.ProcessFinish(sink.finishCallback, &procWg, initialProcWait, closingConn, connMutex)
+	neededInputs := 5
+	savedInputs := 0
+	go proc.ProcessMultipleFinish(neededInputs, savedInputs, endingChannel, sink.finishCallback, &procWg, closingConn, connMutex)
 	proc.CloseConnection(sink.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
-func (sink *Sink) retrieveFlowResults(flow string, inputQueue *rabbit.RabbitInputQueue, procWg *sync.WaitGroup, connWg * sync.WaitGroup) {
-	datasetNumber := 1
-	distinctEndSignals := make(map[string]int)
+func (sink *Sink) retrieveFlowResults(flow string, endingChannel chan int, inputQueue *rabbit.RabbitInputQueue, procWg *sync.WaitGroup, connWg * sync.WaitGroup) {
 	distinctCloseSignals := make(map[string]int)
+	distinctFinishSignals := make(map[int]map[string]int)
 
 	for message := range inputQueue.ConsumeData() {
 		messageBody := string(message.Body)
-		if comms.IsCloseMessage(messageBody) {
-			_, allCloseReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctCloseSignals, 1)
+		dataset, instance, _, mainMessage := comms.UnsignMessage(messageBody)
+
+		if comms.IsCloseMessage(mainMessage) {
+			_, allCloseReceived := comms.CloseControl(instance, distinctCloseSignals, endSignals)
 
 			if allCloseReceived {
 				log.Infof("Close-Message received from the %s flow.", flow)
 				connWg.Done()
 			}
 
-		} else if comms.IsEndMessage(messageBody) {
+		} else if comms.IsFinishMessage(mainMessage) {
 			_, allFinishReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctEndSignals, 1)
 
 			if allFinishReceived {
-				// Clearing End-Messages flags.
-				datasetNumber++
-				distinctEndSignals = make(map[string]int)
-
-				log.Infof("End-Message received from the %s flow.", flow)
-				procWg.Done()
+				log.Infof("All Finish-Messages were received.")
+				endingChannel <- dataset
 			}
 
 		} else {

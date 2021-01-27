@@ -66,20 +66,20 @@ func (filter *Filter) Run() {
 	)
 }
 
-func (filter *Filter) mainCallback(bulkNumber int, bulk string) {
-	filteredData := filter.filterData(bulkNumber, bulk)
-	filter.sendFilteredData(bulkNumber, filteredData)
+func (filter *Filter) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	filteredData := filter.filterData(bulk)
+	filter.sendFilteredData(datasetNumber, bulkNumber, filteredData)
 }
 
 func (filter *Filter) finishCallback(datasetNumber int) {
-	rabbit.OutputDirectFinish(comms.EndMessage(filter.instance, datasetNumber), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
 	// TODO
 }
 
-func (filter *Filter) filterData(bulkNumber int, rawStarsDataBulk string) []comms.StarsData {
+func (filter *Filter) filterData(rawStarsDataBulk string) []comms.StarsData {
 	var starsDataList []comms.StarsData
 	var filteredStarsDataList []comms.StarsData
 	json.Unmarshal([]byte(rawStarsDataBulk), &starsDataList)
@@ -93,7 +93,7 @@ func (filter *Filter) filterData(bulkNumber int, rawStarsDataBulk string) []comm
 	return filteredStarsDataList
 }
 
-func (filter *Filter) sendFilteredData(bulkNumber int, filteredBulk []comms.StarsData) {
+func (filter *Filter) sendFilteredData(datasetNumber int, bulkNumber int, filteredBulk []comms.StarsData) {
 	dataListByPartition := make(map[string][]comms.StarsData)
 
 	for _, data := range filteredBulk {
@@ -114,13 +114,13 @@ func (filter *Filter) sendFilteredData(bulkNumber int, filteredBulk []comms.Star
 	}
 
 	for partition, userDataListPartitioned := range dataListByPartition {
-		outputData, err := json.Marshal(userDataListPartitioned)
+		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-
-			err := filter.outputDirect.PublishData(outputData, partition)
+			data := comms.SignMessage(datasetNumber, filter.instance, bulkNumber, string(bytes))
+			err := filter.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
 				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, filter.outputDirect.Exchange, partition, err)

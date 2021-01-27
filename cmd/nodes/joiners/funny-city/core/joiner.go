@@ -65,9 +65,12 @@ func NewJoiner(config JoinerConfig) *Joiner {
 }
 
 func (joiner *Joiner) Run() {
-	reloadWaitCount := 1
+	neededInputs := 2
+	savedInputs := 1
 	log.Infof("Starting to listen for funny-business and city-business data.")
 	proc.Join(
+		neededInputs,
+		savedInputs,
 		joiner.workersPool,
 		joiner.endSignals1,
 		joiner.endSignals2,
@@ -77,21 +80,20 @@ func (joiner *Joiner) Run() {
 		joiner.mainCallback2,
 		joiner.finishCallback,
 		joiner.closeCallback,
-		reloadWaitCount,
 	)
 }
 
-func (joiner *Joiner) mainCallback1(bulkNumber int, bulk string) {
-	joiner.calculator.AddFunnyBusiness(bulkNumber, bulk)
+func (joiner *Joiner) mainCallback1(datasetNumber int, bulkNumber int, bulk string) {
+	joiner.calculator.AddFunnyBusiness(datasetNumber, bulkNumber, bulk)
 }
 
-func (joiner *Joiner) mainCallback2(bulkNumber int, bulk string) {
-	joiner.calculator.AddCityBusiness(bulkNumber, bulk)
+func (joiner *Joiner) mainCallback2(datasetNumber int, bulkNumber int, bulk string) {
+	joiner.calculator.AddCityBusiness(datasetNumber, bulkNumber, bulk)
 }
 
 func (joiner *Joiner) finishCallback(datasetNumber int) {
 	// Retrieving join matches.
-	joinMatches := joiner.calculator.RetrieveMatches()
+	joinMatches := joiner.calculator.RetrieveMatches(datasetNumber)
 
 	if len(joinMatches) == 0 {
 		log.Warnf("No join match to send.")
@@ -100,21 +102,21 @@ func (joiner *Joiner) finishCallback(datasetNumber int) {
 	messageCounter := 0
 	for _, joinedData := range joinMatches {
 		messageCounter++
-		joiner.sendJoinedData(messageCounter, joinedData)
+		joiner.sendJoinedData(datasetNumber, messageCounter, joinedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.EndMessage(joiner.instance, datasetNumber), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) closeCallback() {
 	// TODO
 }
 
-func (joiner *Joiner) sendJoinedData(bulkNumber int, joinedBulk []comms.FunnyCityData) {
+func (joiner *Joiner) sendJoinedData(datasetNumber int, bulkNumber int, joinedBulk []comms.FunnyCityData) {
 	dataListByPartition := make(map[string][]comms.FunnyCityData)
 
 	for _, data := range joinedBulk {
@@ -135,13 +137,13 @@ func (joiner *Joiner) sendJoinedData(bulkNumber int, joinedBulk []comms.FunnyCit
 	}
 
 	for partition, userDataListPartitioned := range dataListByPartition {
-		outputData, err := json.Marshal(userDataListPartitioned)
+		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-
-			err := joiner.outputDirect.PublishData(outputData, partition)
+			data := comms.SignMessage(datasetNumber, joiner.instance, bulkNumber, string(bytes))
+			err := joiner.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
 				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, joiner.outputDirect.Exchange, partition, err)

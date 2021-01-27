@@ -58,9 +58,12 @@ func NewJoiner(config JoinerConfig) *Joiner {
 }
 
 func (joiner *Joiner) Run() {
-	reloadWaitCount := 2
+	neededInputs := 2
+	savedInputs := 0
 	log.Infof("Starting to listen for common users and best users (with just 5-stars reviews).")
 	proc.Join(
+		neededInputs,
+		savedInputs,
 		joiner.workersPool,
 		joiner.endSignals1,
 		joiner.endSignals2,
@@ -70,21 +73,20 @@ func (joiner *Joiner) Run() {
 		joiner.mainCallback2,
 		joiner.finishCallback,
 		joiner.closeCallback,
-		reloadWaitCount,
 	)
 }
 
-func (joiner *Joiner) mainCallback1(bulkNumber int, bulk string) {
-	joiner.calculator.AddBestUser(bulkNumber, bulk)
+func (joiner *Joiner) mainCallback1(datasetNumber int, bulkNumber int, bulk string) {
+	joiner.calculator.AddBestUser(datasetNumber, bulkNumber, bulk)
 }
 
-func (joiner *Joiner) mainCallback2(bulkNumber int, bulk string) {
-	joiner.calculator.AddUser(bulkNumber, bulk)
+func (joiner *Joiner) mainCallback2(datasetNumber int, bulkNumber int, bulk string) {
+	joiner.calculator.AddUser(datasetNumber, bulkNumber, bulk)
 }
 
 func (joiner *Joiner) finishCallback(datasetNumber int) {
 	// Retrieving join matches.
-	joinMatches := joiner.calculator.RetrieveMatches()
+	joinMatches := joiner.calculator.RetrieveMatches(datasetNumber)
 
 	if len(joinMatches) == 0 {
     	log.Warnf("No join match to send.")
@@ -93,26 +95,27 @@ func (joiner *Joiner) finishCallback(datasetNumber int) {
     messageCounter := 0
     for _, joinedData := range joinMatches {
     	messageCounter++
-    	joiner.sendJoinedData(messageCounter, joinedData)
+    	joiner.sendJoinedData(datasetNumber, messageCounter, joinedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(joiner.instance, datasetNumber), joiner.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, joiner.instance), joiner.outputQueue)
 }
 
 func (joiner *Joiner) closeCallback() {
 	// TODO
 }
 
-func (joiner *Joiner) sendJoinedData(messageNumber int, joinedData comms.UserData) {
-	data, err := json.Marshal(joinedData)
+func (joiner *Joiner) sendJoinedData(datasetNumber int, messageNumber int, joinedData comms.UserData) {
+	bytes, err := json.Marshal(joinedData)
 	if err != nil {
 		log.Errorf("Error generating Json from joined best user #%d. Err: '%s'", messageNumber, err)
 	} else {
-		err := joiner.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, joiner.instance, messageNumber, string(bytes))
+		err := joiner.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
 			log.Errorf("Error sending joined best user #%d to output queue %s. Err: '%s'", messageNumber, joiner.outputQueue.Name, err)

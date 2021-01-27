@@ -1,4 +1,4 @@
-package common
+package core
 
 import (
 	"strings"
@@ -64,35 +64,38 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Aggregate(bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
-	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
-		aggregator.sendAggregatedData(aggregatedData)
+	weekdayNumber := 1
+	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
+		aggregator.sendAggregatedData(datasetNumber, weekdayNumber, aggregatedData)
+		weekdayNumber++
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(aggregatedData comms.WeekdayData) {
+func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, weekdayNumber int, aggregatedData comms.WeekdayData) {
 	weekday := strings.ToUpper(aggregatedData.Weekday[0:3])
+	bytes, err := json.Marshal(aggregatedData)
 
-	data, err := json.Marshal(aggregatedData)
 	if err != nil {
 		log.Errorf("Error generating Json from %s aggregated data. Err: '%s'", weekday, err)
 	} else {
-		err := aggregator.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, aggregator.instance, weekdayNumber, string(bytes))
+		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
 			log.Errorf("Error sending %s aggregated data to output queue %s. Err: '%s'", weekday, aggregator.outputQueue.Name, err)

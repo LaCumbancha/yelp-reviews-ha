@@ -121,7 +121,7 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
         if chunkNumber == scatter.bulkSize {
             bulkNumber++
             bulk := buffer.String()
-            scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
+            scatter.sendBulk(datasetNumber, bulkNumber, bulk[:len(bulk)-1])
 
             buffer = bytes.NewBufferString("")
             chunkNumber = 0
@@ -135,14 +135,14 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
     bulkNumber++
     bulk := buffer.String()
     if bulk != "" {
-        scatter.sendBulk(bulkNumber, bulk[:len(bulk)-1])
+        scatter.sendBulk(datasetNumber, bulkNumber, bulk[:len(bulk)-1])
     }
 
     // Publishing end messages.
     finishErr := false
     for _, partition := range PartitionableValues {
         for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.EndMessage(scatter.instance, datasetNumber), partition)
+            err := scatter.outputDirect.PublishData(comms.FinishMessageSigned(datasetNumber, scatter.instance), partition)
 
             if err != nil {
                 finishErr = true
@@ -158,10 +158,10 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
     log.Infof("Total time: %s.", time.Now().Sub(start).String())
 }
 
-func (scatter *Scatter) sendBulk(bulkNumber int, bulk string) {
+func (scatter *Scatter) sendBulk(datasetNumber int, bulkNumber int, bulk string) {
     errors := false
     for _, partition := range PartitionableValues {
-        err := scatter.outputDirect.PublishData([]byte(bulk), partition)
+        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(datasetNumber, scatter.instance, bulkNumber, bulk)), partition)
 
         if err != nil {
             errors = true

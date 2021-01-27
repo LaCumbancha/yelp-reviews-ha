@@ -72,21 +72,21 @@ func (filter *Filter) Run() {
 	)
 }
 
-func (filter *Filter) mainCallback(bulkNumber int, bulk string) {
-	filteredData := filter.filterData(bulkNumber, bulk)
-	filter.sendFilteredData(bulkNumber, filteredData)
+func (filter *Filter) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	filteredData := filter.filterData(bulk)
+	filter.sendFilteredData(datasetNumber, bulkNumber, filteredData)
 }
 
 func (filter *Filter) finishCallback(datasetNumber int) {
-	rabbit.OutputQueueFinish(comms.EndMessage(filter.instance, datasetNumber), filter.outputQueue)
-	rabbit.OutputDirectFinish(comms.EndMessage(filter.instance, datasetNumber), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
 	// TODO
 }
 
-func (filter *Filter) filterData(bulkNumber int, rawUserDataBulk string) []comms.UserData {
+func (filter *Filter) filterData(rawUserDataBulk string) []comms.UserData {
 	var userDataList []comms.UserData
 	var filteredUserDataList []comms.UserData
 	json.Unmarshal([]byte(rawUserDataBulk), &userDataList)
@@ -100,12 +100,13 @@ func (filter *Filter) filterData(bulkNumber int, rawUserDataBulk string) []comms
 	return filteredUserDataList
 }
 
-func (filter *Filter) sendFilteredData(bulkNumber int, filteredBulk []comms.UserData) {
-	data, err := json.Marshal(filteredBulk)
+func (filter *Filter) sendFilteredData(datasetNumber int, bulkNumber int, filteredBulk []comms.UserData) {
+	bytes, err := json.Marshal(filteredBulk)
 	if err != nil {
 		log.Errorf("Error generating Json from filtered bulk #%d. Err: '%s'", bulkNumber, err)
 	} else {
-		err := filter.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, filter.instance, bulkNumber, string(bytes))
+		err := filter.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
 			log.Errorf("Error sending filtered bulk #%d to output queue %s. Err: '%s'", bulkNumber, filter.outputQueue.Name, err)
@@ -134,13 +135,13 @@ func (filter *Filter) sendFilteredData(bulkNumber int, filteredBulk []comms.User
 	}
 
 	for partition, userDataListPartitioned := range dataListByPartition {
-		outputData, err := json.Marshal(userDataListPartitioned)
+		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-
-			err := filter.outputDirect.PublishData(outputData, partition)
+			data := comms.SignMessage(datasetNumber, filter.instance, bulkNumber, string(bytes))
+			err := filter.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
 				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, filter.outputDirect.Exchange, partition, err)

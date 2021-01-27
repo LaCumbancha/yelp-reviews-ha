@@ -71,46 +71,46 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(bulkNumber int, bulk string) {
-	aggregator.calculator.Aggregate(bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	// Calculating aggregations
 	outputBulkCounter := 0
-	for _, aggregatedData := range aggregator.calculator.RetrieveData() {
+	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
 		outputBulkCounter++
 		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkCounter), outputBulkCounter)
-		aggregator.sendAggregatedData(outputBulkCounter, aggregatedData)
+		aggregator.sendAggregatedData(datasetNumber, outputBulkCounter, aggregatedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputQueue1)
-	rabbit.OutputQueueFinish(comms.EndMessage(aggregator.instance, datasetNumber), aggregator.outputQueue2)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue1)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue2)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(bulkNumber int, aggregatedBulk []comms.UserData) {
-	data, err := json.Marshal(aggregatedBulk)
+func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber int, aggregatedBulk []comms.UserData) {
+	bytes, err := json.Marshal(aggregatedBulk)
 	if err != nil {
 		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulkNumber, err)
 	} else {
-		err := aggregator.outputQueue1.PublishData(data)
+		data := comms.SignMessage(datasetNumber, aggregator.instance, bulkNumber, string(bytes))
 
+		err = aggregator.outputQueue1.PublishData([]byte(data))
 		if err != nil {
 			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulkNumber, aggregator.outputQueue1.Name, err)
 		} else {
 			logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to output queue %s.", bulkNumber, aggregator.outputQueue1.Name), bulkNumber)
 		}
 
-		err = aggregator.outputQueue2.PublishData(data)
-
+		err = aggregator.outputQueue2.PublishData([]byte(data))
 		if err != nil {
 			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulkNumber, aggregator.outputQueue2.Name, err)
 		} else {

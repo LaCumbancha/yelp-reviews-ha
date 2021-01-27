@@ -64,7 +64,7 @@ func main() {
 	inputTopic := utils.GetConfigString(configEnv, configFile, "input_topic")
 	weekdayMappers := utils.GetConfigInt(configEnv, configFile, "weekday_mappers")
 
-	aggregatorConfig := common.AggregatorConfig {
+	aggregatorConfig := core.AggregatorConfig {
 		Instance:				instance,
 		RabbitIp:				rabbitIp,
 		RabbitPort:				rabbitPort,
@@ -78,7 +78,7 @@ func main() {
 	logb.Instance().SetBulkRate(logBulkRate)
 
 	// Initializing aggregator.
-	aggregator := common.NewAggregator(aggregatorConfig)
+	aggregator := core.NewAggregator(aggregatorConfig)
 	aggregator.Run()
 	aggregator.Stop()
 }

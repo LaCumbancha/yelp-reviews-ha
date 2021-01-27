@@ -64,20 +64,20 @@ func (mapper *Mapper) Run() {
 	)
 }
 
-func (mapper *Mapper) mainCallback(bulkNumber int, bulk string) {
-	mappedData := mapper.mapData(bulkNumber, bulk)
-	mapper.sendMappedData(bulkNumber, mappedData)
+func (mapper *Mapper) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	mappedData := mapper.mapData(bulk)
+	mapper.sendMappedData(datasetNumber, bulkNumber, mappedData)
 }
 
 func (mapper *Mapper) finishCallback(datasetNumber int) {
-	rabbit.OutputQueueFinish(comms.EndMessage(mapper.instance, datasetNumber), mapper.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) closeCallback() {
 	// TODO
 }
 
-func (mapper *Mapper) mapData(bulkNumber int, rawReviewsBulk string) []comms.FunnyBusinessData {
+func (mapper *Mapper) mapData(rawReviewsBulk string) []comms.FunnyBusinessData {
 	var review comms.FullReview
 	var funbizDataList []comms.FunnyBusinessData
 
@@ -100,17 +100,18 @@ func (mapper *Mapper) mapData(bulkNumber int, rawReviewsBulk string) []comms.Fun
 	return funbizDataList
 }
 
-func (mapper *Mapper) sendMappedData(bulkNumber int, mappedBulk []comms.FunnyBusinessData) {
-	data, err := json.Marshal(mappedBulk)
+func (mapper *Mapper) sendMappedData(datasetNumber int, bulkNumber int, mappedBulk []comms.FunnyBusinessData) {
+	bytes, err := json.Marshal(mappedBulk)
 	if err != nil {
-		log.Errorf("Error generating Json from mapped bulk #%d. Err: '%s'", bulkNumber, err)
+		log.Errorf("Error generating Json from mapped bulk #%d.%d. Err: '%s'", datasetNumber, bulkNumber, err)
 	} else {
-		err := mapper.outputQueue.PublishData(data)
+		data := comms.SignMessage(datasetNumber, mapper.instance, bulkNumber, string(bytes))
+		err := mapper.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
-			log.Errorf("Error sending mapped bulk #%d to output queue %s. Err: '%s'", bulkNumber, mapper.outputQueue.Name, err)
+			log.Errorf("Error sending mapped bulk #%d.%d to output queue %s. Err: '%s'", datasetNumber, bulkNumber, mapper.outputQueue.Name, err)
 		} else {
-			logb.Instance().Infof(fmt.Sprintf("Mapped bulk #%d sent to output queue %s.", bulkNumber, mapper.outputQueue.Name), bulkNumber)
+			logb.Instance().Infof(fmt.Sprintf("Mapped bulk #%d.%d sent to output queue %s.", datasetNumber, bulkNumber, mapper.outputQueue.Name), bulkNumber)
 		}
 	}
 }

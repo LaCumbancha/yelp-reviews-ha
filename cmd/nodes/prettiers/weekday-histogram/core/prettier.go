@@ -58,28 +58,30 @@ func (prettier *Prettier) Run() {
 	)
 }
 
-func (prettier *Prettier) mainCallback(bulkNumber int, bulk string) {
-	prettier.builder.Save(bulk)
+func (prettier *Prettier) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
+	prettier.builder.Save(datasetNumber, bulkNumber, bulk)
 }
 
 func (prettier *Prettier) finishCallback(datasetNumber int) {
 	// Sending results
-	prettier.sendResults()
+	prettier.sendResults(datasetNumber)
 
 	// Clearing Calculator for next dataset.
 	prettier.builder.Clear()
 
     // There's no need for an instance definition in the End-Message because there's only one Prettier
-	rabbit.OutputQueueFinish(comms.EndMessage("", datasetNumber), prettier.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, ""), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {
 	// TODO
 }
 
-func (prettier *Prettier) sendResults() {
-	data := []byte(prettier.builder.BuildData())
-	err := prettier.outputQueue.PublishData(data)
+func (prettier *Prettier) sendResults(datasetNumber int) {
+	messageNumber := 1
+	prettierInstance := "0"
+	data := comms.SignMessage(datasetNumber, prettierInstance, messageNumber, prettier.builder.BuildData(datasetNumber))
+	err := prettier.outputQueue.PublishData([]byte(data))
 
 	if err != nil {
 		log.Errorf("Error sending best users results to output queue %s. Err: '%s'", prettier.outputQueue.Name, err)

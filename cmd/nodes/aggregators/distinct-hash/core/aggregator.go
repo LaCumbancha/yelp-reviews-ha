@@ -13,6 +13,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "A6"
+
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -67,42 +69,42 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
 }
 
-func (aggregator *Aggregator) finishCallback(datasetNumber int) {
+func (aggregator *Aggregator) finishCallback(dataset int) {
 	// Calculating aggregations
-	outputBulkCounter := 0
-	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
-		outputBulkCounter++
-		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkCounter), outputBulkCounter)
-		aggregator.sendAggregatedData(datasetNumber, outputBulkCounter, aggregatedData)
+	outputBulk := 0
+	for _, aggregatedData := range aggregator.calculator.AggregateData(dataset) {
+		outputBulk++
+		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulk), outputBulk)
+		aggregator.sendAggregatedData(dataset, outputBulk, aggregatedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber int, aggregatedBulk []comms.DishashData) {
-	bytes, err := json.Marshal(aggregatedBulk)
+func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.DishashData) {
+	bytes, err := json.Marshal(aggregatedData)
 	if err != nil {
-		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulkNumber, err)
+		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulk, err)
 	} else {
-		data := comms.SignMessage(datasetNumber, aggregator.instance, bulkNumber, string(bytes))
+		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
-			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulkNumber, aggregator.outputQueue.Name, err)
+			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulk, aggregator.outputQueue.Name, err)
 		} else {
-			logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to output queue %s.", bulkNumber, aggregator.outputQueue.Name), bulkNumber)
+			logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to output queue %s.", bulk, aggregator.outputQueue.Name), bulk)
 		}
 	}
 }

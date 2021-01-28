@@ -11,6 +11,10 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "J3"
+const FLOW1 = "Best-Users"
+const FLOW2 = "Common-Users"
+
 type JoinerConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -62,6 +66,8 @@ func (joiner *Joiner) Run() {
 	savedInputs := 0
 	log.Infof("Starting to listen for common users and best users (with just 5-stars reviews).")
 	proc.Join(
+		FLOW1,
+		FLOW2,
 		neededInputs,
 		savedInputs,
 		joiner.workersPool,
@@ -76,45 +82,45 @@ func (joiner *Joiner) Run() {
 	)
 }
 
-func (joiner *Joiner) mainCallback1(datasetNumber int, bulkNumber int, bulk string) {
-	joiner.calculator.AddBestUser(datasetNumber, bulkNumber, bulk)
+func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance string, bulk int, data string) {
+	joiner.calculator.AddBestUser(inputNode, dataset, instance, bulk, data)
 }
 
-func (joiner *Joiner) mainCallback2(datasetNumber int, bulkNumber int, bulk string) {
-	joiner.calculator.AddUser(datasetNumber, bulkNumber, bulk)
+func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
+	joiner.calculator.AddUser(inputNode, dataset, instance, bulk, data)
 }
 
-func (joiner *Joiner) finishCallback(datasetNumber int) {
+func (joiner *Joiner) finishCallback(dataset int) {
 	// Retrieving join matches.
-	joinMatches := joiner.calculator.RetrieveMatches(datasetNumber)
+	joinMatches := joiner.calculator.RetrieveMatches(dataset)
 
 	if len(joinMatches) == 0 {
     	log.Warnf("No join match to send.")
     }
 
-    messageCounter := 0
+    messageNumber := 0
     for _, joinedData := range joinMatches {
-    	messageCounter++
-    	joiner.sendJoinedData(datasetNumber, messageCounter, joinedData)
+    	messageNumber++
+    	joiner.sendJoinedData(dataset, messageNumber, joinedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, joiner.instance), joiner.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputQueue)
 }
 
 func (joiner *Joiner) closeCallback() {
 	// TODO
 }
 
-func (joiner *Joiner) sendJoinedData(datasetNumber int, messageNumber int, joinedData comms.UserData) {
+func (joiner *Joiner) sendJoinedData(dataset int, messageNumber int, joinedData comms.UserData) {
 	bytes, err := json.Marshal(joinedData)
 	if err != nil {
 		log.Errorf("Error generating Json from joined best user #%d. Err: '%s'", messageNumber, err)
 	} else {
-		data := comms.SignMessage(datasetNumber, joiner.instance, messageNumber, string(bytes))
+		data := comms.SignMessage(NODE_CODE, dataset, joiner.instance, messageNumber, string(bytes))
 		err := joiner.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

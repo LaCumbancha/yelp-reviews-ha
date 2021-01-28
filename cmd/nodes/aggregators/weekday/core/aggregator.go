@@ -12,6 +12,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "A4"
+
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -64,15 +66,15 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
 }
 
-func (aggregator *Aggregator) finishCallback(datasetNumber int) {
+func (aggregator *Aggregator) finishCallback(dataset int) {
 	// Calculating aggregations
 	weekdayNumber := 1
-	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
-		aggregator.sendAggregatedData(datasetNumber, weekdayNumber, aggregatedData)
+	for _, aggregatedData := range aggregator.calculator.AggregateData(dataset) {
+		aggregator.sendAggregatedData(dataset, weekdayNumber, aggregatedData)
 		weekdayNumber++
 	}
 
@@ -80,21 +82,21 @@ func (aggregator *Aggregator) finishCallback(datasetNumber int) {
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, weekdayNumber int, aggregatedData comms.WeekdayData) {
-	weekday := strings.ToUpper(aggregatedData.Weekday[0:3])
-	bytes, err := json.Marshal(aggregatedData)
+func (aggregator *Aggregator) sendAggregatedData(dataset int, weekdayNumber int, aggregatedWeekday comms.WeekdayData) {
+	weekday := strings.ToUpper(aggregatedWeekday.Weekday[0:3])
+	bytes, err := json.Marshal(aggregatedWeekday)
 
 	if err != nil {
 		log.Errorf("Error generating Json from %s aggregated data. Err: '%s'", weekday, err)
 	} else {
-		data := comms.SignMessage(datasetNumber, aggregator.instance, weekdayNumber, string(bytes))
+		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, weekdayNumber, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

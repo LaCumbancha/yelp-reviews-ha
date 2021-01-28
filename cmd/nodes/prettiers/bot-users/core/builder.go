@@ -14,7 +14,7 @@ import (
 type Builder struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[int]bool
+	received			map[string]bool
 	receivedMutex 		*sync.Mutex
 	dataset				int
 	reviews 			int
@@ -24,7 +24,7 @@ func NewBuilder(minReviews int) *Builder {
 	builder := &Builder {
 		data:				make(map[string]int),
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[int]bool),
+		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
 		dataset:			comms.DefaultDataset,
 		reviews:			minReviews,
@@ -39,16 +39,18 @@ func (builder *Builder) Clear() {
 	builder.dataMutex.Unlock()
 
 	builder.receivedMutex.Lock()
-	builder.received = make(map[int]bool)
+	builder.received = make(map[string]bool)
 	builder.receivedMutex.Unlock()
+
+	builder.dataset++
 
 	log.Infof("Builder storage cleared.")
 }
 
-func (builder *Builder) Save(datasetNumber int, bulkNumber int, rawData string) {
+func (builder *Builder) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
 		rawData,
 		&builder.dataset,
 		builder.received,
@@ -73,11 +75,11 @@ func (builder *Builder) storeNewUserData(rawData string) {
 	builder.dataMutex.Unlock()
 }
 
-func (builder *Builder) BuildData(datasetNumber int) string {
+func (builder *Builder) BuildData(dataset int) string {
 	response := fmt.Sprintf("Users with +%d reviews (all with same text): ", builder.reviews)
 
-	if datasetNumber != builder.dataset {
-		log.Warnf("Building data for a dataset not stored (stored #%d but requested data from #%d).", builder.dataset, datasetNumber)
+	if dataset != builder.dataset {
+		log.Warnf("Building data for a dataset not stored (stored #%d but requested data from #%d).", builder.dataset, dataset)
 		return response + "Error generating data."
 	}
 

@@ -16,6 +16,8 @@ import (
     rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "I2"
+
 type ScatterConfig struct {
     Instance            string
     RabbitIp            string
@@ -142,7 +144,7 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
     finishErr := false
     for _, partition := range PartitionableValues {
         for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.FinishMessageSigned(datasetNumber, scatter.instance), partition)
+            err := scatter.outputDirect.PublishData(comms.FinishMessageSigned(NODE_CODE, datasetNumber, scatter.instance), partition)
 
             if err != nil {
                 finishErr = true
@@ -161,7 +163,7 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
 func (scatter *Scatter) sendBulk(datasetNumber int, bulkNumber int, bulk string) {
     errors := false
     for _, partition := range PartitionableValues {
-        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(datasetNumber, scatter.instance, bulkNumber, bulk)), partition)
+        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(NODE_CODE, datasetNumber, scatter.instance, bulkNumber, bulk)), partition)
 
         if err != nil {
             errors = true

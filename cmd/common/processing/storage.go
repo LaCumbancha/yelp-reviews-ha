@@ -2,17 +2,23 @@ package processing
 
 import (
 	"sync"
+	"strconv"
 	log "github.com/sirupsen/logrus"
 )
+
+// Defining message storage code
+func MessageStorageId(nodeCode string, instance string, bulk int) string {
+	return nodeCode + "." + instance + "." + strconv.Itoa(bulk)
+}
 
 // Common save process for Aggregators, Joiners and Prettiers.
 func ValidateDataSaving(
 	datasetNumber int,
-	bulkNumber int,
+	messageId string,
 	rawData string,
 	savedDataset *int,
-	bulksReceived map[int]bool,
-	bulksReceivedMutex *sync.Mutex,
+	messagesReceived map[string]bool,
+	messagesReceivedMutex *sync.Mutex,
 	clearCallback func(),
 	saveCallback func(string),
 ) {
@@ -22,14 +28,14 @@ func ValidateDataSaving(
 		*savedDataset = datasetNumber
 	}
 
-	bulksReceivedMutex.Lock()
+	messagesReceivedMutex.Lock()
 
-	if _, found := bulksReceived[bulkNumber]; found {
-		log.Warnf("Bulk #%d was already received and processed.", bulkNumber)
+	if _, found := messagesReceived[messageId]; found {
+		log.Warnf("Bulk #%s was already received and processed.", messageId)
 	} else {
 		saveCallback(rawData)
-		bulksReceived[bulkNumber] = true
+		messagesReceived[messageId] = true
 	}
 	
-	bulksReceivedMutex.Unlock()
+	messagesReceivedMutex.Unlock()
 }

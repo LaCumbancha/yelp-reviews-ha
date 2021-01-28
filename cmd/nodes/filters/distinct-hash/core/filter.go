@@ -14,6 +14,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "F2"
+
 type FilterConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -69,13 +71,13 @@ func (filter *Filter) Run() {
 	)
 }
 
-func (filter *Filter) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	filteredData := filter.filterData(bulk)
-	filter.sendFilteredData(datasetNumber, bulkNumber, filteredData)
+func (filter *Filter) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	filteredData := filter.filterData(data)
+	filter.sendFilteredData(dataset, bulk, filteredData)
 }
 
-func (filter *Filter) finishCallback(datasetNumber int) {
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, filter.instance), filter.outputPartitions, filter.outputDirect)
+func (filter *Filter) finishCallback(dataset int) {
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
@@ -96,23 +98,22 @@ func (filter *Filter) filterData(rawDishashDataBulk string) []comms.DishashData 
 	return filteredDishashesDataList
 }
 
-func (filter *Filter) sendFilteredData(datasetNumber int, bulkNumber int, filteredBulk []comms.DishashData) {
+func (filter *Filter) sendFilteredData(dataset int, bulk int, filteredData []comms.DishashData) {
 	dataListByPartition := make(map[string][]comms.DishashData)
 
-	for _, data := range filteredBulk {
+	for _, data := range filteredData {
 		partition := filter.outputPartitions[string(data.UserId[0])]
 
-		if partition != "" {
-			dishashDataListPartitioned := dataListByPartition[partition]
+		if partition == "" {
+			partition = proc.DefaultPartition
+			log.Errorf("Couldn't calculate partition for user '%s'. Setting default (%s).", data.UserId, partition)
+		}
 
-			if dishashDataListPartitioned != nil {
-				dataListByPartition[partition] = append(dishashDataListPartitioned, data)
-			} else {
-				dataListByPartition[partition] = append(make([]comms.DishashData, 0), data)
-			}
-
+		dishashDataListPartitioned := dataListByPartition[partition]
+		if dishashDataListPartitioned != nil {
+			dataListByPartition[partition] = append(dishashDataListPartitioned, data)
 		} else {
-			log.Errorf("Couldn't calculate partition for user '%s'.", data.UserId)
+			dataListByPartition[partition] = append(make([]comms.DishashData, 0), data)
 		}
 	}
 
@@ -122,13 +123,13 @@ func (filter *Filter) sendFilteredData(datasetNumber int, bulkNumber int, filter
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(datasetNumber, filter.instance, bulkNumber, string(bytes))
+			data := comms.SignMessage(NODE_CODE, dataset, filter.instance, bulk, string(bytes))
 			err := filter.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
-				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, filter.outputDirect.Exchange, partition, err)
+				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, filter.outputDirect.Exchange, partition, err)
 			} else {
-				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulkNumber, filter.outputDirect.Exchange, partition), bulkNumber)
+				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulk, filter.outputDirect.Exchange, partition), bulk)
 			}	
 		}
 	}

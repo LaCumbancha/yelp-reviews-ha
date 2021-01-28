@@ -14,7 +14,7 @@ import (
 type Calculator struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[int]bool
+	received			map[string]bool
 	receivedMutex 		*sync.Mutex
 	dataset				int
 	bulkSize			int
@@ -24,7 +24,7 @@ func NewCalculator(bulkSize int) *Calculator {
 	calculator := &Calculator {
 		data:				make(map[string]int),
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[int]bool),
+		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
 		dataset:			comms.DefaultDataset,
 		bulkSize:			bulkSize,
@@ -39,16 +39,18 @@ func (calculator *Calculator) Clear() {
 	calculator.dataMutex.Unlock()
 
 	calculator.receivedMutex.Lock()
-	calculator.received = make(map[int]bool)
+	calculator.received = make(map[string]bool)
 	calculator.receivedMutex.Unlock()
+
+	calculator.dataset++
 
 	log.Infof("Calculator storage cleared.")
 }
 
-func (calculator *Calculator) Save(datasetNumber int, bulkNumber int, rawData string) {
+func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received,
@@ -57,12 +59,12 @@ func (calculator *Calculator) Save(datasetNumber int, bulkNumber int, rawData st
 		calculator.saveData,
 	)
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", datasetNumber, bulkNumber, len(calculator.data)), bulkNumber)
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", dataset, bulk, len(calculator.data)), bulk)
 }
 
-func (calculator *Calculator) saveData(rawFuncitDataList string) {
+func (calculator *Calculator) saveData(rawData string) {
 	var funcitDataList []comms.FunnyCityData
-	json.Unmarshal([]byte(rawFuncitDataList), &funcitDataList)
+	json.Unmarshal([]byte(rawData), &funcitDataList)
 
 	for _, funcitData := range funcitDataList {
 
@@ -78,9 +80,9 @@ func (calculator *Calculator) saveData(rawFuncitDataList string) {
 	}
 }
 
-func (calculator *Calculator) AggregateData(datasetNumber int) [][]comms.FunnyCityData {
-	if datasetNumber != calculator.dataset {
-		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, datasetNumber)
+func (calculator *Calculator) AggregateData(dataset int) [][]comms.FunnyCityData {
+	if dataset != calculator.dataset {
+		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
 		return make([][]comms.FunnyCityData, 0)
 	}
 	

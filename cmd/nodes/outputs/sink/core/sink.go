@@ -7,7 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
@@ -56,6 +55,7 @@ func NewSink(config SinkConfig) *Sink {
 
 func (sink *Sink) Run() {
 	log.Infof("Starting to listen for results.")
+	mainChannel := make(chan amqp.Delivery)
 	endingChannel := make(chan int)
 
 	closingConn := false
@@ -65,13 +65,14 @@ func (sink *Sink) Run() {
 	connWg.Add(1)
 
 	var procWg sync.WaitGroup
-	procWg.Add(1)
+	procWg.Add(5)
 
-	go sink.retrieveFlowResults(TOPUSERS, endingChannel, sink.topUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(BOTUSERS, endingChannel, sink.botUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(BESTUSERS, endingChannel, sink.bestUsersQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(FUNCIT, endingChannel, sink.funniestCitiesQueue, &procWg, &connWg)
-	go sink.retrieveFlowResults(WEEKDAY, endingChannel, sink.weekdayHistogramQueue, &procWg, &connWg)
+	go proc.InitializeProcessingWorkers(1, mainChannel, sink.mainCallback, &procWg)
+	go proc.ProcessInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
+	go proc.ProcessInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
+	go proc.ProcessInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
+	go proc.ProcessInputs(FUNCIT, sink.funniestCitiesQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
+	go proc.ProcessInputs(WEEKDAY, sink.weekdayHistogramQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
 
 	neededInputs := 5
 	savedInputs := 0
@@ -79,38 +80,12 @@ func (sink *Sink) Run() {
 	proc.CloseConnection(sink.closeCallback, &procWg, &connWg, closingConn, connMutex)
 }
 
-func (sink *Sink) retrieveFlowResults(flow string, endingChannel chan int, inputQueue *rabbit.RabbitInputQueue, procWg *sync.WaitGroup, connWg * sync.WaitGroup) {
-	distinctCloseSignals := make(map[string]int)
-	distinctFinishSignals := make(map[int]map[string]int)
-
-	for message := range inputQueue.ConsumeData() {
-		messageBody := string(message.Body)
-		dataset, instance, _, mainMessage := comms.UnsignMessage(messageBody)
-
-		if comms.IsCloseMessage(mainMessage) {
-			_, allCloseReceived := comms.CloseControl(instance, distinctCloseSignals, endSignals)
-
-			if allCloseReceived {
-				log.Infof("Close-Message received from the %s flow.", flow)
-				connWg.Done()
-			}
-
-		} else if comms.IsFinishMessage(mainMessage) {
-			_, allFinishReceived := comms.LastEndMessage(messageBody, datasetNumber, distinctEndSignals, 1)
-
-			if allFinishReceived {
-				log.Infof("All Finish-Messages were received.")
-				endingChannel <- dataset
-			}
-
-		} else {
-			log.Infof(messageBody)
-		}
-	}
+func (sink *Sink) mainCallback(nodeCode string, dataset int, instance string, bulk int, message string) {
+	log.Infof(message)
 }
 
-func (sink *Sink) finishCallback(datasetNumber int) {
-	log.Infof("Dataset #%d analysis finished.", datasetNumber)
+func (sink *Sink) finishCallback(dataset int) {
+	log.Infof("Dataset #%d analysis finished.", dataset)
 }
 
 func (sink *Sink) closeCallback() {

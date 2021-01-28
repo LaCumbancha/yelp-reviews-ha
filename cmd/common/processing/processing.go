@@ -11,23 +11,26 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-func ProcessInputs(inputs <- chan amqp.Delivery, mainChannel chan amqp.Delivery, endingChannel chan int, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
+const DefaultFlow = ""
+const DefaultPartition = "0"
+
+func ProcessInputs(flow string, inputs <- chan amqp.Delivery, mainChannel chan amqp.Delivery, endingChannel chan int, endSignals int, procWg *sync.WaitGroup, connWg *sync.WaitGroup) {
 	distinctCloseSignals := make(map[string]int)
 	distinctFinishSignals := make(map[int]map[string]int)
 
 	for message := range inputs {
 		messageBody := string(message.Body)
-		dataset, instance, _, mainMessage := comms.UnsignMessage(messageBody)
+		_, dataset, instance, _, mainMessage := comms.UnsignMessage(messageBody)
 
 		if comms.IsCloseMessage(mainMessage) {
 			newCloseReceived, allCloseReceived := comms.CloseControl(instance, distinctCloseSignals, endSignals)
 
 			if newCloseReceived {
-				log.Infof("Close-Message #%d received.", len(distinctCloseSignals))
+				flowMessageLog(fmt.Sprintf("Close-Message #%d", len(distinctCloseSignals)), flow)
 			}
 
 			if allCloseReceived {
-				log.Infof("All Close-Messages were received.")
+				flowMessageLog("All Close-Message", flow)
 				connWg.Done()
 			}
 
@@ -35,11 +38,12 @@ func ProcessInputs(inputs <- chan amqp.Delivery, mainChannel chan amqp.Delivery,
 			newFinishReceived, allFinishReceived := comms.FinishControl(dataset, instance, distinctFinishSignals, endSignals)
 
 			if newFinishReceived {
-				log.Infof("Finish-Message #%d received.", len(distinctFinishSignals))
+				flowMessageLog(fmt.Sprintf("Finish-Message #%d", len(distinctFinishSignals[dataset])), flow)
 			}
 
 			if allFinishReceived {
-				log.Infof("All Finish-Messages were received.")
+				procWg.Done()
+				flowMessageLog("All Finish-Message", flow)
 				endingChannel <- dataset
 			}
 
@@ -50,7 +54,15 @@ func ProcessInputs(inputs <- chan amqp.Delivery, mainChannel chan amqp.Delivery,
 	}
 }
 
-func InitializeProcessingWorkers(workersPool int, mainChannel chan amqp.Delivery, callback func(int, int, string), wg *sync.WaitGroup) {
+func flowMessageLog(messageType string, flow string) {
+	if flow == DefaultFlow {
+		log.Infof("%s received.", messageType)
+	} else {
+		log.Infof("%s from the %s flow received.", messageType, flow)
+	}
+}
+
+func InitializeProcessingWorkers(workersPool int, mainChannel chan amqp.Delivery, callback func(string, int, string, int, string), wg *sync.WaitGroup) {
 	log.Tracef("Initializing %d workers.", workersPool)
 	for worker := 1 ; worker <= workersPool ; worker++ {
 		log.Tracef("Initializing worker #%d.", worker)
@@ -58,11 +70,11 @@ func InitializeProcessingWorkers(workersPool int, mainChannel chan amqp.Delivery
 		go func() {
 			for message := range mainChannel {
 				messageBody := string(message.Body)
-				dataset, _, bulk, data := comms.UnsignMessage(messageBody)
+				inputNode, dataset, instance, bulk, data := comms.UnsignMessage(messageBody)
 
 				if data != "" {
-					logb.Instance().Infof(fmt.Sprintf("Data bulk #%d.%d received.", dataset, bulk), bulk)
-					callback(dataset, bulk, data)
+					logb.Instance().Infof(fmt.Sprintf("Message #%s.%d.%s.%d received.", inputNode, dataset, instance, bulk), bulk)
+					callback(inputNode, dataset, instance, bulk, data)
 					rabbit.AckMessage(message)
     				wg.Done()
 				} else {
@@ -77,8 +89,8 @@ func InitializeProcessingWorkers(workersPool int, mainChannel chan amqp.Delivery
 func ProcessSingleFinish(endingChannel chan int, callback func(int), procWg *sync.WaitGroup, closingConn bool, connMutex *sync.Mutex) {
 	// Send finish message each time a dataset is completed.
 	for datasetFinished := range endingChannel {
+		procWg.Wait()
 		callback(datasetFinished)
-		procWg.Done()
 
 		connMutex.Lock()
 		if closingConn {
@@ -96,23 +108,22 @@ func ProcessMultipleFinish(neededInputs int, savedInputs int, endingChannel chan
 	// Send finish message each time a dataset is completed.
 	for datasetFinished := range endingChannel {
 		if received, found := finishSignals[datasetFinished]; found {
-			if received + 1 == neededInputs {
-				callback(datasetFinished)
-				procWg.Done()
-				finishSignals[datasetFinished] = savedInputs
-			} else {
-				finishSignals[datasetFinished] = received + 1
-			}
+			finishSignals[datasetFinished] = received + 1
+		} else {
+			finishSignals[datasetFinished] = savedInputs + 1
+		}
+
+		if finishSignals[datasetFinished] == neededInputs {
+			procWg.Wait()
+			callback(datasetFinished)
 
 			connMutex.Lock()
 			if closingConn {
 				break
 			} else {
-				procWg.Add(1)
+				procWg.Add(neededInputs - savedInputs)
 			}
 			connMutex.Unlock()
-		} else {
-			finishSignals[datasetFinished] = 1
 		}
 	}
 }

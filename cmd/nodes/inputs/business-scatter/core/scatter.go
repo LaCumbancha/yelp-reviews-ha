@@ -15,6 +15,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "I1"
+
 type ScatterConfig struct {
 	Data				string
 	RabbitIp			string
@@ -93,13 +95,13 @@ func (scatter *Scatter) Run() {
     }
 
     // Publishing end messages.
-    rabbit.OutputQueueFinish(comms.FinishMessageSigned(1, ""), scatter.outputQueue)
+    rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, 1, ""), scatter.outputQueue)
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())
 }
 
 func (scatter *Scatter) sendData(bulkNumber int, bulk string) {
-	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(1, "", bulkNumber, bulk)))
+	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(NODE_CODE, 1, "", bulkNumber, bulk)))
 
 	if err != nil {
 		log.Errorf("Error sending businesses bulk #%d to output queue %s. Err: '%s'", bulkNumber, scatter.outputQueue.Name, err)

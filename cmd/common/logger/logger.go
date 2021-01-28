@@ -13,7 +13,7 @@ var logger *Logger
 var once sync.Once
 
 func Instance() *Logger {
-	once.Do(func() { logger = &Logger{} })
+	once.Do(func() { logger = &Logger{ 1 } })
 	return logger
 }
 

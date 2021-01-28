@@ -16,8 +16,8 @@ type Calculator struct {
 	data2 				map[string]int
 	dataMutex1 			*sync.Mutex
 	dataMutex2 			*sync.Mutex
-	received1			map[int]bool
-	received2			map[int]bool
+	received1			map[string]bool
+	received2			map[string]bool
 	receivedMutex1 		*sync.Mutex
 	receivedMutex2 		*sync.Mutex
 	dataset				int
@@ -29,8 +29,8 @@ func NewCalculator() *Calculator {
 		data2:				make(map[string]int),
 		dataMutex1:			&sync.Mutex{},
 		dataMutex2:			&sync.Mutex{},
-		received1:			make(map[int]bool),
-		received2:			make(map[int]bool),
+		received1:			make(map[string]bool),
+		received2:			make(map[string]bool),
 		receivedMutex1:		&sync.Mutex{},
 		receivedMutex2:		&sync.Mutex{},
 		dataset:			comms.DefaultDataset,
@@ -45,7 +45,7 @@ func (calculator *Calculator) Clear() {
 	calculator.dataMutex1.Unlock()
 
 	calculator.receivedMutex1.Lock()
-	calculator.received1 = make(map[int]bool)
+	calculator.received1 = make(map[string]bool)
 	calculator.receivedMutex1.Unlock()
 
 	calculator.dataMutex2.Lock()
@@ -53,16 +53,18 @@ func (calculator *Calculator) Clear() {
 	calculator.dataMutex2.Unlock()
 
 	calculator.receivedMutex2.Lock()
-	calculator.received2 = make(map[int]bool)
+	calculator.received2 = make(map[string]bool)
 	calculator.receivedMutex2.Unlock()
+
+	calculator.dataset++
 
 	log.Infof("Calculator storage cleared.")
 }
 
-func (calculator *Calculator) AddBestUser(datasetNumber int, bulkNumber int, rawData string) {
+func (calculator *Calculator) AddBestUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received1,
@@ -71,12 +73,12 @@ func (calculator *Calculator) AddBestUser(datasetNumber int, bulkNumber int, raw
 		calculator.saveBestUser,
 	)
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d best users stored.", datasetNumber, len(calculator.data1), bulkNumber), bulkNumber)
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d best users stored.", dataset, bulk, len(calculator.data1)), bulk)
 }
 
-func (calculator *Calculator) saveBestUser(rawBestUserDataBulk string) {
+func (calculator *Calculator) saveBestUser(rawData string) {
 	var bestUserDataList []comms.UserData
-	json.Unmarshal([]byte(rawBestUserDataBulk), &bestUserDataList)
+	json.Unmarshal([]byte(rawData), &bestUserDataList)
 
 	for _, bestUserData := range bestUserDataList {
 		calculator.dataMutex1.Lock()
@@ -85,10 +87,10 @@ func (calculator *Calculator) saveBestUser(rawBestUserDataBulk string) {
 	}
 }
 
-func (calculator *Calculator) AddUser(datasetNumber int, bulkNumber int, rawData string) {
+func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received2,
@@ -97,12 +99,12 @@ func (calculator *Calculator) AddUser(datasetNumber int, bulkNumber int, rawData
 		calculator.saveUser,
 	)
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d common users stored.", datasetNumber, len(calculator.data2), bulkNumber), bulkNumber)
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d common users stored.", dataset, len(calculator.data2), bulk), bulk)
 }
 
-func (calculator *Calculator) saveUser(rawUserDataBulk string) {
+func (calculator *Calculator) saveUser(rawData string) {
 	var userDataList []comms.UserData
-	json.Unmarshal([]byte(rawUserDataBulk), &userDataList)
+	json.Unmarshal([]byte(rawData), &userDataList)
 
 	for _, userData := range userDataList {
 		calculator.dataMutex2.Lock()
@@ -111,9 +113,9 @@ func (calculator *Calculator) saveUser(rawUserDataBulk string) {
 	}
 }
 
-func (calculator *Calculator) RetrieveMatches(datasetNumber int) []comms.UserData {
-	if datasetNumber != calculator.dataset {
-		log.Warnf("Joining data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, datasetNumber)
+func (calculator *Calculator) RetrieveMatches(dataset int) []comms.UserData {
+	if dataset != calculator.dataset {
+		log.Warnf("Joining data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
 		return make([]comms.UserData, 0)
 	}
 

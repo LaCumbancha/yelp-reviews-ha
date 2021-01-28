@@ -14,6 +14,10 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "J1"
+const FLOW1 = "Funny-Businesses"
+const FLOW2 = "City-Businesses"
+
 type JoinerConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -69,6 +73,8 @@ func (joiner *Joiner) Run() {
 	savedInputs := 1
 	log.Infof("Starting to listen for funny-business and city-business data.")
 	proc.Join(
+		FLOW1,
+		FLOW2,
 		neededInputs,
 		savedInputs,
 		joiner.workersPool,
@@ -83,56 +89,55 @@ func (joiner *Joiner) Run() {
 	)
 }
 
-func (joiner *Joiner) mainCallback1(datasetNumber int, bulkNumber int, bulk string) {
-	joiner.calculator.AddFunnyBusiness(datasetNumber, bulkNumber, bulk)
+func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance string, bulk int, data string) {
+	joiner.calculator.AddFunnyBusiness(inputNode, dataset, instance, bulk, data)
 }
 
-func (joiner *Joiner) mainCallback2(datasetNumber int, bulkNumber int, bulk string) {
-	joiner.calculator.AddCityBusiness(datasetNumber, bulkNumber, bulk)
+func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
+	joiner.calculator.AddCityBusiness(inputNode, dataset, instance, bulk, data)
 }
 
-func (joiner *Joiner) finishCallback(datasetNumber int) {
+func (joiner *Joiner) finishCallback(dataset int) {
 	// Retrieving join matches.
-	joinMatches := joiner.calculator.RetrieveMatches(datasetNumber)
+	joinMatches := joiner.calculator.RetrieveMatches(dataset)
 
 	if len(joinMatches) == 0 {
 		log.Warnf("No join match to send.")
 	}
 
-	messageCounter := 0
+	messageNumber := 0
 	for _, joinedData := range joinMatches {
-		messageCounter++
-		joiner.sendJoinedData(datasetNumber, messageCounter, joinedData)
+		messageNumber++
+		joiner.sendJoinedData(dataset, messageNumber, joinedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	joiner.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) closeCallback() {
 	// TODO
 }
 
-func (joiner *Joiner) sendJoinedData(datasetNumber int, bulkNumber int, joinedBulk []comms.FunnyCityData) {
+func (joiner *Joiner) sendJoinedData(dataset int, bulk int, joinedData []comms.FunnyCityData) {
 	dataListByPartition := make(map[string][]comms.FunnyCityData)
 
-	for _, data := range joinedBulk {
+	for _, data := range joinedData {
 		partition := joiner.outputPartitions[string(data.City[0])]
 
-		if partition != "" {
-			funcitDataListPartitioned := dataListByPartition[partition]
+		if partition == "" {
+			partition = proc.DefaultPartition
+			log.Errorf("Couldn't calculate partition for city '%s'. Setting default (%s).", data.City, partition)
+		}
 
-			if funcitDataListPartitioned != nil {
-				dataListByPartition[partition] = append(funcitDataListPartitioned, data)
-			} else {
-				dataListByPartition[partition] = append(make([]comms.FunnyCityData, 0), data)
-			}
-
+		funcitDataListPartitioned := dataListByPartition[partition]
+		if funcitDataListPartitioned != nil {
+			dataListByPartition[partition] = append(funcitDataListPartitioned, data)
 		} else {
-			log.Errorf("Couldn't calculate partition for city '%s'.", data.City)
+			dataListByPartition[partition] = append(make([]comms.FunnyCityData, 0), data)
 		}
 	}
 
@@ -142,13 +147,13 @@ func (joiner *Joiner) sendJoinedData(datasetNumber int, bulkNumber int, joinedBu
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(datasetNumber, joiner.instance, bulkNumber, string(bytes))
+			data := comms.SignMessage(NODE_CODE, dataset, joiner.instance, bulk, string(bytes))
 			err := joiner.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
-				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, joiner.outputDirect.Exchange, partition, err)
+				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, joiner.outputDirect.Exchange, partition, err)
 			} else {
-				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulkNumber, joiner.outputDirect.Exchange, partition), bulkNumber)
+				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulk, joiner.outputDirect.Exchange, partition), bulk)
 			}	
 		}
 	}

@@ -10,6 +10,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "P4"
+
 type PrettierConfig struct {
 	RabbitIp			string
 	RabbitPort			string
@@ -59,29 +61,29 @@ func (prettier *Prettier) Run() {
 	)
 }
 
-func (prettier *Prettier) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	prettier.builder.Save(datasetNumber, bulkNumber, bulk)
+func (prettier *Prettier) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	prettier.builder.Save(inputNode, dataset, instance, bulk, data)
 }
 
-func (prettier *Prettier) finishCallback(datasetNumber int) {
+func (prettier *Prettier) finishCallback(dataset int) {
 	// Sending results
-	prettier.sendResults(datasetNumber)
+	prettier.sendResults(dataset)
 
 	// Clearing Calculator for next dataset.
 	prettier.builder.Clear()
 
     // There's no need for an instance definition in the End-Message because there's only one Prettier
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, ""), prettier.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, ""), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {
 	// TODO
 }
 
-func (prettier *Prettier) sendResults(datasetNumber int) {
+func (prettier *Prettier) sendResults(dataset int) {
 	messageNumber := 1
 	prettierInstance := "0"
-	data := comms.SignMessage(datasetNumber, prettierInstance, messageNumber, prettier.builder.BuildData(datasetNumber))
+	data := comms.SignMessage(NODE_CODE, dataset, prettierInstance, messageNumber, prettier.builder.BuildData(dataset))
 	err := prettier.outputQueue.PublishData([]byte(data))
 
 	if err != nil {

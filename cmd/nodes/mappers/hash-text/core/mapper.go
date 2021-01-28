@@ -16,6 +16,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "M4"
+
 type MapperConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -68,13 +70,13 @@ func (mapper *Mapper) Run() {
 	)
 }
 
-func (mapper *Mapper) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	mappedData := mapper.mapData(bulk)
-	mapper.sendMappedData(datasetNumber, bulkNumber, mappedData)
+func (mapper *Mapper) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	mappedData := mapper.mapData(data)
+	mapper.sendMappedData(dataset, bulk, mappedData)
 }
 
-func (mapper *Mapper) finishCallback(datasetNumber int) {
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, mapper.instance), mapper.outputPartitions, mapper.outputDirect)
+func (mapper *Mapper) finishCallback(dataset int) {
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, mapper.instance), mapper.outputPartitions, mapper.outputDirect)
 }
 
 func (mapper *Mapper) closeCallback() {
@@ -108,23 +110,22 @@ func (mapper *Mapper) mapData(rawReviewsBulk string) []comms.HashedTextData {
 	return hashTextDataList
 }
 
-func (mapper *Mapper) sendMappedData(datasetNumber int, bulkNumber int, mappedBulk []comms.HashedTextData) {
+func (mapper *Mapper) sendMappedData(dataset int, bulk int, mappedData []comms.HashedTextData) {
 	dataListByPartition := make(map[string][]comms.HashedTextData)
 
-	for _, data := range mappedBulk {
+	for _, data := range mappedData {
 		partition := mapper.outputPartitions[string(data.UserId[0])]
 
-		if partition != "" {
-			hashedDataList := dataListByPartition[partition]
+		if partition == "" {
+			partition = proc.DefaultPartition
+			log.Errorf("Couldn't calculate partition for user '%s'. Setting default (%s).", data.UserId, partition)
+		}
 
-			if hashedDataList != nil {
-				dataListByPartition[partition] = append(hashedDataList, data)
-			} else {
-				dataListByPartition[partition] = append(make([]comms.HashedTextData, 0), data)
-			}
-
+		hashedDataList := dataListByPartition[partition]
+		if hashedDataList != nil {
+			dataListByPartition[partition] = append(hashedDataList, data)
 		} else {
-			log.Errorf("Couldn't calculate partition for user (%s).", data.UserId)
+			dataListByPartition[partition] = append(make([]comms.HashedTextData, 0), data)
 		}
 	}
 
@@ -134,13 +135,13 @@ func (mapper *Mapper) sendMappedData(datasetNumber int, bulkNumber int, mappedBu
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			outputData := comms.SignMessage(datasetNumber, mapper.instance, bulkNumber, string(bytes))
+			outputData := comms.SignMessage(NODE_CODE, dataset, mapper.instance, bulk, string(bytes))
 			err := mapper.outputDirect.PublishData([]byte(outputData), partition)
 
 			if err != nil {
-				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, mapper.outputDirect.Exchange, partition, err)
+				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, mapper.outputDirect.Exchange, partition, err)
 			} else {
-				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulkNumber, mapper.outputDirect.Exchange, partition), bulkNumber)
+				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulk, mapper.outputDirect.Exchange, partition), bulk)
 			}	
 		}
 	}

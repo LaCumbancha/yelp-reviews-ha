@@ -15,7 +15,7 @@ import (
 type Calculator struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[int]bool
+	received			map[string]bool
 	receivedMutex 		*sync.Mutex
 	dataset				int
 }
@@ -24,7 +24,7 @@ func NewCalculator() *Calculator {
 	calculator := &Calculator {
 		data:				make(map[string]int),
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[int]bool),
+		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
 		dataset:			comms.DefaultDataset,
 	}
@@ -38,14 +38,16 @@ func (calculator *Calculator) Clear() {
 	calculator.dataMutex.Unlock()
 
 	calculator.receivedMutex.Lock()
-	calculator.received = make(map[int]bool)
+	calculator.received = make(map[string]bool)
 	calculator.receivedMutex.Unlock()
+
+	calculator.dataset++
 
 	log.Infof("Calculator storage cleared.")
 }
 
-func (calculator *Calculator) status(datasetNumber int, bulkNumber int) string {
-	statusResponse := fmt.Sprintf("Status by bulk #%d.%d: ", datasetNumber, bulkNumber)
+func (calculator *Calculator) status(dataset int, bulk int) string {
+	statusResponse := fmt.Sprintf("Status by bulk #%d.%d: ", dataset, bulk)
 
 	calculator.dataMutex.Lock()
 	for weekday, reviews := range calculator.data {
@@ -56,10 +58,10 @@ func (calculator *Calculator) status(datasetNumber int, bulkNumber int) string {
 	return statusResponse[0:len(statusResponse)-3]
 }
 
-func (calculator *Calculator) Save(datasetNumber int, bulkNumber int, rawData string) {
+func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received,
@@ -68,12 +70,12 @@ func (calculator *Calculator) Save(datasetNumber int, bulkNumber int, rawData st
 		calculator.saveData,
 	)
 
-	logb.Instance().Infof(calculator.status(datasetNumber, bulkNumber), bulkNumber)
+	logb.Instance().Infof(calculator.status(dataset, bulk), bulk)
 }
 
-func (calculator *Calculator) saveData(rawWeekdayDataBulk string) {
+func (calculator *Calculator) saveData(rawData string) {
 	var weekdayDataList []comms.WeekdayData
-	json.Unmarshal([]byte(rawWeekdayDataBulk), &weekdayDataList)
+	json.Unmarshal([]byte(rawData), &weekdayDataList)
 
 	for _, weekdayData := range weekdayDataList {
 
@@ -89,9 +91,9 @@ func (calculator *Calculator) saveData(rawWeekdayDataBulk string) {
 	}
 }
 
-func (calculator *Calculator) AggregateData(datasetNumber int) []comms.WeekdayData {
-	if datasetNumber != calculator.dataset {
-		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, datasetNumber)
+func (calculator *Calculator) AggregateData(dataset int) []comms.WeekdayData {
+	if dataset != calculator.dataset {
+		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
 		return make([]comms.WeekdayData, 0)
 	}
 	

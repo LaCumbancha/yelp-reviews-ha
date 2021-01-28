@@ -13,7 +13,7 @@ import (
 type Builder struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[int]bool
+	received			map[string]bool
 	receivedMutex 		*sync.Mutex
 	dataset				int
 	reviews 			int
@@ -23,7 +23,7 @@ func NewBuilder(minReviews int) *Builder {
 	builder := &Builder {
 		data:				make(map[string]int),
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[int]bool),
+		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
 		dataset:			comms.DefaultDataset,
 		reviews:			minReviews,
@@ -38,17 +38,19 @@ func (builder *Builder) Clear() {
 	builder.dataMutex.Unlock()
 
 	builder.receivedMutex.Lock()
-	builder.received = make(map[int]bool)
+	builder.received = make(map[string]bool)
 	builder.receivedMutex.Unlock()
+
+	builder.dataset++
 
 	log.Infof("Builder storage cleared.")
 }
 
-func (builder *Builder) Save(datasetNumber int, bulkNumber int, rawDataBulk string) {
+func (builder *Builder) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
-		datasetNumber,
-		bulkNumber,
-		rawDataBulk,
+		dataset,
+		proc.MessageStorageId(inputNode, instance, bulk),
+		rawData,
 		&builder.dataset,
 		builder.received,
 		builder.receivedMutex,
@@ -57,9 +59,9 @@ func (builder *Builder) Save(datasetNumber int, bulkNumber int, rawDataBulk stri
 	)
 }
 
-func (builder *Builder) storeNewUsersData(rawDataBulk string) {
+func (builder *Builder) storeNewUsersData(rawData string) {
 	var userDataList []comms.UserData
-	json.Unmarshal([]byte(rawDataBulk), &userDataList)
+	json.Unmarshal([]byte(rawData), &userDataList)
 
 	for _, userData := range userDataList {
 		builder.dataMutex.Lock()
@@ -74,11 +76,11 @@ func (builder *Builder) storeNewUsersData(rawDataBulk string) {
 	}
 }
 
-func (builder *Builder) BuildData(datasetNumber int) string {
+func (builder *Builder) BuildData(dataset int) string {
 	response := fmt.Sprintf("Users with +%d reviews: ", builder.reviews)
 
-	if datasetNumber != builder.dataset {
-		log.Warnf("Building data for a dataset not stored (stored #%d but requested data from #%d).", builder.dataset, datasetNumber)
+	if dataset != builder.dataset {
+		log.Warnf("Building data for a dataset not stored (stored #%d but requested data from #%d).", builder.dataset, dataset)
 		return response + "Error generating data."
 	}
 

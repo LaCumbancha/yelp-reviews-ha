@@ -14,6 +14,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "A8"
+
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -70,47 +72,46 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
 }
 
-func (aggregator *Aggregator) finishCallback(datasetNumber int) {
+func (aggregator *Aggregator) finishCallback(dataset int) {
 	// Calculating aggregations
-	outputBulkNumber := 0
-	for _, aggregatedData := range aggregator.calculator.AggregateData(datasetNumber) {
-		outputBulkNumber++
-		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulkNumber), outputBulkNumber)
-		aggregator.sendAggregatedData(datasetNumber, outputBulkNumber, aggregatedData)
+	outputBulk := 0
+	for _, aggregatedData := range aggregator.calculator.AggregateData(dataset) {
+		outputBulk++
+		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulk), outputBulk)
+		aggregator.sendAggregatedData(dataset, outputBulk, aggregatedData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber int, aggregatedBulk []comms.UserData) {
+func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.UserData) {
 	dataListByPartition := make(map[string][]comms.UserData)
 
-	for _, data := range aggregatedBulk {
+	for _, data := range aggregatedData {
 		partition := aggregator.outputPartitions[string(data.UserId[0])]
 
-		if partition != "" {
-			bestUsersDataListPartitioned := dataListByPartition[partition]
+		if partition == "" {
+			partition = proc.DefaultPartition
+			log.Errorf("Couldn't calculate partition for user '%s'. Setting default (%s).", data.UserId, partition)
+		}
 
-			if bestUsersDataListPartitioned != nil {
-				dataListByPartition[partition] = append(bestUsersDataListPartitioned, data)
-			} else {
-				dataListByPartition[partition] = append(make([]comms.UserData, 0), data)
-			}
-
+		bestUsersDataListPartitioned := dataListByPartition[partition]
+		if bestUsersDataListPartitioned != nil {
+			dataListByPartition[partition] = append(bestUsersDataListPartitioned, data)
 		} else {
-			log.Errorf("Couldn't calculate partition for user '%s'.", data.UserId)
+			dataListByPartition[partition] = append(make([]comms.UserData, 0), data)
 		}
 	}
 
@@ -120,13 +121,13 @@ func (aggregator *Aggregator) sendAggregatedData(datasetNumber int, bulkNumber i
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", funbizDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(datasetNumber, aggregator.instance, bulkNumber, string(bytes))
+			data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
 			err := aggregator.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {
-				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, aggregator.outputDirect.Exchange, partition, err)
+				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, aggregator.outputDirect.Exchange, partition, err)
 			} else {
-				logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to direct-exchange %s (partition %s).", bulkNumber, aggregator.outputDirect.Exchange, partition), bulkNumber)
+				logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to direct-exchange %s (partition %s).", bulk, aggregator.outputDirect.Exchange, partition), bulk)
 			}	
 		}
 	}

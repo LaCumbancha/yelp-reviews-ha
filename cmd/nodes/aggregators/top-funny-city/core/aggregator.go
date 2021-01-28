@@ -11,6 +11,8 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
+const NODE_CODE = "A3"
+
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -63,35 +65,35 @@ func (aggregator *Aggregator) Run() {
 	)
 }
 
-func (aggregator *Aggregator) mainCallback(datasetNumber int, bulkNumber int, bulk string) {
-	aggregator.calculator.Save(datasetNumber, bulkNumber, bulk)
+func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
+	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
 }
 
-func (aggregator *Aggregator) finishCallback(datasetNumber int) {
+func (aggregator *Aggregator) finishCallback(dataset int) {
 	// Calculating aggregations
 	cityCounter := 0
-	for _, cityData := range aggregator.calculator.AggregateData(datasetNumber) {
+	for _, cityData := range aggregator.calculator.AggregateData(dataset) {
 		cityCounter++
-		aggregator.sendTopTenData(datasetNumber, cityCounter, cityData)
+		aggregator.sendTopTenData(dataset, cityCounter, cityData)
 	}
 
 	// Clearing Calculator for next dataset.
 	aggregator.calculator.Clear()
 
 	// Sending End-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(datasetNumber, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// TODO
 }
 
-func (aggregator *Aggregator) sendTopTenData(datasetNumber int, cityNumber int, topTenCity comms.FunnyCityData) {
+func (aggregator *Aggregator) sendTopTenData(dataset int, cityNumber int, topTenCity comms.FunnyCityData) {
 	bytes, err := json.Marshal(topTenCity)
 	if err != nil {
 		log.Errorf("Error generating Json from funniest city #%d data. Err: '%s'", cityNumber, err)
 	} else {
-		data := comms.SignMessage(datasetNumber, aggregator.instance, cityNumber, string(bytes))
+		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, cityNumber, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

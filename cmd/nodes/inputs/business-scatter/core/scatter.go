@@ -65,6 +65,9 @@ func (scatter *Scatter) Run() {
     }
     defer file.Close()
 
+    // Sending Start-Message to consumers.
+    rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, 1, "0"), scatter.outputQueue)
+
     bulkNumber := 0
     chunkNumber := 0
     scanner := bufio.NewScanner(file)
@@ -94,14 +97,15 @@ func (scatter *Scatter) Run() {
     	scatter.sendData(bulkNumber, bulk[:len(bulk)-1])
     }
 
-    // Publishing end messages.
-    rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, 1, ""), scatter.outputQueue)
+    // Sending Finish-Message and Close-Message to consumers.
+    rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, 1, "0"), scatter.outputQueue)
+    rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, "0"), scatter.outputQueue)
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())
 }
 
 func (scatter *Scatter) sendData(bulkNumber int, bulk string) {
-	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(NODE_CODE, 1, "", bulkNumber, bulk)))
+	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(NODE_CODE, 1, "0", bulkNumber, bulk)))
 
 	if err != nil {
 		log.Errorf("Error sending businesses bulk #%d to output queue %s. Err: '%s'", bulkNumber, scatter.outputQueue.Name, err)

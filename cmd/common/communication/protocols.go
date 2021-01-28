@@ -1,10 +1,8 @@
 package communication
 
-// Datasets information
-const DefaultDataset = 1
-
 // Protocol special messages.
 const endMessage = "FINISH-MESSAGE"
+const startMessage = "START-MESSAGE"
 const closeMessage = "CLOSE-MESSAGE"
 
 // Retries finish attemps.
@@ -15,6 +13,11 @@ func EndSignals(outputs int) int {
 	return retries * outputs
 }
 
+// Defining custom Start-Message
+func StartMessageSigned(nodeCode string, dataset int, instance string) []byte {
+	return []byte(SignMessage(nodeCode, dataset, instance, 0, startMessage))
+}
+
 // Defining custom End-Message
 func FinishMessageSigned(nodeCode string, dataset int, instance string) []byte {
 	return []byte(SignMessage(nodeCode, dataset, instance, 0, endMessage))
@@ -23,6 +26,11 @@ func FinishMessageSigned(nodeCode string, dataset int, instance string) []byte {
 // Defining custom Close-Message
 func CloseMessageSigned(nodeCode string, instance string) []byte {
 	return []byte(SignMessage(nodeCode, 0, instance, 0, closeMessage))
+}
+
+// Detect all start messages.
+func IsStartMessage(message string) bool {
+	return message == startMessage
 }
 
 // Detect all end messages.
@@ -45,8 +53,8 @@ func signalsControl(signaledInstance string, storedSignals map[string]int, expec
 	return newSignal, allSignals
 }
 
-// Detect if all end signals were received
-func FinishControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool) {
+// Detect if all signals from multiple datasets were received
+func MultiDatasetControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool) {
 	if _, found := receivedSignals[dataset]; !found {
 		receivedSignals[dataset] = make(map[string]int)
 	}
@@ -55,6 +63,6 @@ func FinishControl(dataset int, instance string, receivedSignals map[int]map[str
 }
 
 // Detect if all close signals were received
-func CloseControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+func SingleControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
 	return signalsControl(instance, receivedSignals, expectedSignals)
 }

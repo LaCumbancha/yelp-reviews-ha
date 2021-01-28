@@ -77,6 +77,7 @@ func (joiner *Joiner) Run() {
 		joiner.inputDirect2.ConsumeData(),
 		joiner.mainCallback1,
 		joiner.mainCallback2,
+		joiner.startCallback,
 		joiner.finishCallback,
 		joiner.closeCallback,
 	)
@@ -88,6 +89,14 @@ func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance stri
 
 func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
 	joiner.calculator.AddUser(inputNode, dataset, instance, bulk, data)
+}
+
+func (joiner *Joiner) startCallback(dataset int) {
+	// Clearing Calculator for next dataset.
+	joiner.calculator.Clear(dataset)
+
+	// Sending Start-Message to consumers.
+	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputQueue)
 }
 
 func (joiner *Joiner) finishCallback(dataset int) {
@@ -104,15 +113,13 @@ func (joiner *Joiner) finishCallback(dataset int) {
     	joiner.sendJoinedData(dataset, messageNumber, joinedData)
 	}
 
-	// Clearing Calculator for next dataset.
-	joiner.calculator.Clear()
-
-	// Sending End-Message to consumers.
+	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputQueue)
 }
 
 func (joiner *Joiner) closeCallback() {
-	// TODO
+	// Sending Close-Message to consumers.
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, joiner.instance), joiner.outputQueue)
 }
 
 func (joiner *Joiner) sendJoinedData(dataset int, messageNumber int, joinedData comms.UserData) {

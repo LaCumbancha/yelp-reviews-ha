@@ -11,25 +11,30 @@ func Transformation(
 	endSignals int,
 	inputs <- chan amqp.Delivery,
 	mainCallback func(string, int, string, int, string),
+	startCallback func(int),
 	finishCallback func(int),
 	closeCallback func(),
 ) {
 	mainChannel := make(chan amqp.Delivery)
-	endingChannel := make(chan int)
+	startingChannel := make(chan amqp.Delivery)
+	finishingChannel := make(chan amqp.Delivery)
+	closingChannel := make(chan *FlowMessage)
 
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
+	var procWgs = make(map[int]*sync.WaitGroup)
+	var procWgsMutex = &sync.Mutex{}
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	var procWg sync.WaitGroup
-	procWg.Add(1)
+	neededInputs := 1
+	savedInputs := 0
+	go InitializeMainWorkers(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
+	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
+	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
+	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex)
+	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &connWg)
 
-	go InitializeProcessingWorkers(workersPool, mainChannel, mainCallback, &procWg)
-	go ProcessInputs(DefaultFlow, inputs, mainChannel, endingChannel, endSignals, &procWg, &connWg)
-	go ProcessSingleFinish(endingChannel, finishCallback, &procWg, closingConn, connMutex)
-	CloseConnection(closeCallback, &procWg, &connWg, closingConn, connMutex)
+	// Waiting for close procedure.
+	connWg.Wait()
 }
 
 // Common processing for Joiners.
@@ -45,29 +50,29 @@ func Join(
 	inputs2 <- chan amqp.Delivery,
 	mainCallback1 func(string, int, string, int, string),
 	mainCallback2 func(string, int, string, int, string),
+	startCallback func(int),
 	finishCallback func(int),
 	closeCallback func(),
 ) {
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	var procWg sync.WaitGroup
-	procWg.Add(2)
-
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
 	mainChannel1 := make(chan amqp.Delivery)
 	mainChannel2 := make(chan amqp.Delivery)
-	endingChannel := make(chan int)
+	startingChannel := make(chan amqp.Delivery)
+	finishingChannel := make(chan amqp.Delivery)
+	closingChannel := make(chan *FlowMessage)
 	
-	go InitializeProcessingWorkers(int(workersPool/2), mainChannel1, mainCallback1, &procWg)
-	go ProcessInputs(flow1, inputs1, mainChannel1, endingChannel, endSignals1, &procWg, &connWg)	
+	var procWgs = make(map[int]*sync.WaitGroup)
+	var procWgsMutex = &sync.Mutex{}
+	var connWg sync.WaitGroup
+	connWg.Add(1)
+	
+	go InitializeMainWorkers(int(workersPool/2), mainChannel1, mainCallback1, procWgs, procWgsMutex)
+	go InitializeMainWorkers(int(workersPool/2), mainChannel2, mainCallback2, procWgs, procWgsMutex)
+	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
+	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
+	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
+	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex)
+	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &connWg)
 
-	go InitializeProcessingWorkers(int(workersPool/2), mainChannel2, mainCallback2, &procWg)
-	go ProcessInputs(flow2, inputs2, mainChannel2, endingChannel, endSignals2, &procWg, &connWg)
-
-	// Retrieving joined data and closing connection.
-	go ProcessMultipleFinish(neededInputs, savedInputs, endingChannel, finishCallback, &procWg, closingConn, connMutex)
-	CloseConnection(closeCallback, &procWg, &connWg, closingConn, connMutex)
+	// Waiting for close procedure.
+	connWg.Wait()
 }

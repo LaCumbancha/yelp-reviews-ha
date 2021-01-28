@@ -61,6 +61,7 @@ func (mapper *Mapper) Run() {
 		mapper.endSignals,
 		mapper.inputDirect.ConsumeData(),
 		mapper.mainCallback,
+		mapper.startCallback,
 		mapper.finishCallback,
 		mapper.closeCallback,
 	)
@@ -71,12 +72,19 @@ func (mapper *Mapper) mainCallback(inputNode string, dataset int, instance strin
 	mapper.sendMappedData(dataset, bulk, mappedData)
 }
 
+func (mapper *Mapper) startCallback(dataset int) {
+	// Sending Start-Message to consumers.
+	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, mapper.instance), mapper.outputQueue)
+}
+
 func (mapper *Mapper) finishCallback(dataset int) {
+	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) closeCallback() {
-	// TODO
+	// Sending Close-Message to consumers.
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) mapData(rawReviewsBulk string) []comms.StarsData {

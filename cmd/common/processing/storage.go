@@ -13,19 +13,19 @@ func MessageStorageId(nodeCode string, instance string, bulk int) string {
 
 // Common save process for Aggregators, Joiners and Prettiers.
 func ValidateDataSaving(
-	datasetNumber int,
+	dataset int,
 	messageId string,
 	rawData string,
 	savedDataset *int,
 	messagesReceived map[string]bool,
 	messagesReceivedMutex *sync.Mutex,
-	clearCallback func(),
+	clearCallback func(int),
 	saveCallback func(string),
 ) {
-	if datasetNumber != *savedDataset {
-		log.Infof("Clearing storage due to new dataset received (old: #%d; new: #%d).", *savedDataset, datasetNumber)
-		clearCallback()
-		*savedDataset = datasetNumber
+	if dataset != *savedDataset {
+		log.Infof("Clearing storage due to new dataset received (old: #%d; new: #%d).", *savedDataset, dataset)
+		clearCallback(dataset)
+		*savedDataset = dataset
 	}
 
 	messagesReceivedMutex.Lock()

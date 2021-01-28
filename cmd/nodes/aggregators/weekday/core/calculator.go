@@ -26,13 +26,13 @@ func NewCalculator() *Calculator {
 		dataMutex:			&sync.Mutex{},
 		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
-		dataset:			comms.DefaultDataset,
+		dataset:			proc.DefaultDataset,
 	}
 
 	return calculator
 }
 
-func (calculator *Calculator) Clear() {
+func (calculator *Calculator) Clear(newDataset int) {
 	calculator.dataMutex.Lock()
 	calculator.data = make(map[string]int)
 	calculator.dataMutex.Unlock()
@@ -41,7 +41,7 @@ func (calculator *Calculator) Clear() {
 	calculator.received = make(map[string]bool)
 	calculator.receivedMutex.Unlock()
 
-	calculator.dataset++
+	calculator.dataset = newDataset
 
 	log.Infof("Calculator storage cleared.")
 }

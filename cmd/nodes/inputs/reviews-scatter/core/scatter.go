@@ -81,6 +81,7 @@ func (scatter *Scatter) Run() {
                 
                 break
             } else if option == "X" {
+                fmt.Println()
                 scatter.closeConnection()
                 exitFlag = true
                 break
@@ -100,33 +101,35 @@ func (scatter *Scatter) printMenu() {
     fmt.Println("[X] CLOSE")
 }
 
-func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
+func (scatter *Scatter) processFile(filePath string, dataset int) {
     start := time.Now()
     fmt.Println()
 
-    log.Infof("Starting to load reviews from dataset %s (#%d).", filePath, datasetNumber)
+    log.Infof("Starting to load reviews from dataset #%d.", dataset)
     file, err := os.Open(filePath)
     if err != nil {
         log.Fatalf("Error opening file %s. Err: '%s'", filePath, err)
     }
     defer file.Close()
 
-    bulkNumber := 0
-    chunkNumber := 0
+    scatter.startDataset(dataset)
+
+    bulk := 0
+    chunk := 0
     scanner := bufio.NewScanner(file)
     buffer := bytes.NewBufferString("")
     for scanner.Scan() {
         buffer.WriteString(scanner.Text())
         buffer.WriteString("\n")
 
-        chunkNumber++
-        if chunkNumber == scatter.bulkSize {
-            bulkNumber++
-            bulk := buffer.String()
-            scatter.sendBulk(datasetNumber, bulkNumber, bulk[:len(bulk)-1])
+        chunk++
+        if chunk == scatter.bulkSize {
+            bulk++
+            bulkData := buffer.String()
+            scatter.sendBulk(dataset, bulk, bulkData[:len(bulkData)-1])
 
             buffer = bytes.NewBufferString("")
-            chunkNumber = 0
+            chunk = 0
         }
     }
 
@@ -134,51 +137,64 @@ func (scatter *Scatter) processFile(filePath string, datasetNumber int) {
         log.Fatalf("Error reading reviews data from file %s. Err: '%s'", scatter.data, err)
     }
 
-    bulkNumber++
-    bulk := buffer.String()
-    if bulk != "" {
-        scatter.sendBulk(datasetNumber, bulkNumber, bulk[:len(bulk)-1])
+    bulk++
+    bulkData := buffer.String()
+    if bulkData != "" {
+        scatter.sendBulk(dataset, bulk, bulkData[:len(bulkData)-1])
     }
 
-    // Publishing end messages.
-    finishErr := false
-    for _, partition := range PartitionableValues {
-        for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(comms.FinishMessageSigned(NODE_CODE, datasetNumber, scatter.instance), partition)
-
-            if err != nil {
-                finishErr = true
-                log.Errorf("Error sending End-Message to direct-exchange %s (partition %s). Err: '%s'", scatter.outputDirect.Exchange, partition, err)
-            }
-        }
-    }
-
-    if !finishErr {
-        log.Infof("End-Message sent to direct-exchange %s (all partitions).", scatter.outputDirect.Exchange)
-    }
+    scatter.finishDataset(dataset)
 
     log.Infof("Total time: %s.", time.Now().Sub(start).String())
 }
 
-func (scatter *Scatter) sendBulk(datasetNumber int, bulkNumber int, bulk string) {
+func (scatter *Scatter) sendBulk(dataset int, bulk int, bulkData string) {
     errors := false
     for _, partition := range PartitionableValues {
-        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(NODE_CODE, datasetNumber, scatter.instance, bulkNumber, bulk)), partition)
+        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(NODE_CODE, dataset, scatter.instance, bulk, bulkData)), partition)
 
         if err != nil {
             errors = true
-            log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulkNumber, scatter.outputDirect.Exchange, partition, err)
+            log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, scatter.outputDirect.Exchange, partition, err)
         }
     }
 
     if !errors {
-        logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (all partitions).", bulkNumber, scatter.outputDirect.Exchange), bulkNumber)
+        logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (all partitions).", bulk, scatter.outputDirect.Exchange), bulk)
     }
 }
 
+func (scatter *Scatter) startDataset(dataset int) {
+    // Sending Start-Message to consumers.
+    scatter.sendSpecialMessage("Start-Message", comms.StartMessageSigned(NODE_CODE, dataset, scatter.instance))
+}
+
+func (scatter *Scatter) finishDataset(dataset int) {
+    // Sending Finish-Message to consumers.
+    scatter.sendSpecialMessage("Finish-Message", comms.FinishMessageSigned(NODE_CODE, dataset, scatter.instance))
+}
+
 func (scatter *Scatter) closeConnection() {
-    fmt.Println()
-    // TODO
+    // Sending Close-Message to consumers.
+    scatter.sendSpecialMessage("Close-Message", comms.CloseMessageSigned(NODE_CODE, scatter.instance))
+}
+
+func (scatter *Scatter) sendSpecialMessage(messageType string, message []byte) {
+    errors := false
+    for _, partition := range PartitionableValues {
+        for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
+            err := scatter.outputDirect.PublishData(message, partition)
+
+            if err != nil {
+                errors = true
+                log.Errorf("Error sending %s to direct-exchange %s (partition %s). Err: '%s'", messageType, scatter.outputDirect.Exchange, partition, err)
+            }
+        }
+    }
+
+    if !errors {
+        log.Infof("%s sent to direct-exchange %s (all partitions).", messageType, scatter.outputDirect.Exchange)
+    }
 }
 
 func (scatter *Scatter) Stop() {

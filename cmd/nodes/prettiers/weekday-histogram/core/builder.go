@@ -24,13 +24,13 @@ func NewBuilder() *Builder {
 		dataMutex:			&sync.Mutex{},
 		received:			make(map[string]bool),
 		receivedMutex:		&sync.Mutex{},
-		dataset:			comms.DefaultDataset,
+		dataset:			proc.DefaultDataset,
 	}
 
 	return builder
 }
 
-func (builder *Builder) Clear() {
+func (builder *Builder) Clear(newDataset int) {
 	builder.dataMutex.Lock()
 	builder.data = make(map[string]int)
 	builder.dataMutex.Unlock()
@@ -39,7 +39,7 @@ func (builder *Builder) Clear() {
 	builder.received = make(map[string]bool)
 	builder.receivedMutex.Unlock()
 
-	builder.dataset++
+	builder.dataset = newDataset
 
 	log.Infof("Builder storage cleared.")
 }

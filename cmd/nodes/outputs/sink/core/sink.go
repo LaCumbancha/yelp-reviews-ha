@@ -56,32 +56,36 @@ func NewSink(config SinkConfig) *Sink {
 func (sink *Sink) Run() {
 	log.Infof("Starting to listen for results.")
 	mainChannel := make(chan amqp.Delivery)
-	endingChannel := make(chan int)
+	startingChannel := make(chan amqp.Delivery)
+	finishingChannel := make(chan amqp.Delivery)
+	closingChannel := make(chan *proc.FlowMessage)
 
-	closingConn := false
-	connMutex := &sync.Mutex{}
-
+	var procWgs = make(map[int]*sync.WaitGroup)
+	var procWgsMutex = &sync.Mutex{}
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	var procWg sync.WaitGroup
-	procWg.Add(5)
-
-	go proc.InitializeProcessingWorkers(1, mainChannel, sink.mainCallback, &procWg)
-	go proc.ProcessInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
-	go proc.ProcessInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
-	go proc.ProcessInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
-	go proc.ProcessInputs(FUNCIT, sink.funniestCitiesQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
-	go proc.ProcessInputs(WEEKDAY, sink.weekdayHistogramQueue.ConsumeData(), mainChannel, endingChannel, 1, &procWg, &connWg)
+	go proc.InitializeMainWorkers(1, mainChannel, sink.mainCallback, procWgs, procWgsMutex)
+	go proc.ReceiveInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
+	go proc.ReceiveInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
+	go proc.ReceiveInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
+	go proc.ReceiveInputs(FUNCIT, sink.funniestCitiesQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
+	go proc.ReceiveInputs(WEEKDAY, sink.weekdayHistogramQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 
 	neededInputs := 5
 	savedInputs := 0
-	go proc.ProcessMultipleFinish(neededInputs, savedInputs, endingChannel, sink.finishCallback, &procWg, closingConn, connMutex)
-	proc.CloseConnection(sink.closeCallback, &procWg, &connWg, closingConn, connMutex)
+	go proc.ProcessStart(neededInputs, savedInputs, startingChannel, sink.startCallback)
+	go proc.ProcessFinish(neededInputs, savedInputs, finishingChannel, sink.finishCallback, procWgs, procWgsMutex)
+	go proc.ProcessClose(neededInputs, closingChannel, sink.closeCallback, procWgs, procWgsMutex, &connWg)
+	connWg.Wait()
 }
 
 func (sink *Sink) mainCallback(nodeCode string, dataset int, instance string, bulk int, message string) {
 	log.Infof(message)
+}
+
+func (sink *Sink) startCallback(dataset int) {
+	log.Infof("Dataset #%d analysis started.", dataset)
 }
 
 func (sink *Sink) finishCallback(dataset int) {
@@ -89,7 +93,7 @@ func (sink *Sink) finishCallback(dataset int) {
 }
 
 func (sink *Sink) closeCallback() {
-	log.Infof("Closing process.")
+	log.Infof("Closing analysis process.")
 }
 
 func (sink *Sink) Stop() {

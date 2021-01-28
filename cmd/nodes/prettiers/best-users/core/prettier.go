@@ -56,6 +56,7 @@ func (prettier *Prettier) Run() {
 		prettier.endSignals,
 		prettier.inputQueue.ConsumeData(),
 		prettier.mainCallback,
+		prettier.startCallback,
 		prettier.finishCallback,
 		prettier.closeCallback,
 	)
@@ -65,19 +66,25 @@ func (prettier *Prettier) mainCallback(inputNode string, dataset int, instance s
 	prettier.builder.Save(inputNode, dataset, instance, bulk, data)
 }
 
+func (prettier *Prettier) startCallback(dataset int) {
+	// Clearing Calculator for next dataset.
+	prettier.builder.Clear(dataset)
+	
+	// Sending Start-Message to consumers.
+	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
+}
+
 func (prettier *Prettier) finishCallback(dataset int) {
 	// Sending results
 	prettier.sendResults(dataset)
-
-	// Clearing Calculator for next dataset.
-	prettier.builder.Clear()
 	
-	// There's no need for an instance definition in the End-Message because there's only one Prettier
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, ""), prettier.outputQueue)
+	// Sending Finish-Message to consumers.
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {
-	// TODO
+	// Sending Close-Message to consumers.
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) sendResults(dataset int) {

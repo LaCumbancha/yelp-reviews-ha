@@ -69,6 +69,7 @@ func (filter *Filter) Run() {
 		filter.endSignals,
 		filter.inputQueue.ConsumeData(),
 		filter.mainCallback,
+		filter.startCallback,
 		filter.finishCallback,
 		filter.closeCallback,
 	)
@@ -79,13 +80,22 @@ func (filter *Filter) mainCallback(inputNode string, dataset int, instance strin
 	filter.sendFilteredData(dataset, bulk, filteredData)
 }
 
+func (filter *Filter) startCallback(dataset int) {
+	// Sending Start-Message to consumers.
+	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
+}
+
 func (filter *Filter) finishCallback(dataset int) {
+	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputQueue)
 	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
-	// TODO
+	// Sending Close-Message to consumers.
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) filterData(rawUserDataBulk string) []comms.UserData {

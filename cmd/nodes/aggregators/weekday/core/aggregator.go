@@ -61,6 +61,7 @@ func (aggregator *Aggregator) Run() {
 		aggregator.endSignals,
 		aggregator.inputDirect.ConsumeData(),
 		aggregator.mainCallback,
+		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,
 	)
@@ -68,6 +69,14 @@ func (aggregator *Aggregator) Run() {
 
 func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
 	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
+}
+
+func (aggregator *Aggregator) startCallback(dataset int) {
+	// Clearing Calculator for next dataset.
+	aggregator.calculator.Clear(dataset)
+
+	// Sending Start-Message to consumers.
+	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
@@ -78,15 +87,13 @@ func (aggregator *Aggregator) finishCallback(dataset int) {
 		weekdayNumber++
 	}
 
-	// Clearing Calculator for next dataset.
-	aggregator.calculator.Clear()
-
-	// Sending End-Message to consumers.
+	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
-	// TODO
+	// Sending Close-Message to consumers.
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) sendAggregatedData(dataset int, weekdayNumber int, aggregatedWeekday comms.WeekdayData) {

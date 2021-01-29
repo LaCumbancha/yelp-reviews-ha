@@ -117,13 +117,19 @@ func ReceiveInputs(
 
 		} else {
 			log.Debugf("Message from dataset %d received. ProcWgs: %v.", dataset, procWgs)
+			log.Tracef("Message: '%s'.", string(message.Body))
 			utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Add(1)
 			mainChannel <- message
 		}
 	}
 }
 
-func ProcessStart(neededInputs int, savedInputs int, startingChannel chan amqp.Delivery, callback func(int)) {
+func ProcessStart(
+	neededInputs int,
+	savedInputs int,
+	startingChannel chan amqp.Delivery,
+	callback func(int),
+) {
 	startingSignals := make(map[int]int)
 
 	// Send finish message each time a dataset is completed.
@@ -146,7 +152,15 @@ func ProcessStart(neededInputs int, savedInputs int, startingChannel chan amqp.D
 	}
 }
 
-func ProcessFinish(neededInputs int, savedInputs int, finishingChannel chan amqp.Delivery, callback func(int), procWgs map[int]*sync.WaitGroup, procWgsMutex *sync.Mutex) {
+func ProcessFinish(
+	neededInputs int,
+	savedInputs int,
+	finishingChannel chan amqp.Delivery,
+	callback func(int),
+	procWgs map[int]*sync.WaitGroup,
+	procWgsMutex *sync.Mutex,
+	finishWg *sync.WaitGroup,
+) {
 	finishSignals := make(map[int]int)
 
 	// Send finish message each time a dataset is completed.
@@ -162,16 +176,26 @@ func ProcessFinish(neededInputs int, savedInputs int, finishingChannel chan amqp
 		}
 
 		if finishSignals[datasetFinished] == neededInputs {
+			finishWg.Add(1)
 			utils.WaitGroupByDataset(datasetFinished, procWgs, procWgsMutex).Wait()
 			utils.DeleteWaitGroupByDataset(datasetFinished, procWgs, procWgsMutex)
 			callback(datasetFinished)
+			finishWg.Done()
 		}
 
 		rabbit.AckMessage(finishMessage)
 	}
 }
 
-func ProcessClose(neededInputs int, closingChannel chan *FlowMessage, callback func(), procWgs map[int]*sync.WaitGroup, procWgsMutex *sync.Mutex, connWg *sync.WaitGroup) {
+func ProcessClose(
+	neededInputs int,
+	closingChannel chan *FlowMessage,
+	callback func(),
+	procWgs map[int]*sync.WaitGroup,
+	procWgsMutex *sync.Mutex,
+	finishWg *sync.WaitGroup,
+	connWg *sync.WaitGroup,
+) {
 	closingSignals := make(map[string]int)
 
 	// Send finish message each time a dataset is completed.
@@ -186,6 +210,7 @@ func ProcessClose(neededInputs int, closingChannel chan *FlowMessage, callback f
 			for _, datasetWg := range utils.AllDatasetsWaitGroups(procWgs, procWgsMutex) { 
 				datasetWg.Wait()
 			}
+			finishWg.Wait()
 			callback()
 			connWg.Done()
 		}

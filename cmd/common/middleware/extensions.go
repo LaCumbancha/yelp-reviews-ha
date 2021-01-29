@@ -21,7 +21,7 @@ func sendOutputQueueMessage(messageType string, message []byte, outputQueue *Rab
 	}
 }
 
-func sendOutputDirectClose(messageType string, message []byte, outputPartitions map[string]string, outputDirect *RabbitOutputDirect) {
+func sendOutputDirectMessage(messageType string, message []byte, outputPartitions map[string]string, outputDirect *RabbitOutputDirect) {
 	for _, partition := range utils.GetMapDistinctValues(outputPartitions) {
     	err := outputDirect.PublishData(message, partition)
 
@@ -31,6 +31,22 @@ func sendOutputDirectClose(messageType string, message []byte, outputPartitions 
 			log.Infof("%s sent to direct-exchange %s (partition %s).", messageType, outputDirect.Exchange, partition)
 		}
     }
+}
+
+func sendOutputFanoutMessage(messageType string, message []byte, outputSignals int, outputFanout *RabbitOutputFanout) {
+	errors := false
+	for idx := 0 ; idx < outputSignals; idx++ {
+		err := outputFanout.PublishData(message)
+
+		if err != nil {
+			errors = true
+			log.Errorf("Error sending %s to fanout-exchange %s. Err: '%s'", messageType, outputFanout.Exchange, err)
+		}
+	}
+
+	if !errors {
+		log.Infof("%s sent to fanout-exchange %s.", messageType, outputFanout.Exchange)
+	}
 }
 
 func OutputQueueStart(message []byte, outputQueue *RabbitOutputQueue) {
@@ -46,13 +62,25 @@ func OutputQueueClose(message []byte, outputQueue *RabbitOutputQueue) {
 }
 
 func OutputDirectStart(message []byte, outputPartitions map[string]string, outputDirect *RabbitOutputDirect) {
-	sendOutputDirectClose("Start-Message", message, outputPartitions, outputDirect)
+	sendOutputDirectMessage("Start-Message", message, outputPartitions, outputDirect)
 }
 
 func OutputDirectFinish(message []byte, outputPartitions map[string]string, outputDirect *RabbitOutputDirect) {
-	sendOutputDirectClose("Finish-Message", message, outputPartitions, outputDirect)
+	sendOutputDirectMessage("Finish-Message", message, outputPartitions, outputDirect)
 }
 
 func OutputDirectClose(message []byte, outputPartitions map[string]string, outputDirect *RabbitOutputDirect) {
-	sendOutputDirectClose("Close-Message", message, outputPartitions, outputDirect)
+	sendOutputDirectMessage("Close-Message", message, outputPartitions, outputDirect)
+}
+
+func OutputFanoutStart(message []byte, outputSignals int, outputFanout *RabbitOutputFanout) {
+	sendOutputFanoutMessage("Start-Message", message, outputSignals, outputFanout)
+}
+
+func OutputFanoutFinish(message []byte, outputSignals int, outputFanout *RabbitOutputFanout) {
+	sendOutputFanoutMessage("Finish-Message", message, outputSignals, outputFanout)
+}
+
+func OutputFanoutClose(message []byte, outputSignals int, outputFanout *RabbitOutputFanout) {
+	sendOutputFanoutMessage("Close-Message", message, outputSignals, outputFanout)
 }

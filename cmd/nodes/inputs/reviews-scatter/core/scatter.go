@@ -36,22 +36,22 @@ type Scatter struct {
     connection          *amqp.Connection
     channel             *amqp.Channel
     bulkSize            int
-    outputDirect        *rabbit.RabbitOutputDirect
-    outputSignals       map[string]int
+    outputFanout        *rabbit.RabbitOutputFanout
+    outputSignals       int
 }
 
 func NewScatter(config ScatterConfig) *Scatter {
     connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-    outputDirect := rabbit.NewRabbitOutputDirect(channel, props.ReviewsScatterOutput)
+    outputFanout := rabbit.NewRabbitOutputFanout(channel, props.ReviewsScatterOutput)
     
     scatter := &Scatter {
         instance:           config.Instance,
         connection:         connection,
         channel:            channel,
         bulkSize:           config.BulkSize,
-        outputDirect:       outputDirect,
-        outputSignals:      GenerateSignalsMap(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
+        outputFanout:       outputFanout,
+        outputSignals:      GenerateOutputSignals(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
     }
 
     return scatter
@@ -149,52 +149,28 @@ func (scatter *Scatter) processFile(filePath string, dataset int) {
 }
 
 func (scatter *Scatter) sendBulk(dataset int, bulk int, bulkData string) {
-    errors := false
-    for _, partition := range PartitionableValues {
-        err := scatter.outputDirect.PublishData([]byte(comms.SignMessage(NODE_CODE, dataset, scatter.instance, bulk, bulkData)), partition)
+    err := scatter.outputFanout.PublishData([]byte(comms.SignMessage(NODE_CODE, dataset, scatter.instance, bulk, bulkData)))
 
-        if err != nil {
-            errors = true
-            log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, scatter.outputDirect.Exchange, partition, err)
-        }
-    }
-
-    if !errors {
-        logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (all partitions).", bulk, scatter.outputDirect.Exchange), bulk)
+    if err != nil {
+        log.Errorf("Error sending bulk #%d to fanout-exchange %s. Err: '%s'", bulk, scatter.outputFanout.Exchange, err)
+    } else {
+        logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to fanout-exchange %s.", bulk, scatter.outputFanout.Exchange), bulk)
     }
 }
 
 func (scatter *Scatter) startDataset(dataset int) {
     // Sending Start-Message to consumers.
-    scatter.sendSpecialMessage("Start-Message", comms.StartMessageSigned(NODE_CODE, dataset, scatter.instance))
+    rabbit.OutputFanoutStart(comms.StartMessageSigned(NODE_CODE, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) finishDataset(dataset int) {
     // Sending Finish-Message to consumers.
-    scatter.sendSpecialMessage("Finish-Message", comms.FinishMessageSigned(NODE_CODE, dataset, scatter.instance))
+    rabbit.OutputFanoutFinish(comms.FinishMessageSigned(NODE_CODE, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) closeConnection() {
     // Sending Close-Message to consumers.
-    scatter.sendSpecialMessage("Close-Message", comms.CloseMessageSigned(NODE_CODE, scatter.instance))
-}
-
-func (scatter *Scatter) sendSpecialMessage(messageType string, message []byte) {
-    errors := false
-    for _, partition := range PartitionableValues {
-        for idx := 0 ; idx < scatter.outputSignals[partition]; idx++ {
-            err := scatter.outputDirect.PublishData(message, partition)
-
-            if err != nil {
-                errors = true
-                log.Errorf("Error sending %s to direct-exchange %s (partition %s). Err: '%s'", messageType, scatter.outputDirect.Exchange, partition, err)
-            }
-        }
-    }
-
-    if !errors {
-        log.Infof("%s sent to direct-exchange %s (all partitions).", messageType, scatter.outputDirect.Exchange)
-    }
+    rabbit.OutputFanoutClose(comms.CloseMessageSigned(NODE_CODE, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) Stop() {

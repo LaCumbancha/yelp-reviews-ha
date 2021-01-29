@@ -25,7 +25,7 @@ func NewRabbitOutputQueue(channel *amqp.Channel, name string, endSignals int) *R
 func (queue *RabbitOutputQueue) initialize() {
 	_, err := queue.channel.QueueDeclare(
 		queue.Name, 						// Name
-		false,   							// Durable
+		true,   							// Durable
 		false,   							// Auto-Deleted
 		false,   							// Exclusive
 		false,   							// No-wait
@@ -46,6 +46,7 @@ func (queue *RabbitOutputQueue) PublishData(data []byte) error {
 		false,  							// Mandatory
 		false,  							// Immediate
 		amqp.Publishing{
+			DeliveryMode: 	amqp.Persistent,
 			ContentType: 	"text/plain",
 			Body:        	data,
 		},

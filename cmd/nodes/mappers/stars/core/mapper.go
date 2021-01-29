@@ -30,7 +30,7 @@ type Mapper struct {
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
-	inputDirect 		*rabbit.RabbitInputDirect
+	inputFanout 		*rabbit.RabbitInputFanout
 	outputQueue 		*rabbit.RabbitOutputQueue
 	endSignals 			int
 }
@@ -38,7 +38,7 @@ type Mapper struct {
 func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.ReviewsScatterOutput, props.StarsMapperTopic, props.StarsMapperInput)
+	inputFanout := rabbit.NewRabbitInputFanout(channel, props.ReviewsScatterOutput, props.StarsMapperInput)
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.StarsMapperOutput, comms.EndSignals(config.StarsFilters))
 
 	mapper := &Mapper {
@@ -46,7 +46,7 @@ func NewMapper(config MapperConfig) *Mapper {
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
-		inputDirect:		inputDirect,
+		inputFanout:		inputFanout,
 		outputQueue:		outputQueue,
 		endSignals:			config.ReviewsInputs,
 	}
@@ -59,7 +59,7 @@ func (mapper *Mapper) Run() {
 	proc.Transformation(
 		mapper.workersPool,
 		mapper.endSignals,
-		mapper.inputDirect.ConsumeData(),
+		mapper.inputFanout.ConsumeData(),
 		mapper.mainCallback,
 		mapper.startCallback,
 		mapper.finishCallback,

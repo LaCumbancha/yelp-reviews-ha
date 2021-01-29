@@ -4,14 +4,34 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
-func GenerateSignalsMap(funbizSigs int, weekdaysSigs int, hashesSigs int, usersSigs int, starsSigs int) map[string]int {
-	signalsMap := make(map[string]int)
+func GenerateOutputSignals(funbizSigs int, weekdaysSigs int, hashesSigs int, usersSigs int, starsSigs int) int {
+	maxSignals := 0
 
-	signalsMap[Funbiz] = comms.EndSignals(funbizSigs)
-	signalsMap[Weekdays] = comms.EndSignals(weekdaysSigs)
-	signalsMap[Hashes] = comms.EndSignals(hashesSigs)
-	signalsMap[Users] = comms.EndSignals(usersSigs)
-	signalsMap[Stars] = comms.EndSignals(starsSigs)
+	funbizSignals := comms.EndSignals(funbizSigs)
+	weekdaySignals := comms.EndSignals(weekdaysSigs)
+	hashesSignals := comms.EndSignals(hashesSigs)
+	usersSignals := comms.EndSignals(usersSigs)
+	starsSignals := comms.EndSignals(starsSigs)
 
-	return signalsMap
+	if funbizSignals > maxSignals {
+		maxSignals = funbizSignals
+	}
+
+	if weekdaySignals > maxSignals {
+		maxSignals = weekdaySignals
+	}
+
+	if hashesSignals > maxSignals {
+		maxSignals = hashesSignals
+	}
+
+	if usersSignals > maxSignals {
+		maxSignals = usersSignals
+	}
+
+	if starsSignals > maxSignals {
+		maxSignals = starsSignals
+	}
+
+	return maxSignals
 }

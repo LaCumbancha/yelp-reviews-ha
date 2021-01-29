@@ -23,7 +23,7 @@ func NewRabbitInputQueue(channel *amqp.Channel, name string) *RabbitInputQueue {
 func (queue *RabbitInputQueue) initialize() {
 	_, err := queue.channel.QueueDeclare(
 		queue.name, 	// Name
-		false,   		// Durable
+		true,   		// Durable
 		false,   		// Auto-Deleted
 		false,   		// Exclusive
 		false,   		// No-wait

@@ -32,7 +32,7 @@ type Mapper struct {
 	connection 			*amqp.Connection
 	channel 			*amqp.Channel
 	workersPool 		int
-	inputDirect 		*rabbit.RabbitInputDirect
+	inputFanout 		*rabbit.RabbitInputFanout
 	outputDirect 		*rabbit.RabbitOutputDirect
 	outputPartitions	map[string]string
 	endSignals 			int
@@ -41,7 +41,7 @@ type Mapper struct {
 func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.ReviewsScatterOutput, props.HashMapperTopic, props.HashMapperInput)
+	inputFanout := rabbit.NewRabbitInputFanout(channel, props.ReviewsScatterOutput, props.HashMapperInput)
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.HashMapperOutput)
 
 	mapper := &Mapper {
@@ -49,7 +49,7 @@ func NewMapper(config MapperConfig) *Mapper {
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
-		inputDirect:		inputDirect,
+		inputFanout:		inputFanout,
 		outputDirect:		outputDirect,
 		outputPartitions:	utils.GeneratePartitionMap(config.HashAggregators, PartitionableValues),
 		endSignals:			config.ReviewsInputs,
@@ -63,7 +63,7 @@ func (mapper *Mapper) Run() {
 	proc.Transformation(
 		mapper.workersPool,
 		mapper.endSignals,
-		mapper.inputDirect.ConsumeData(),
+		mapper.inputFanout.ConsumeData(),
 		mapper.mainCallback,
 		mapper.startCallback,
 		mapper.finishCallback,

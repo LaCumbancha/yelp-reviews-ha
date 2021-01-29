@@ -32,7 +32,7 @@ func (direct *RabbitOutputDirect) initialize() {
 	)
 
 	if err != nil {
-		log.Fatalf("Error creating direct-exchange %s. Err: '%s'", direct.Exchange, err)
+		log.Fatalf("Error creating Direct-Exchange %s. Err: '%s'", direct.Exchange, err)
 	} else {
 		log.Infof("Direct-Exchange %s created.", direct.Exchange)
 	}
@@ -45,6 +45,7 @@ func (direct *RabbitOutputDirect) PublishData(data []byte, partition string) err
 		false,  								// Mandatory
 		false,  								// Immediate
 		amqp.Publishing{
+			DeliveryMode: 	amqp.Persistent,
 		    ContentType: 	"text/plain",
 		    Body:        	data,
 		},

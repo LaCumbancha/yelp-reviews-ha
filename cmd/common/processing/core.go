@@ -22,6 +22,7 @@ func Transformation(
 
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
@@ -30,8 +31,8 @@ func Transformation(
 	go InitializeMainWorkers(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
 	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
 	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex)
-	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &connWg)
+	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
+	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
 
 	// Waiting for close procedure.
 	connWg.Wait()
@@ -62,6 +63,7 @@ func Join(
 	
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 	
@@ -70,8 +72,8 @@ func Join(
 	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
 	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
 	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex)
-	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &connWg)
+	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
+	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
 
 	// Waiting for close procedure.
 	connWg.Wait()

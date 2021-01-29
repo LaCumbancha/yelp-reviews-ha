@@ -62,6 +62,7 @@ func (sink *Sink) Run() {
 
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
@@ -75,8 +76,8 @@ func (sink *Sink) Run() {
 	neededInputs := 5
 	savedInputs := 0
 	go proc.ProcessStart(neededInputs, savedInputs, startingChannel, sink.startCallback)
-	go proc.ProcessFinish(neededInputs, savedInputs, finishingChannel, sink.finishCallback, procWgs, procWgsMutex)
-	go proc.ProcessClose(neededInputs, closingChannel, sink.closeCallback, procWgs, procWgsMutex, &connWg)
+	go proc.ProcessFinish(neededInputs, savedInputs, finishingChannel, sink.finishCallback, procWgs, procWgsMutex, &finishWg)
+	go proc.ProcessClose(neededInputs, closingChannel, sink.closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
 	connWg.Wait()
 }
 

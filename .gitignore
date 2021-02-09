@@ -16,3 +16,6 @@ data/
 
 # Dependency directories (remove the comment below to include it)
 vendor/
+
+# Special scripts
+scripts/open-all

@@ -22,36 +22,6 @@ type FlowMessage struct {
 	Message 	amqp.Delivery
 }
 
-func InitializeMainWorkers(
-	workersPool int, 
-	mainChannel chan amqp.Delivery, 
-	callback func(string, int, string, int, string), 
-	procWgs map[int]*sync.WaitGroup,
-	procWgsMutex *sync.Mutex,
-) {
-	log.Tracef("Initializing %d workers.", workersPool)
-	for worker := 1 ; worker <= workersPool ; worker++ {
-		log.Tracef("Initializing worker #%d.", worker)
-		
-		go func() {
-			for message := range mainChannel {
-				messageBody := string(message.Body)
-				inputNode, dataset, instance, bulk, data := comms.UnsignMessage(messageBody)
-
-				if data != "" {
-					logb.Instance().Infof(fmt.Sprintf("Message #%s.%s.%d.%d received.", inputNode, instance, dataset, bulk), bulk)
-					callback(inputNode, dataset, instance, bulk, data)
-					rabbit.AckMessage(message)
-    				utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Done()
-				} else {
-					log.Warnf("Unexpected message received: '%s'", messageBody)
-				}
-				
-			}
-		}()
-	}
-}
-
 func ReceiveInputs(
 	flow string, 
 	inputs <- chan amqp.Delivery, 
@@ -121,6 +91,36 @@ func ReceiveInputs(
 			utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Add(1)
 			mainChannel <- message
 		}
+	}
+}
+
+func ProcessData(
+	workersPool int, 
+	mainChannel chan amqp.Delivery, 
+	callback func(string, int, string, int, string), 
+	procWgs map[int]*sync.WaitGroup,
+	procWgsMutex *sync.Mutex,
+) {
+	log.Tracef("Initializing %d workers.", workersPool)
+	for worker := 1 ; worker <= workersPool ; worker++ {
+		log.Tracef("Initializing worker #%d.", worker)
+		
+		go func() {
+			for message := range mainChannel {
+				messageBody := string(message.Body)
+				inputNode, dataset, instance, bulk, data := comms.UnsignMessage(messageBody)
+
+				if data != "" {
+					logb.Instance().Infof(fmt.Sprintf("Message #%s.%s.%d.%d received.", inputNode, instance, dataset, bulk), bulk)
+					callback(inputNode, dataset, instance, bulk, data)
+					rabbit.AckMessage(message)
+    				utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Done()
+				} else {
+					log.Warnf("Unexpected message received: '%s'", messageBody)
+				}
+				
+			}
+		}()
 	}
 }
 

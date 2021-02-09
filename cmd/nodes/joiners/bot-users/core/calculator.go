@@ -64,7 +64,7 @@ func (calculator *Calculator) Clear(newDataset int) {
 func (calculator *Calculator) AddBotUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received1,
@@ -90,7 +90,7 @@ func (calculator *Calculator) saveBotUser(rawData string) {
 func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received1,

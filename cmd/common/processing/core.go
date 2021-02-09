@@ -28,8 +28,8 @@ func Transformation(
 
 	neededInputs := 1
 	savedInputs := 0
-	go InitializeMainWorkers(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
 	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
+	go ProcessData(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
 	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
 	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
 	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
@@ -67,10 +67,10 @@ func Join(
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 	
-	go InitializeMainWorkers(int(workersPool/2), mainChannel1, mainCallback1, procWgs, procWgsMutex)
-	go InitializeMainWorkers(int(workersPool/2), mainChannel2, mainCallback2, procWgs, procWgsMutex)
 	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
 	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
+	go ProcessData(int(workersPool/2), mainChannel1, mainCallback1, procWgs, procWgsMutex)
+	go ProcessData(int(workersPool/2), mainChannel2, mainCallback2, procWgs, procWgsMutex)
 	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
 	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
 	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)

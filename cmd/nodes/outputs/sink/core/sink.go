@@ -66,7 +66,7 @@ func (sink *Sink) Run() {
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	go proc.InitializeMainWorkers(1, mainChannel, sink.mainCallback, procWgs, procWgsMutex)
+	go proc.ProcessData(1, mainChannel, sink.mainCallback, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)

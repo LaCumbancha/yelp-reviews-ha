@@ -59,7 +59,7 @@ func (calculator *Calculator) Clear(newDataset int) {
 func (calculator *Calculator) AddFunnyBusiness(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received1,
@@ -85,7 +85,7 @@ func (calculator *Calculator) saveFunnyBusiness(rawData string) {
 func (calculator *Calculator) AddCityBusiness(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received2,

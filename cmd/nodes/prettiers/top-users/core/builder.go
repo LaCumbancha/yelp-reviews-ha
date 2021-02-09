@@ -49,7 +49,7 @@ func (builder *Builder) Clear(newDataset int) {
 func (builder *Builder) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&builder.dataset,
 		builder.received,

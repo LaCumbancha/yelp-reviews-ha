@@ -61,7 +61,7 @@ func (calculator *Calculator) status(dataset int, bulk int) string {
 func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageStorageId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.received,

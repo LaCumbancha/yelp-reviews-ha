@@ -11,6 +11,11 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data				map[string]int
+	received			map[string]bool
+}
+
 type Calculator struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
@@ -20,11 +25,29 @@ type Calculator struct {
 	bulkSize			int
 }
 
+func loadBackup() (map[string]int, map[string]bool) {
+	var backup backupData
+	data := make(map[string]int)
+	received := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data = backup.data
+		received = backup.received
+		log.Infof("Aggregator data restored from backup file. Cities loaded: %d (%d messages).", len(data), len(received))
+	}
+
+	return data, received
+}
+
 func NewCalculator(bulkSize int) *Calculator {
+	data, received := loadBackup()
+	
 	calculator := &Calculator {
-		data:				make(map[string]int),
+		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[string]bool),
+		received:			received,
 		receivedMutex:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
 		bulkSize:			bulkSize,
@@ -53,6 +76,7 @@ func (calculator *Calculator) Save(inputNode string, dataset int, instance strin
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
+		calculator.dataMutex,
 		calculator.received,
 		calculator.receivedMutex,
 		calculator.Clear,
@@ -62,21 +86,29 @@ func (calculator *Calculator) Save(inputNode string, dataset int, instance strin
 	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", dataset, bulk, len(calculator.data)), bulk)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (calculator *Calculator) saveData(rawData string) {
 	var funcitDataList []comms.FunnyCityData
 	json.Unmarshal([]byte(rawData), &funcitDataList)
 
+	// Storing data
 	for _, funcitData := range funcitDataList {
-
-		calculator.dataMutex.Lock()
 		if value, found := calculator.data[funcitData.City]; found {
 			newAmount := value + funcitData.Funny
 		    calculator.data[funcitData.City] = newAmount
 		} else {
 			calculator.data[funcitData.City] = funcitData.Funny
 		}
-		calculator.dataMutex.Unlock()
+	}
 
+	// Updating backup
+	backup := &backupData { data: calculator.data, received: calculator.received }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Aggregator backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
 	}
 }
 

@@ -11,6 +11,11 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data				[]comms.FunnyCityData
+	received			map[string]bool
+}
+
 type Builder struct {
 	data 				[]comms.FunnyCityData
 	dataMutex 			*sync.Mutex
@@ -20,11 +25,29 @@ type Builder struct {
 	topSize				int
 }
 
+func loadBackup() ([]comms.FunnyCityData, map[string]bool) {
+	var backup backupData
+	data := make([]comms.FunnyCityData, 0)
+	received := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data = backup.data
+		received = backup.received
+		log.Infof("Prettier data restored from backup file. Funny cities loaded: %d (%d messages).", len(data), len(received))
+	}
+
+	return data, received
+}
+
 func NewBuilder(topSize int) *Builder {
+	data, received := loadBackup()
+	
 	builder := &Builder {
-		data:				[]comms.FunnyCityData{},
+		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[string]bool),
+		received:			received,
 		receivedMutex:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
 		topSize:			topSize,
@@ -53,6 +76,7 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&builder.dataset,
+		builder.dataMutex,
 		builder.received,
 		builder.receivedMutex,
 		builder.Clear,
@@ -60,15 +84,24 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 	)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (builder *Builder) storeNewCityData(rawData string) {
 	var funnyCity comms.FunnyCityData
 	json.Unmarshal([]byte(rawData), &funnyCity)
 
-	builder.dataMutex.Lock()
+	// Storing data
 	builder.data = append(builder.data, funnyCity)
-	builder.dataMutex.Unlock()
+	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)	
 
-	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)
+	// Updating backup
+	backup := &backupData { data: builder.data, received: builder.received }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Prettier backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
+	}
 }
 
 func (builder *Builder) BuildData(dataset int) string {

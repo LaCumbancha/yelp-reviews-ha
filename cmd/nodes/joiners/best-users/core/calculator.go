@@ -11,6 +11,13 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data1				map[string]int
+	data2 				map[string]int
+	received1			map[string]bool
+	received2			map[string]bool
+}
+
 type Calculator struct {
 	data1 				map[string]int
 	data2 				map[string]int
@@ -23,14 +30,36 @@ type Calculator struct {
 	dataset				int
 }
 
+func loadBackup() (map[string]int, map[string]int, map[string]bool, map[string]bool) {
+	var backup backupData
+	data1 := make(map[string]int)
+	data2 := make(map[string]int)
+	received1 := make(map[string]bool)
+	received2 := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data1 = backup.data1
+		data2 = backup.data2
+		received1 = backup.received1
+		received2 = backup.received2
+		log.Infof("Joiner data restored from backup file. Best users loaded: %d (%d messages). Common users loaded %d (%d messages).", len(data1), len(received1), len(data2), len(received2))
+	}
+
+	return data1, data2, received1, received2
+}
+
 func NewCalculator() *Calculator {
+	data1, data2, received1, received2 := loadBackup()
+	
 	calculator := &Calculator {
-		data1:				make(map[string]int),
-		data2:				make(map[string]int),
+		data1:				data1,
+		data2:				data2,
 		dataMutex1:			&sync.Mutex{},
 		dataMutex2:			&sync.Mutex{},
-		received1:			make(map[string]bool),
-		received2:			make(map[string]bool),
+		received1:			received1,
+		received2:			received2,
 		receivedMutex1:		&sync.Mutex{},
 		receivedMutex2:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
@@ -67,6 +96,7 @@ func (calculator *Calculator) AddBestUser(inputNode string, dataset int, instanc
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
+		calculator.dataMutex1,
 		calculator.received1,
 		calculator.receivedMutex1,
 		calculator.Clear,
@@ -76,14 +106,24 @@ func (calculator *Calculator) AddBestUser(inputNode string, dataset int, instanc
 	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d best users stored.", dataset, bulk, len(calculator.data1)), bulk)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (calculator *Calculator) saveBestUser(rawData string) {
 	var bestUserDataList []comms.UserData
 	json.Unmarshal([]byte(rawData), &bestUserDataList)
 
+	// Storing data
 	for _, bestUserData := range bestUserDataList {
-		calculator.dataMutex1.Lock()
 		calculator.data1[bestUserData.UserId] = bestUserData.Reviews
-		calculator.dataMutex1.Unlock()
+	}
+
+	// Updating backup
+	backup := &backupData { data1: calculator.data1, data2: calculator.data2, received1: calculator.received1, received2: calculator.received2 }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Joiner backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
 	}
 }
 
@@ -93,6 +133,7 @@ func (calculator *Calculator) AddUser(inputNode string, dataset int, instance st
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
+		calculator.dataMutex2,
 		calculator.received2,
 		calculator.receivedMutex2,
 		calculator.Clear,
@@ -102,14 +143,24 @@ func (calculator *Calculator) AddUser(inputNode string, dataset int, instance st
 	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d common users stored.", dataset, len(calculator.data2), bulk), bulk)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (calculator *Calculator) saveUser(rawData string) {
 	var userDataList []comms.UserData
 	json.Unmarshal([]byte(rawData), &userDataList)
 
+	// Storing data
 	for _, userData := range userDataList {
-		calculator.dataMutex2.Lock()
 		calculator.data2[userData.UserId] = userData.Reviews
-		calculator.dataMutex2.Unlock()
+	}
+
+	// Updating backup
+	backup := &backupData { data1: calculator.data1, data2: calculator.data2, received1: calculator.received1, received2: calculator.received2 }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Joiner backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
 	}
 }
 

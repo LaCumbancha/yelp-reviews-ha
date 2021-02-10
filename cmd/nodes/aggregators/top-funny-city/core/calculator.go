@@ -12,6 +12,11 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data				[]comms.FunnyCityData
+	received			map[string]bool
+}
+
 type Calculator struct {
 	data 				[]comms.FunnyCityData
 	dataMutex 			*sync.Mutex
@@ -21,11 +26,29 @@ type Calculator struct {
 	topSize				int
 }
 
+func loadBackup() ([]comms.FunnyCityData, map[string]bool) {
+	var backup backupData
+	data := make([]comms.FunnyCityData, 0)
+	received := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data = backup.data
+		received = backup.received
+		log.Infof("Aggregator data restored from backup file. Funny cities loaded: %d (%d messages).", len(data), len(received))
+	}
+
+	return data, received
+}
+
 func NewCalculator(topSize int) *Calculator {
+	data, received := loadBackup()
+	
 	calculator := &Calculator {
-		data:				[]comms.FunnyCityData{},
+		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[string]bool),
+		received:			received,
 		receivedMutex:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
 		topSize:			topSize,
@@ -54,6 +77,7 @@ func (calculator *Calculator) Save(inputNode string, dataset int, instance strin
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&calculator.dataset,
+		calculator.dataMutex,
 		calculator.received,
 		calculator.receivedMutex,
 		calculator.Clear,
@@ -63,14 +87,24 @@ func (calculator *Calculator) Save(inputNode string, dataset int, instance strin
 	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d funny cities stored.", dataset, bulk, len(calculator.data)), bulk)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (calculator *Calculator) saveData(rawData string) {
 	var funcitDataList []comms.FunnyCityData
 	json.Unmarshal([]byte(rawData), &funcitDataList)
 
+	// Storing data
 	for _, funcitData := range funcitDataList {
-		calculator.dataMutex.Lock()
 		calculator.data = append(calculator.data, funcitData)
-		calculator.dataMutex.Unlock()
+	}
+
+	// Updating backup
+	backup := &backupData { data: calculator.data, received: calculator.received }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Aggregator backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
 	}
 }
 

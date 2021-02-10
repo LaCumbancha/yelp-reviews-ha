@@ -3,6 +3,7 @@ package processing
 import (
 	"fmt"
 	"sync"
+	"encoding/json"
 	"github.com/streadway/amqp"
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 
@@ -131,6 +132,12 @@ func ProcessStart(
 	callback func(int),
 ) {
 	startingSignals := make(map[int]int)
+	bkpStartSignals := LoadBackup(StartBkp)
+
+	if bkpStartSignals != nil {
+		json.Unmarshal([]byte(bkpStartSignals), &startingSignals)
+		log.Infof("Starting signals restored from backup file. Signals: %v", startingSignals)
+	}
 
 	// Send finish message each time a dataset is completed.
 	for message := range startingChannel {
@@ -148,6 +155,13 @@ func ProcessStart(
 			callback(datasetStarted)
 		}
 
+		startSignalsBytes, err := json.Marshal(startingSignals)
+		if err != nil {
+			log.Errorf("Error serializing data from starting signals map. Err: %s", err)
+		} else {
+			StoreBackup(StartBkp, startSignalsBytes)
+		}
+
 		rabbit.AckMessage(message)
 	}
 }
@@ -161,26 +175,39 @@ func ProcessFinish(
 	procWgsMutex *sync.Mutex,
 	finishWg *sync.WaitGroup,
 ) {
-	finishSignals := make(map[int]int)
+	finishingSignals := make(map[int]int)
+	bkpFinishSignals := LoadBackup(FinishBkp)
+
+	if bkpFinishSignals != nil {
+		json.Unmarshal([]byte(bkpFinishSignals), &finishingSignals)
+		log.Infof("Finishing signals restored from backup file. Signals: %v", finishingSignals)
+	}
 
 	// Send finish message each time a dataset is completed.
 	for finishMessage := range finishingChannel {
 		_, datasetFinished, _, _, _ := comms.UnsignMessage(string(finishMessage.Body))
 
-		if received, found := finishSignals[datasetFinished]; found {
-			finishSignals[datasetFinished] = received + 1
+		if received, found := finishingSignals[datasetFinished]; found {
+			finishingSignals[datasetFinished] = received + 1
 		} else if datasetFinished > 1 {
-			finishSignals[datasetFinished] = savedInputs + 1
+			finishingSignals[datasetFinished] = savedInputs + 1
 		} else {
-			finishSignals[datasetFinished] = 1
+			finishingSignals[datasetFinished] = 1
 		}
 
-		if finishSignals[datasetFinished] == neededInputs {
+		if finishingSignals[datasetFinished] == neededInputs {
 			finishWg.Add(1)
 			utils.WaitGroupByDataset(datasetFinished, procWgs, procWgsMutex).Wait()
 			utils.DeleteWaitGroupByDataset(datasetFinished, procWgs, procWgsMutex)
 			callback(datasetFinished)
 			finishWg.Done()
+		}
+
+		finishSignalsBytes, err := json.Marshal(finishingSignals)
+		if err != nil {
+			log.Errorf("Error serializing data from finishing signals map. Err: %s", err)
+		} else {
+			StoreBackup(FinishBkp, finishSignalsBytes)
 		}
 
 		rabbit.AckMessage(finishMessage)
@@ -197,6 +224,12 @@ func ProcessClose(
 	connWg *sync.WaitGroup,
 ) {
 	closingSignals := make(map[string]int)
+	bkpCloseSignals := LoadBackup(CloseBkp)
+
+	if bkpCloseSignals != nil {
+		json.Unmarshal([]byte(bkpCloseSignals), &closingSignals)
+		log.Infof("Closing signals restored from backup file. Signals: %v", closingSignals)
+	}
 
 	// Send finish message each time a dataset is completed.
 	for closeMessage := range closingChannel {
@@ -213,6 +246,13 @@ func ProcessClose(
 			finishWg.Wait()
 			callback()
 			connWg.Done()
+		}
+
+		closeSignalsBytes, err := json.Marshal(closingSignals)
+		if err != nil {
+			log.Errorf("Error serializing data from closing signals map. Err: %s", err)
+		} else {
+			StoreBackup(CloseBkp, closeSignalsBytes)
 		}
 
 		rabbit.AckMessage(closeMessage.Message)

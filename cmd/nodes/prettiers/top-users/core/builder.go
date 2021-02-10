@@ -10,6 +10,11 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data				map[string]int
+	received			map[string]bool
+}
+
 type Builder struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
@@ -19,11 +24,29 @@ type Builder struct {
 	reviews 			int
 }
 
+func loadBackup() (map[string]int, map[string]bool) {
+	var backup backupData
+	data := make(map[string]int)
+	received := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data = backup.data
+		received = backup.received
+		log.Infof("Prettier data restored from backup file. Top users loaded: %d (%d messages).", len(data), len(received))
+	}
+
+	return data, received
+}
+
 func NewBuilder(minReviews int) *Builder {
+	data, received := loadBackup()
+	
 	builder := &Builder {
-		data:				make(map[string]int),
+		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[string]bool),
+		received:			received,
 		receivedMutex:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
 		reviews:			minReviews,
@@ -52,6 +75,7 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&builder.dataset,
+		builder.dataMutex,
 		builder.received,
 		builder.receivedMutex,
 		builder.Clear,
@@ -59,20 +83,28 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 	)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (builder *Builder) storeNewUsersData(rawData string) {
 	var userDataList []comms.UserData
 	json.Unmarshal([]byte(rawData), &userDataList)
 
+	// Storing data
 	for _, userData := range userDataList {
-		builder.dataMutex.Lock()
-
 		if oldReviews, found := builder.data[userData.UserId]; found {
 		    log.Warnf("User %s was already stored with %d reviews (new value: %d).", userData.UserId, oldReviews, userData.Reviews)
 		} else {
 			builder.data[userData.UserId] = userData.Reviews
 		}
-		
-		builder.dataMutex.Unlock()
+	}	
+
+	// Updating backup
+	backup := &backupData { data: builder.data, received: builder.received }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Prettier backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
 	}
 }
 

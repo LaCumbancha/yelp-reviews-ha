@@ -10,6 +10,11 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type backupData struct {
+	data				map[string]int
+	received			map[string]bool
+}
+
 type Builder struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
@@ -18,11 +23,29 @@ type Builder struct {
 	dataset				int
 }
 
+func loadBackup() (map[string]int, map[string]bool) {
+	var backup backupData
+	data := make(map[string]int)
+	received := make(map[string]bool)
+
+	backupBytes := proc.LoadBackup(proc.DataBkp)
+	if backupBytes != nil {
+		json.Unmarshal([]byte(backupBytes), &backup)
+		data = backup.data
+		received = backup.received
+		log.Infof("Prettier data restored from backup file. Weekdays loaded: %d (%d messages).", len(data), len(received))
+	}
+
+	return data, received
+}
+
 func NewBuilder() *Builder {
+	data, received := loadBackup()
+	
 	builder := &Builder {
-		data:				make(map[string]int),
+		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			make(map[string]bool),
+		received:			received,
 		receivedMutex:		&sync.Mutex{},
 		dataset:			proc.DefaultDataset,
 	}
@@ -50,6 +73,7 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 		proc.MessageSavingId(inputNode, instance, bulk),
 		rawData,
 		&builder.dataset,
+		builder.dataMutex,
 		builder.received,
 		builder.receivedMutex,
 		builder.Clear,
@@ -57,16 +81,24 @@ func (builder *Builder) Save(inputNode string, dataset int, instance string, bul
 	)
 }
 
+// This function is guaranteed to be call in a mutual exclusion scenario.
 func (builder *Builder) storeNewWeekdayData(rawData string) {
 	var weekdayData comms.WeekdayData
 	json.Unmarshal([]byte(rawData), &weekdayData)
 
-	builder.dataMutex.Lock()
-
+	// Storing data
 	builder.data[weekdayData.Weekday] = weekdayData.Reviews
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
 
-	builder.dataMutex.Unlock()
+	// Updating backup
+	backup := &backupData { data: builder.data, received: builder.received }
+	backupBytes, err := json.Marshal(backup)
+
+	if err != nil {
+		log.Errorf("Error serializing Prettier backup. Err: %s", err)
+	} else {
+		proc.StoreBackup(proc.DataBkp, backupBytes)
+	}
 }
 
 func (builder *Builder) BuildData(dataset int) string {

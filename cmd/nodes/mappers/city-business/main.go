@@ -78,6 +78,7 @@ func main() {
 
 	// Initializing custom logger.
 	logBulkRate := int(utils.GetConfigInt(configEnv, configFile, "log_bulk_rate")/5)
+	if logBulkRate < 1 { logBulkRate = 1 }
 	logb.Instance().SetBulkRate(logBulkRate)
 
 	// Initializing mapper.

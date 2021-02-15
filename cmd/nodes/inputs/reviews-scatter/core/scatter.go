@@ -6,6 +6,7 @@ import (
     "time"
     "bufio"
     "bytes"
+    "strconv"
     "github.com/streadway/amqp"
     "github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 
@@ -38,6 +39,8 @@ type Scatter struct {
     bulkSize            int
     outputFanout        *rabbit.RabbitOutputFanout
     outputSignals       int
+    processedDatasets   []int
+    datasetNumber       int
 }
 
 func NewScatter(config ScatterConfig) *Scatter {
@@ -52,6 +55,8 @@ func NewScatter(config ScatterConfig) *Scatter {
         bulkSize:           config.BulkSize,
         outputFanout:       outputFanout,
         outputSignals:      GenerateOutputSignals(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
+        processedDatasets:  make([]int, 0),
+        datasetNumber:      1,
     }
 
     return scatter
@@ -59,7 +64,6 @@ func NewScatter(config ScatterConfig) *Scatter {
 
 func (scatter *Scatter) Run() {
     reader := bufio.NewReader(os.Stdin)
-    datasetNumber := 1
     exitFlag := false
 
     for !exitFlag {
@@ -75,8 +79,10 @@ func (scatter *Scatter) Run() {
                 if _, err := os.Stat(datasetPath); os.IsNotExist(err) {
                     fmt.Printf("Dataset %s doesn't exist!\n", datasetPath)
                 } else {
-                    scatter.processFile(datasetPath, datasetNumber)
-                    datasetNumber++
+                    scatter.insertDatasetNumber(reader)
+                    scatter.processFile(datasetPath, scatter.datasetNumber)
+                    scatter.processedDatasets = append(scatter.processedDatasets, scatter.datasetNumber)
+                    scatter.datasetNumber++
                 }
                 
                 break
@@ -88,6 +94,31 @@ func (scatter *Scatter) Run() {
             } else {
                 fmt.Print("Wrong option. Retry: ")
                 option = utils.ReadInput(reader)
+            }
+        }
+    }
+}
+
+func (scatter *Scatter) insertDatasetNumber(reader *bufio.Reader) {
+    datasetOk := false
+    fmt.Printf("Dataset number [default is %d]: ", scatter.datasetNumber)
+    inputDataset := utils.ReadInput(reader)
+    for !datasetOk {
+        if inputDataset == "" {
+            datasetOk = true
+        } else {
+            newDatasetNumber, err := strconv.Atoi(inputDataset)
+            if err == nil {
+                if utils.IntInSlice(newDatasetNumber, scatter.processedDatasets) {
+                    fmt.Printf("Dataset #%d already processed. Retry: ", newDatasetNumber)
+                    inputDataset = utils.ReadInput(reader)
+                } else {
+                    scatter.datasetNumber = newDatasetNumber
+                    datasetOk = true
+                }
+            } else {
+                fmt.Print("Wrong value. Must be an integer: ")
+                inputDataset = utils.ReadInput(reader)
             }
         }
     }

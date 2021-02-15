@@ -126,20 +126,13 @@ func ProcessData(
 }
 
 func ProcessStart(
+	startingSignals map[int]int,
 	neededInputs int,
 	savedInputs int,
 	startingChannel chan amqp.Delivery,
 	callback func(int),
 ) {
-	startingSignals := make(map[int]int)
-	bkpStartSignals := LoadBackup(StartBkp)
-
-	if bkpStartSignals != nil {
-		json.Unmarshal([]byte(bkpStartSignals), &startingSignals)
-		log.Infof("Starting signals restored from backup file. Signals: %v", startingSignals)
-	}
-
-	// Send finish message each time a dataset is completed.
+	// Send start message when all inputs starting messages where received.
 	for message := range startingChannel {
 		_, datasetStarted, _, _, _ := comms.UnsignMessage(string(message.Body))
 
@@ -167,6 +160,7 @@ func ProcessStart(
 }
 
 func ProcessFinish(
+	finishingSignals map[int]int,
 	neededInputs int,
 	savedInputs int,
 	finishingChannel chan amqp.Delivery,
@@ -175,14 +169,6 @@ func ProcessFinish(
 	procWgsMutex *sync.Mutex,
 	finishWg *sync.WaitGroup,
 ) {
-	finishingSignals := make(map[int]int)
-	bkpFinishSignals := LoadBackup(FinishBkp)
-
-	if bkpFinishSignals != nil {
-		json.Unmarshal([]byte(bkpFinishSignals), &finishingSignals)
-		log.Infof("Finishing signals restored from backup file. Signals: %v", finishingSignals)
-	}
-
 	// Send finish message each time a dataset is completed.
 	for finishMessage := range finishingChannel {
 		_, datasetFinished, _, _, _ := comms.UnsignMessage(string(finishMessage.Body))
@@ -215,6 +201,7 @@ func ProcessFinish(
 }
 
 func ProcessClose(
+	closingSignals map[string]int,
 	neededInputs int,
 	closingChannel chan *FlowMessage,
 	callback func(),
@@ -223,15 +210,7 @@ func ProcessClose(
 	finishWg *sync.WaitGroup,
 	connWg *sync.WaitGroup,
 ) {
-	closingSignals := make(map[string]int)
-	bkpCloseSignals := LoadBackup(CloseBkp)
-
-	if bkpCloseSignals != nil {
-		json.Unmarshal([]byte(bkpCloseSignals), &closingSignals)
-		log.Infof("Closing signals restored from backup file. Signals: %v", closingSignals)
-	}
-
-	// Send finish message each time a dataset is completed.
+	// Send close message when all closing messages where received.
 	for closeMessage := range closingChannel {
 		if received, found := closingSignals[closeMessage.Flow]; found {
 			closingSignals[closeMessage.Flow] = received + 1
@@ -264,5 +243,41 @@ func flowMessageLog(messageType string, flow string) {
 		log.Infof("%s received.", messageType)
 	} else {
 		log.Infof("%s from the %s flow received.", messageType, flow)
+	}
+}
+
+func InitializeProcessWaitGroups(
+	procWgs map[int]*sync.WaitGroup, 
+	procWgsMutex *sync.Mutex, 
+	startSignals map[int]int, 
+	finishSignals map[int]int,
+	neededInputs int, 
+	savedInputs int,
+) {
+	for dataset, startSignalsReceived := range startSignals {
+		if finishSignalsReceived, found := finishSignals[dataset]; found {
+			if finishSignalsReceived != neededInputs {
+				runningInputs := startSignalsReceived - finishSignalsReceived
+
+				procWgsMutex.Lock()
+				for idx := 1; idx <= runningInputs; idx++ {
+					procWgs[dataset] = &sync.WaitGroup{}
+					procWgs[dataset].Add(1)
+				}
+				procWgsMutex.Unlock()
+			}
+		} else {
+			runningInputs := startSignalsReceived
+			if dataset > 1 {
+				runningInputs -= savedInputs
+			}
+
+			procWgsMutex.Lock()
+			for idx := 1; idx <= runningInputs; idx++ {
+				procWgs[dataset] = &sync.WaitGroup{}
+			    procWgs[dataset].Add(1)
+			}
+			procWgsMutex.Unlock()
+		}
 	}
 }

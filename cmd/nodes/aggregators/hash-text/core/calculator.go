@@ -12,8 +12,9 @@ import (
 )
 
 type backupData struct {
-	data				map[string]map[string]int
-	received			map[string]bool
+	Data				map[string]map[string]int
+	Received			map[string]bool
+	Dataset				int
 }
 
 type Calculator struct {
@@ -25,31 +26,33 @@ type Calculator struct {
 	bulkSize			int
 }
 
-func loadBackup() (map[string]map[string]int, map[string]bool) {
+func loadBackup() (map[string]map[string]int, map[string]bool, int) {
 	var backup backupData
 	data := make(map[string]map[string]int)
 	received := make(map[string]bool)
+	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
 	if backupBytes != nil {
 		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.data
-		received = backup.received
+		data = backup.Data
+		received = backup.Received
+		dataset = backup.Dataset
 		log.Infof("Aggregator data restored from backup file. Users with texts loaded: %d (%d messages).", len(data), len(received))
 	}
 
-	return data, received
+	return data, received, dataset
 }
 
 func NewCalculator(bulkSize int) *Calculator {
-	data, received := loadBackup()
+	data, received, dataset := loadBackup()
 	
 	calculator := &Calculator {
 		data:				data,
 		dataMutex:			&sync.Mutex{},
 		received:			received,
 		receivedMutex:		&sync.Mutex{},
-		dataset:			proc.DefaultDataset,
+		dataset:			dataset,
 		bulkSize:			bulkSize,
 	}
 
@@ -104,7 +107,7 @@ func (calculator *Calculator) saveData(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { data: calculator.data, received: calculator.received }
+	backup := &backupData { Data: calculator.data, Received: calculator.received, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

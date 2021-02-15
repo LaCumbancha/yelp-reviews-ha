@@ -11,8 +11,9 @@ import (
 )
 
 type backupData struct {
-	data				map[string]int
-	received			map[string]bool
+	Data				map[string]int
+	Received			map[string]bool
+	Dataset				int
 }
 
 type Builder struct {
@@ -23,31 +24,33 @@ type Builder struct {
 	dataset				int
 }
 
-func loadBackup() (map[string]int, map[string]bool) {
+func loadBackup() (map[string]int, map[string]bool, int) {
 	var backup backupData
 	data := make(map[string]int)
 	received := make(map[string]bool)
+	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
 	if backupBytes != nil {
 		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.data
-		received = backup.received
+		data = backup.Data
+		received = backup.Received
+		dataset = backup.Dataset
 		log.Infof("Prettier data restored from backup file. Weekdays loaded: %d (%d messages).", len(data), len(received))
 	}
 
-	return data, received
+	return data, received, dataset
 }
 
 func NewBuilder() *Builder {
-	data, received := loadBackup()
+	data, received, dataset := loadBackup()
 	
 	builder := &Builder {
 		data:				data,
 		dataMutex:			&sync.Mutex{},
 		received:			received,
 		receivedMutex:		&sync.Mutex{},
-		dataset:			proc.DefaultDataset,
+		dataset:			dataset,
 	}
 
 	return builder
@@ -91,7 +94,7 @@ func (builder *Builder) storeNewWeekdayData(rawData string) {
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
 
 	// Updating backup
-	backup := &backupData { data: builder.data, received: builder.received }
+	backup := &backupData { Data: builder.data, Received: builder.received, Dataset: builder.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

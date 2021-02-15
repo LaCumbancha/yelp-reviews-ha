@@ -4,6 +4,7 @@ import (
 	"os"
 	"fmt"
 	"io/ioutil"
+	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -57,30 +58,70 @@ func InitializeBackupStructure() {
 func LoadBackup(bkpType BackupType) []byte {
 	path := calculateBackupPath(bkpType)
 
-	_, err1 := os.Stat(fmt.Sprintf("%s/bkp.1", path))
-	_, err2 := os.Stat(fmt.Sprintf("%s/bkp.2", path))
+	backupName1 := fmt.Sprintf("%s/bkp.1", path)
+	backupName2 := fmt.Sprintf("%s/bkp.2", path)
+
+	_, err1 := os.Stat(backupName1)
+	_, err2 := os.Stat(backupName2)
 
 	if os.IsNotExist(err1) && os.IsNotExist(err2) {
 		log.Warnf("No %s backup file found. Setting empty backup as default.", bkpType)
 		return nil
 	}
 
-	jsonFile, err := os.Open(fmt.Sprintf("%s/bkp.1", path))
+	jsonFile, err := os.Open(backupName1)
 	if err != nil {
 		log.Warnf("Error opening %s backup file #1. Err: '%s'", bkpType, err)
-		jsonFile, err = os.Open(fmt.Sprintf("%s/bkp.2", path))
+	} else {
+		bytes, err := ioutil.ReadAll(jsonFile)
 		if err != nil {
-			log.Fatalf("Couldn't open %s backup file. Err: '%s'", bkpType, err)
+			log.Warnf("Error reading %s backup file #1. Err: '%s'", bkpType, err)
+		} else {
+			return bytes
 		}
 	}
 
-	bytes, err := ioutil.ReadAll(jsonFile)
+	jsonFile, err = os.Open(backupName2)
 	if err != nil {
-		log.Errorf("Error reading %s backup file. Setting empty backup as default. Err: '%s'", bkpType, err)
+		log.Errorf("Error opening %s backup file #2. Setting empty backup as default. Err: '%s'", bkpType, err)
 		return nil
 	} else {
-		return bytes
+		bytes, err := ioutil.ReadAll(jsonFile)
+		if err != nil {
+			log.Errorf("Error reading %s backup file #2. Setting empty backup as default. Err: '%s'", bkpType, err)
+			return nil
+		} else {
+			return bytes
+		}
 	}
+}
+
+func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
+	startingSignals := make(map[int]int)
+	bkpStartSignals := LoadBackup(StartBkp)
+
+	if bkpStartSignals != nil {
+		json.Unmarshal([]byte(bkpStartSignals), &startingSignals)
+		log.Infof("Starting signals restored from backup file. Signals: %v", startingSignals)
+	}
+
+	finishingSignals := make(map[int]int)
+	bkpFinishSignals := LoadBackup(FinishBkp)
+
+	if bkpFinishSignals != nil {
+		json.Unmarshal([]byte(bkpFinishSignals), &finishingSignals)
+		log.Infof("Finishing signals restored from backup file. Signals: %v", finishingSignals)
+	}
+
+	closingSignals := make(map[string]int)
+	bkpCloseSignals := LoadBackup(CloseBkp)
+
+	if bkpCloseSignals != nil {
+		json.Unmarshal([]byte(bkpCloseSignals), &closingSignals)
+		log.Infof("Closing signals restored from backup file. Signals: %v", closingSignals)
+	}
+
+	return startingSignals, finishingSignals, closingSignals
 }
 
 func StoreBackup(bkpType BackupType, data []byte) {
@@ -89,16 +130,27 @@ func StoreBackup(bkpType BackupType, data []byte) {
 	writeBackup(fmt.Sprintf("%s/bkp.2", path), data)
 }
 
-func writeBackup(name string, data []byte) {
-	log.Tracef("Creating backup file '%s'.", name)
-	bkpFile, err := os.Create(name)
-	if err != nil {
-		log.Fatalf("Error creating backup file '%s'. Err: %s", name, err)
+func writeBackup(backupFileName string, data []byte) {
+	var backupFile *os.File
+
+	_, err := os.Stat(backupFileName)
+	if os.IsNotExist(err) {
+		log.Infof("Creating backup file '%s'.", backupFileName)
+		backupFile, err = os.Create(backupFileName)
+		if err != nil {
+			log.Fatalf("Error creating backup file '%s'. Err: %s", backupFileName, err)
+		}
 	} else {
-		bkpFile.Write(data)
-		bkpFile.Close()
-		log.Tracef("Backup file %s saved.", name)
+		backupFile, err = os.OpenFile(backupFileName, os.O_RDWR, 0644)
+    	if err != nil {
+			log.Errorf("Error writing backup file '%s'. Err: %s", backupFileName, err)
+			return
+		}
 	}
+
+	backupFile.Write(data)
+	backupFile.Close()
+	log.Tracef("Backup file %s saved.", backupFileName)
 }
 
 func calculateBackupPath(bkpType BackupType) string {

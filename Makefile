@@ -57,7 +57,7 @@ build: deps
 	GOOS=linux go build -o bin/sink $(GIT_REMOTE)/cmd/nodes/outputs/sink
 .PHONY: build
 
-docker-image:
+docker-build:
 	# RabbitMQ
 	docker build -f ./cmd/nodes/rabbitmq/Dockerfile -t "rabbitmq:custom" .
 
@@ -103,9 +103,9 @@ docker-image:
 
 	# Outputs
 	docker build -f ./cmd/nodes/outputs/sink/Dockerfile -t "sink:latest" .
-.PHONY: docker-image
+.PHONY: docker-build
 
-docker-compose-up: docker-image
+docker-compose-up:
 	$(PYTHON) ./scripts/system-builder
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) up -d --build --remove-orphans
 .PHONY: docker-compose-up

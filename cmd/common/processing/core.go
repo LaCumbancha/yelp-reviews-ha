@@ -28,11 +28,14 @@ func Transformation(
 
 	neededInputs := 1
 	savedInputs := 0
+	startSignals, finishSignals, closeSignals := LoadBackupedSignals()
+	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
+
 	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
 	go ProcessData(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
-	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
-	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
+	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
+	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
+	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
 
 	// Waiting for close procedure.
 	connWg.Wait()
@@ -66,14 +69,17 @@ func Join(
 	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
+
+	startSignals, finishSignals, closeSignals := LoadBackupedSignals()
+	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 	
 	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
 	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
 	go ProcessData(int(workersPool/2), mainChannel1, mainCallback1, procWgs, procWgsMutex)
 	go ProcessData(int(workersPool/2), mainChannel2, mainCallback2, procWgs, procWgsMutex)
-	go ProcessStart(neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
-	go ProcessClose(neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
+	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
+	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
+	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
 
 	// Waiting for close procedure.
 	connWg.Wait()

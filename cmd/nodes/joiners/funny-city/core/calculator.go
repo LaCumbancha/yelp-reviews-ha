@@ -12,10 +12,11 @@ import (
 )
 
 type backupData struct {
-	data1				map[string]int
-	data2 				map[string]string
-	received1			map[string]bool
-	received2			map[string]bool
+	Data1				map[string]int
+	Data2 				map[string]string
+	Received1			map[string]bool
+	Received2			map[string]bool
+	Dataset				int
 }
 
 type Calculator struct {
@@ -31,28 +32,30 @@ type Calculator struct {
 	maxBulkSize			int
 }
 
-func loadBackup() (map[string]int, map[string]string, map[string]bool, map[string]bool) {
+func loadBackup() (map[string]int, map[string]string, map[string]bool, map[string]bool, int) {
 	var backup backupData
 	data1 := make(map[string]int)
 	data2 := make(map[string]string)
 	received1 := make(map[string]bool)
 	received2 := make(map[string]bool)
+	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
 	if backupBytes != nil {
 		json.Unmarshal([]byte(backupBytes), &backup)
-		data1 = backup.data1
-		data2 = backup.data2
-		received1 = backup.received1
-		received2 = backup.received2
+		data1 = backup.Data1
+		data2 = backup.Data2
+		received1 = backup.Received1
+		received2 = backup.Received2
+		dataset = backup.Dataset
 		log.Infof("Joiner data restored from backup file. Funny businesses loaded: %d (%d messages). Cities loaded %d (%d messages).", len(data1), len(received1), len(data2), len(received2))
 	}
 
-	return data1, data2, received1, received2
+	return data1, data2, received1, received2, dataset
 }
 
 func NewCalculator(bulkSize int) *Calculator {
-	data1, data2, received1, received2 := loadBackup()
+	data1, data2, received1, received2, dataset := loadBackup()
 	
 	calculator := &Calculator {
 		data1:				data1,
@@ -63,7 +66,7 @@ func NewCalculator(bulkSize int) *Calculator {
 		received2:			received2,
 		receivedMutex1:		&sync.Mutex{},
 		receivedMutex2:		&sync.Mutex{},
-		dataset:			proc.DefaultDataset,
+		dataset:			dataset,
 		maxBulkSize:		bulkSize,
 	}
 
@@ -112,7 +115,7 @@ func (calculator *Calculator) saveFunnyBusiness(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { data1: calculator.data1, data2: calculator.data2, received1: calculator.received1, received2: calculator.received2 }
+	backup := &backupData { data1: calculator.Data1, data2: calculator.Data2, received1: calculator.Received1, received2: calculator.Received2, dataset: calculator.Dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {
@@ -135,7 +138,7 @@ func (calculator *Calculator) AddCityBusiness(inputNode string, dataset int, ins
 		calculator.saveCityBusiness,
 	)
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d city businesses stored.", dataset, len(calculator.data2), bulk), bulk)
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Joiner: %d city businesses stored.", dataset, bulk, len(calculator.data2)), bulk)
 }
 
 // This function is guaranteed to be call in a mutual exclusion scenario.
@@ -149,7 +152,7 @@ func (calculator *Calculator) saveCityBusiness(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { data1: calculator.data1, data2: calculator.data2, received1: calculator.received1, received2: calculator.received2 }
+	backup := &backupData { data1: calculator.Data1, data2: calculator.Data2, received1: calculator.Received1, received2: calculator.Received2, dataset: calculator.Dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

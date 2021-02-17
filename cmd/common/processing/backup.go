@@ -27,35 +27,54 @@ const FileKey2 = "2"
 
 func InitializeBackupStructure() {
 	if _, err := os.Stat(BkpMainPath); os.IsNotExist(err) {
+		path := BkpMainPath
 		log.Infof("Creating backup directories from scratch.")
 
-		err := os.Mkdir(BkpMainPath, os.ModePerm)
+		err := os.Mkdir(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating main backup folder. Err: '%s'", err)
 		}
 
-		err = os.MkdirAll(fmt.Sprintf("%s/%s", BkpMainPath, StartPath), os.ModePerm)
+		path = fmt.Sprintf("%s/%s", BkpMainPath, StartPath)
+		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating starting signals backup folder. Err: '%s'", err)
+		} else {
+			initializeBackupFiles(path)
 		}
 	
-		err = os.MkdirAll(fmt.Sprintf("%s/%s", BkpMainPath, FinishPath), os.ModePerm)
+		path = fmt.Sprintf("%s/%s", BkpMainPath, FinishPath)
+		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating finishing signals backup folder. Err: '%s'", err)
+		} else {
+			initializeBackupFiles(path)
 		}
 	
-		err = os.MkdirAll(fmt.Sprintf("%s/%s", BkpMainPath, ClosePath), os.ModePerm)
+		path = fmt.Sprintf("%s/%s", BkpMainPath, ClosePath)
+		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating closing signals backup folder. Err: '%s'", err)
+		} else {
+			initializeBackupFiles(path)
 		}
 	
-		err = os.MkdirAll(fmt.Sprintf("%s/%s", BkpMainPath, DataPath), os.ModePerm)
+		path = fmt.Sprintf("%s/%s", BkpMainPath, DataPath)
+		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating data backup folder. Err: '%s'", err)
+		} else {
+			initializeBackupFiles(path)
 		}	
 	} else {
 		log.Infof("Backup directory found.")
 	}
+}
+
+func initializeBackupFiles(path string) {
+	emptyContent := []byte("")
+	writeBackup(FileKey1, path, emptyContent)
+	writeBackup(FileKey2, path, emptyContent)
 }
 
 func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
@@ -89,20 +108,30 @@ func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
 func LoadBackup(bkpType BackupType) []byte {
 	path := calculateBackupPath(bkpType)
 
-	bkpBytes := loadBackupFile(FileKey1, path)
-	if bkpBytes == nil {
-		log.Warnf("Couldn't load %s backup file #%s. Attempting with #%s.", bkpType, FileKey1, FileKey2)
-
-		bkpBytes := loadBackupFile(FileKey2, path)
+	bkpBytes := loadBackupFromFile(FileKey1, path)
+	if bkpBytes == nil || string(bkpBytes) == "" {
 		if bkpBytes == nil {
-			log.Warnf("Couldn't load %s backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
+			log.Warnf("Couldn't load '%s' backup file #%s. Attempting with #%s.", bkpType, FileKey1, FileKey2)
+		} else {
+			log.Tracef("Empty '%s' backup file #%s ignored. Attempting with #%s.", bkpType, FileKey1, FileKey2)
+			bkpBytes = nil
 		}
-	} 
+		
+		bkpBytes = loadBackupFromFile(FileKey2, path)
+		if bkpBytes == nil || string(bkpBytes) == "" {
+			if bkpBytes == nil {
+				log.Warnf("Couldn't load '%s' backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
+			} else {
+				log.Tracef("Empty '%s' backup file #%s ignored. Setting empty backup as default.", bkpType, FileKey2)
+				bkpBytes = nil
+			}
+		}
+	}
 
 	return bkpBytes
 }
 
-func loadBackupFile(fileKey string, path string) []byte {
+func loadBackupFromFile(fileKey string, path string) []byte {
 	okFileName := fmt.Sprintf("%s/ok.%s", path, fileKey)
 	backupFileName := fmt.Sprintf("%s/bkp.%s", path, fileKey)
 
@@ -148,6 +177,7 @@ func removeOk(okFileKey string, path string) {
 }
 
 func writeBackup(backupFileKey string, path string, data []byte) {
+	okFileName := fmt.Sprintf("%s/ok.%s", path, backupFileKey)
 	backupFileName := fmt.Sprintf("%s/bkp.%s", path, backupFileKey)
 	var backupFile *os.File
 
@@ -168,6 +198,13 @@ func writeBackup(backupFileKey string, path string, data []byte) {
 
 	backupFile.Write(data)
 	backupFile.Close()
+
+	okFile, err := os.Create(okFileName)
+	if err != nil {
+		log.Errorf("Error creating ok file '%s'. Err: %s", okFileName, err)
+	}
+	okFile.Close()
+
 	log.Tracef("Backup file %s saved.", backupFileName)
 }
 

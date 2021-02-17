@@ -39,11 +39,23 @@ root
 |    |    |-- business.json
 ```
 
-Para levantar el sistema y poder realizar un seguimiento del mismo a través de los logs deberán ejecutarse los siguientes comandos:
+Para buildear todos los nodos del sistema, se utilizará el siguiente comando:
 
 ```bash
-make docker-compose-up
-make docker-compose-logs
+make system-build
+```
+
+Una vez construidos los nodos, para levantar y poder realizar un seguimiento del sistema a través de los logs deberá ejecutarse:
+
+```bash
+make system-soft-up
+make system-logs
+```
+
+Otra forma alternativa para buildear y levantar el sistema directamente en un sólo paso es con:
+
+```bash
+make system-hard-up
 ```
 
 Una vez que el sistema se encuentre esperando recibir mensajes, deberá levantarse el cliente externo que permitirá el envío de múltiples datasets. Esto podrá hacerse con el script `./scripts/inputs/reviews-scatter`, el cual permitirá seleccionar los archivos que se irán enviando al sistema. Previamente, deberá tenerse instalado Golang en el host y se deberá ejecutar el siguiente comando para instalar la librería de AMQP:

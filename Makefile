@@ -57,7 +57,7 @@ build: deps
 	GOOS=linux go build -o bin/sink $(GIT_REMOTE)/cmd/nodes/outputs/sink
 .PHONY: build
 
-docker-build:
+system-build:
 	# RabbitMQ
 	docker build -f ./cmd/nodes/rabbitmq/Dockerfile -t "rabbitmq:custom" .
 
@@ -103,18 +103,23 @@ docker-build:
 
 	# Outputs
 	docker build -f ./cmd/nodes/outputs/sink/Dockerfile -t "sink:latest" .
-.PHONY: docker-build
+.PHONY: system-build
 
-docker-compose-up:
+system-hard-up: system-build
 	$(PYTHON) ./scripts/system-builder
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) up -d --build --remove-orphans
-.PHONY: docker-compose-up
+.PHONY: system-hard-up
 
-docker-compose-down:
+system-soft-up:
+	$(PYTHON) ./scripts/system-builder
+	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) up -d --build --remove-orphans
+.PHONY: system-soft-up
+
+system-down:
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) stop -t 1
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) down
-.PHONY: docker-compose-down
+.PHONY: system-down
 
-docker-compose-logs:
+system-logs:
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) logs -f
-.PHONY: docker-compose-logs
+.PHONY: system-logs

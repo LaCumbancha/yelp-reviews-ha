@@ -96,13 +96,12 @@ func (calculator *Calculator) Clear(newDataset int) {
 func (calculator *Calculator) AddBestUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex1,
 		calculator.received1,
 		calculator.receivedMutex1,
-		calculator.Clear,
 		calculator.saveBestUser,
 	)
 
@@ -120,7 +119,7 @@ func (calculator *Calculator) saveBestUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { data1: calculator.Data1, data2: calculator.Data2, received1: calculator.Received1, received2: calculator.Received2, dataset: calculator.Dataset }
+	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Received1: calculator.received1, Received2: calculator.received2, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {
@@ -133,13 +132,12 @@ func (calculator *Calculator) saveBestUser(rawData string) {
 func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex2,
 		calculator.received2,
 		calculator.receivedMutex2,
-		calculator.Clear,
 		calculator.saveUser,
 	)
 
@@ -157,7 +155,7 @@ func (calculator *Calculator) saveUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { data1: calculator.Data1, data2: calculator.Data2, received1: calculator.Received1, received2: calculator.Received2, dataset: calculator.Dataset }
+	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Received1: calculator.received1, Received2: calculator.received2, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

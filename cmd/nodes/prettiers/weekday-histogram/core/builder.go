@@ -73,13 +73,12 @@ func (builder *Builder) Clear(newDataset int) {
 func (builder *Builder) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&builder.dataset,
 		builder.dataMutex,
 		builder.received,
 		builder.receivedMutex,
-		builder.Clear,
 		builder.storeNewWeekdayData,
 	)
 }

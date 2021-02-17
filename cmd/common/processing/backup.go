@@ -22,6 +22,9 @@ const FinishPath = "finishing"
 const ClosePath = "closing"
 const DataPath = "data"
 
+const FileKey1 = "1"
+const FileKey2 = "2"
+
 func InitializeBackupStructure() {
 	if _, err := os.Stat(BkpMainPath); os.IsNotExist(err) {
 		log.Infof("Creating backup directories from scratch.")
@@ -55,47 +58,6 @@ func InitializeBackupStructure() {
 	}
 }
 
-func LoadBackup(bkpType BackupType) []byte {
-	path := calculateBackupPath(bkpType)
-
-	backupName1 := fmt.Sprintf("%s/bkp.1", path)
-	backupName2 := fmt.Sprintf("%s/bkp.2", path)
-
-	_, err1 := os.Stat(backupName1)
-	_, err2 := os.Stat(backupName2)
-
-	if os.IsNotExist(err1) && os.IsNotExist(err2) {
-		log.Warnf("No %s backup file found. Setting empty backup as default.", bkpType)
-		return nil
-	}
-
-	jsonFile, err := os.Open(backupName1)
-	if err != nil {
-		log.Warnf("Error opening %s backup file #1. Err: '%s'", bkpType, err)
-	} else {
-		bytes, err := ioutil.ReadAll(jsonFile)
-		if err != nil {
-			log.Warnf("Error reading %s backup file #1. Err: '%s'", bkpType, err)
-		} else {
-			return bytes
-		}
-	}
-
-	jsonFile, err = os.Open(backupName2)
-	if err != nil {
-		log.Errorf("Error opening %s backup file #2. Setting empty backup as default. Err: '%s'", bkpType, err)
-		return nil
-	} else {
-		bytes, err := ioutil.ReadAll(jsonFile)
-		if err != nil {
-			log.Errorf("Error reading %s backup file #2. Setting empty backup as default. Err: '%s'", bkpType, err)
-			return nil
-		} else {
-			return bytes
-		}
-	}
-}
-
 func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
 	startingSignals := make(map[int]int)
 	bkpStartSignals := LoadBackup(StartBkp)
@@ -124,13 +86,69 @@ func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
 	return startingSignals, finishingSignals, closingSignals
 }
 
-func StoreBackup(bkpType BackupType, data []byte) {
+func LoadBackup(bkpType BackupType) []byte {
 	path := calculateBackupPath(bkpType)
-	writeBackup(fmt.Sprintf("%s/bkp.1", path), data)
-	writeBackup(fmt.Sprintf("%s/bkp.2", path), data)
+
+	bkpBytes := loadBackupFile(FileKey1, path)
+	if bkpBytes == nil {
+		log.Warnf("Couldn't load %s backup file #%s. Attempting with #%s.", bkpType, FileKey1, FileKey2)
+
+		bkpBytes := loadBackupFile(FileKey2, path)
+		if bkpBytes == nil {
+			log.Warnf("Couldn't load %s backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
+		}
+	} 
+
+	return bkpBytes
 }
 
-func writeBackup(backupFileName string, data []byte) {
+func loadBackupFile(fileKey string, path string) []byte {
+	okFileName := fmt.Sprintf("%s/ok.%s", path, fileKey)
+	backupFileName := fmt.Sprintf("%s/bkp.%s", path, fileKey)
+
+	_, err := os.Stat(okFileName)
+	if os.IsNotExist(err) {
+		log.Infof("Ok file #%s not found.", fileKey)
+	} else {
+		jsonFile, err := os.Open(backupFileName)
+		if err != nil {
+			log.Warnf("Error opening backup file #%s. Err: '%s'", fileKey, err)
+		} else {
+			bytes, err := ioutil.ReadAll(jsonFile)
+			if err != nil {
+				log.Warnf("Error reading backup file #%s. Err: '%s'", fileKey, err)
+			} else {
+				return bytes
+			}
+		}
+	}
+
+	return nil
+}
+
+func StoreBackup(bkpType BackupType, data []byte) {
+	path := calculateBackupPath(bkpType)
+	removeOk(FileKey1, path)
+	writeBackup(FileKey1, path, data)
+	removeOk(FileKey2, path)
+	writeBackup(FileKey2, path, data)
+}
+
+func removeOk(okFileKey string, path string) {
+	okFileName := fmt.Sprintf("%s/ok.%s", path, okFileKey)
+	_, err := os.Stat(okFileName)
+	if os.IsNotExist(err) {
+		log.Warnf("Ok file '%s' not found.", okFileName)
+	} else {
+		err = os.Remove(okFileName)
+		if err != nil {
+		  log.Errorf("Error removing ok file '%s'. Err: %s", okFileName, err)
+		}
+	}
+}
+
+func writeBackup(backupFileKey string, path string, data []byte) {
+	backupFileName := fmt.Sprintf("%s/bkp.%s", path, backupFileKey)
 	var backupFile *os.File
 
 	_, err := os.Stat(backupFileName)
@@ -142,7 +160,7 @@ func writeBackup(backupFileName string, data []byte) {
 		}
 	} else {
 		backupFile, err = os.OpenFile(backupFileName, os.O_RDWR, 0644)
-    	if err != nil {
+		if err != nil {
 			log.Errorf("Error writing backup file '%s'. Err: %s", backupFileName, err)
 			return
 		}

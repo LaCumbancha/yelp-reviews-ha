@@ -87,13 +87,12 @@ func (calculator *Calculator) status(dataset int, bulk int) string {
 func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, instance, bulk),
+		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex,
 		calculator.received,
 		calculator.receivedMutex,
-		calculator.Clear,
 		calculator.saveData,
 	)
 

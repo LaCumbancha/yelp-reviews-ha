@@ -7,8 +7,8 @@ import (
 )
 
 // Defining message storage code
-func MessageSavingId(nodeCode string, instance string, bulk int) string {
-	return nodeCode + "." + instance + "." + strconv.Itoa(bulk)
+func MessageSavingId(nodeCode string, dataset int, bulk int) string {
+	return nodeCode + "." + strconv.Itoa(dataset) + "." + strconv.Itoa(bulk)
 }
 
 // Common save process for Aggregators, Joiners and Prettiers.
@@ -20,12 +20,10 @@ func ValidateDataSaving(
 	dataMutex *sync.Mutex,
 	messagesReceived map[string]bool,
 	messagesReceivedMutex *sync.Mutex,
-	clearCallback func(int),
 	storeCallback func(string),
 ) {
 	if dataset != *savedDataset {
-		log.Infof("Clearing storage due to new dataset received (old: #%d; new: #%d).", *savedDataset, dataset)
-		clearCallback(dataset)
+		log.Warnf("Data from wrong dataset received (working with #%d but received from #%d).", *savedDataset, dataset)
 		*savedDataset = dataset
 	}
 

@@ -41,7 +41,7 @@ type Joiner struct {
 func NewJoiner(config JoinerConfig) *Joiner {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.FilterF2_Output, config.InputTopic, "")
+	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.AggregatorA5_Output, config.InputTopic, "")
 	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.FilterF3_Output, config.InputTopic, "")
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.JoinerJ2_Output, comms.EndSignals(1))
 

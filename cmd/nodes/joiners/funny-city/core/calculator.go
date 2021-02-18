@@ -93,8 +93,8 @@ func (calculator *Calculator) saveFunnyBusiness(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) AddCityBusiness(inputNode string, dataset int, instance string, bulk int, rawData string) {
@@ -120,8 +120,8 @@ func (calculator *Calculator) saveCityBusiness(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) RetrieveMatches(dataset int) [][]comms.FunnyCityData {

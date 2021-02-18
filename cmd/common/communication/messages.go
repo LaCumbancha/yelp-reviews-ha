@@ -65,11 +65,6 @@ type HashedTextData struct {
 	HashedText		string 					`json:"hashed_text",omitempty`
 }
 
-type DishashData struct {
-	UserId 			string 					`json:"user_id",omitempty`
-	Distinct 		int 					`json:"distinct",omitempty`
-}
-
 // Best-Users flow.
 type StarsData struct {
 	UserId 			string 					`json:"user_id",omitempty`

@@ -79,8 +79,8 @@ func (builder *Builder) storeNewWeekdayData(rawData string) {
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
 
 	// Updating backup
-	backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

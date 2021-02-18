@@ -11,21 +11,27 @@ import (
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type DistinctHash struct {
+	Hash 				string
+	Unique				bool
+	Reviews 			int
+}
+
 type backupData struct {
-	Data				map[string]int
+	Data				map[string]DistinctHash
 	Dataset				int
 }
 
 type Calculator struct {
-	data 				map[string]int
+	data 				map[string]DistinctHash
 	dataMutex 			*sync.Mutex
 	dataset				int
 	bulkSize			int
 }
 
-func loadBackup() (map[string]int, int) {
+func loadBackup() (map[string]DistinctHash, int) {
 	var backup backupData
-	data := make(map[string]int)
+	data := make(map[string]DistinctHash)
 	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
@@ -54,7 +60,7 @@ func NewCalculator(bulkSize int) *Calculator {
 
 func (calculator *Calculator) Clear(newDataset int) {
 	calculator.dataMutex.Lock()
-	calculator.data = make(map[string]int)
+	calculator.data = make(map[string]DistinctHash)
 	calculator.dataMutex.Unlock()
 
 	calculator.dataset = newDataset
@@ -81,39 +87,44 @@ func (calculator *Calculator) saveData(rawData string) {
 
 	// Storing data
 	for _, hashedData := range hashedDataList {
-		if value, found := calculator.data[hashedData.UserId]; found {
-			newValue := value + 1
-	    	calculator.data[hashedData.UserId] = newValue
+		if distinctHashes, found := calculator.data[hashedData.UserId]; found {
+			if distinctHashes.Unique && hashedData.HashedText != distinctHashes.Hash {
+				calculator.data[hashedData.UserId] = DistinctHash{ Hash: hashedData.HashedText, Unique: false, Reviews: distinctHashes.Reviews + 1 }
+			}
 		} else {
-			calculator.data[hashedData.UserId] = 1
+			calculator.data[hashedData.UserId] = DistinctHash{ Hash: hashedData.HashedText, Unique: true, Reviews: 1 }
 		}
 	}
 
 	// Updating backup
-	backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
-func (calculator *Calculator) AggregateData(dataset int) [][]comms.DishashData {
+func (calculator *Calculator) AggregateData(dataset int) [][]comms.UserData {
 	if dataset != calculator.dataset {
 		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
-		return make([][]comms.DishashData, 0)
+		return make([][]comms.UserData, 0)
 	}
 
-	bulk := make([]comms.DishashData, 0)
-	bulkedList := make([][]comms.DishashData, 0)
+	bulk := make([]comms.UserData, 0)
+	bulkedList := make([][]comms.UserData, 0)
 
 	actualBulk := 0
 	for userId, distinctHashes := range calculator.data {
 		actualBulk++
-		aggregatedData := comms.DishashData { UserId: userId, Distinct: distinctHashes }
-		bulk = append(bulk, aggregatedData)
 
-		if actualBulk == calculator.bulkSize {
-			bulkedList = append(bulkedList, bulk)
-			bulk = make([]comms.DishashData, 0)
-			actualBulk = 0
+		if distinctHashes.Unique {
+			aggregatedData := comms.UserData { UserId: userId, Reviews: distinctHashes.Reviews }
+			bulk = append(bulk, aggregatedData)
+
+			if actualBulk == calculator.bulkSize {
+				bulkedList = append(bulkedList, bulk)
+				bulk = make([]comms.UserData, 0)
+				actualBulk = 0
+			}
 		}
+		
 	}
 
 	if len(bulk) != 0 {

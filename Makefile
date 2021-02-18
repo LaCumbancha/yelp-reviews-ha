@@ -29,7 +29,6 @@ build: deps
 	GOOS=linux go build -o bin/funbiz-filter $(GIT_REMOTE)/cmd/nodes/filters/funbiz-filter
 	GOOS=linux go build -o bin/user-filter $(GIT_REMOTE)/cmd/nodes/filters/user
 	GOOS=linux go build -o bin/stars-filter $(GIT_REMOTE)/cmd/nodes/filters/stars
-	GOOS=linux go build -o bin/dishash-filter $(GIT_REMOTE)/cmd/nodes/filters/distinct-hash
 	GOOS=linux go build -o bin/botuser-filter $(GIT_REMOTE)/cmd/nodes/filters/bot-users
 
 	# Aggregators
@@ -39,7 +38,6 @@ build: deps
 	GOOS=linux go build -o bin/weekday-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/weekday
 	GOOS=linux go build -o bin/user-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/user
 	GOOS=linux go build -o bin/stars-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/stars
-	GOOS=linux go build -o bin/hash-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/hash-text
 	GOOS=linux go build -o bin/dishash-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/distinct-hash
 
 	# Joiners
@@ -76,7 +74,6 @@ system-build:
 	docker build -f ./cmd/nodes/filters/funny-business/Dockerfile -t "funbiz_filter:latest" .
 	docker build -f ./cmd/nodes/filters/user/Dockerfile -t "user_filter:latest" .
 	docker build -f ./cmd/nodes/filters/stars/Dockerfile -t "stars_filter:latest" .
-	docker build -f ./cmd/nodes/filters/distinct-hash/Dockerfile -t "dishash_filter:latest" .
 	docker build -f ./cmd/nodes/filters/bot-users/Dockerfile -t "botuser_filter:latest" .
 
 	# Aggregators
@@ -85,7 +82,6 @@ system-build:
 	docker build -f ./cmd/nodes/aggregators/weekday/Dockerfile -t "weekday_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/user/Dockerfile -t "user_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/stars/Dockerfile -t "stars_aggregator:latest" .
-	docker build -f ./cmd/nodes/aggregators/hash-text/Dockerfile -t "hash_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/distinct-hash/Dockerfile -t "dishash_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/top-funny-city/Dockerfile -t "funcit_top:latest" .
 

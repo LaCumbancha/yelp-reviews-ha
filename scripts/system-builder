@@ -450,22 +450,6 @@ for idx in range(0, botuser_filters):
 	}
 	config_logs('bot_users_logging', service=file['services'][container_name])
 
-for idx in range(0, dishash_filters):
-	container_name = f'dishash_filter{idx}'
-	services += [container_name]
-	DISHASHAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'dishash_filter:latest',
-		'entrypoint': '/filter',
-		'restart': 'on-failure',
-		'environment': [f'DISHASHFIL_WORKERS_POOL={common_pool_size}', f'DISHASHFIL_LOG_BULK_RATE={log_bulk_rate}', f'DISHASHFIL_INSTANCE={idx}', 'DISHASHFIL_RABBITMQ_IP=rabbitmq', 'DISHASHFIL_RABBITMQ_PORT=5672', f'DISHASHFIL_DISHASH_AGGREGATORS={dishash_aggregators}', f'DISHASHFIL_DISHASH_JOINERS={botuser_joiners}', f'DISHASHFIL_LOG_LEVEL={log_level}'],
-		'links': ['rabbitmq'],
-		'depends_on': list(DISHASHFIL_DEPS),
-		'networks': ['testing_net']
-	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
-
 for idx in range(0, dishash_aggregators):
 	container_name = f'dishash_aggregator{idx}'
 	services += [container_name]
@@ -475,25 +459,9 @@ for idx in range(0, dishash_aggregators):
 		'image': 'dishash_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'DISHASHAGG_WORKERS_POOL={common_pool_size}', f'DISHASHAGG_LOG_BULK_RATE={log_bulk_rate}', f'DISHASHAGG_INSTANCE={idx}', 'DISHASHAGG_RABBITMQ_IP=rabbitmq', 'DISHASHAGG_RABBITMQ_PORT=5672', f'DISHASHAGG_INPUT_TOPIC={idx}', f'DISHASHAGG_HASH_AGGREGATORS={hash_aggregators}', f'DISHASHAGG_DISHASH_FILTERS={dishash_filters}', f'DISHASHAGG_OUTPUT_BULK_SIZE={dishashagg_bulk_size}', f'DISHASHAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'DISHASHAGG_WORKERS_POOL={common_pool_size}', f'DISHASHAGG_LOG_BULK_RATE={log_bulk_rate}', f'DISHASHAGG_INSTANCE={idx}', 'DISHASHAGG_RABBITMQ_IP=rabbitmq', 'DISHASHAGG_RABBITMQ_PORT=5672', f'DISHASHAGG_INPUT_TOPIC={idx}', f'DISHASHAGG_HASH_MAPPERS={hash_mappers}', f'DISHASHAGG_BOTUSER_JOINERS={botuser_joiners}', f'DISHASHAGG_OUTPUT_BULK_SIZE={dishashagg_bulk_size}', f'DISHASHAGG_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(DISHASHAGG_DEPS),
-		'networks': ['testing_net']
-	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
-
-for idx in range(0, hash_aggregators):
-	container_name = f'hash_aggregator{idx}'
-	services += [container_name]
-	HASHMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'hash_aggregator:latest',
-		'entrypoint': '/aggregator',
-		'restart': 'on-failure',
-		'environment': [f'HASHAGG_WORKERS_POOL={common_pool_size}', f'HASHAGG_LOG_BULK_RATE={log_bulk_rate}', f'HASHAGG_INSTANCE={idx}', 'HASHAGG_RABBITMQ_IP=rabbitmq', 'HASHAGG_RABBITMQ_PORT=5672', f'HASHAGG_INPUT_TOPIC={idx}', f'HASHAGG_HASH_MAPPERS={hash_mappers}', f'HASHAGG_DISHASH_AGGREGATORS={dishash_aggregators}', f'HASHAGG_OUTPUT_BULK_SIZE={hashagg_bulk_size}', f'HASHAGG_LOG_LEVEL={log_level}'],
-		'links': ['rabbitmq'],
-		'depends_on': list(HASHAGG_DEPS),
 		'networks': ['testing_net']
 	}
 	config_logs('bot_users_logging', service=file['services'][container_name])

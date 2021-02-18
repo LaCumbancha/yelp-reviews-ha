@@ -86,8 +86,8 @@ func (calculator *Calculator) saveData(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) AggregateData(dataset int) []comms.FunnyCityData {

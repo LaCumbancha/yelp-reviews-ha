@@ -82,8 +82,8 @@ func (builder *Builder) storeNewCityData(rawData string) {
 	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)	
 
 	// Updating backup
-	backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	proc.StoreBackup(backup, proc.DataBkp)
+	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

@@ -149,8 +149,7 @@ services:
     restart: on-failure
   dishash_aggregator0:
     container_name: dishash_aggregator0
-    depends_on:
-    - dishash_filter0
+    depends_on: []
     entrypoint: /aggregator
     environment:
     - DISHASHAGG_WORKERS_POOL=16
@@ -159,31 +158,11 @@ services:
     - DISHASHAGG_RABBITMQ_IP=rabbitmq
     - DISHASHAGG_RABBITMQ_PORT=5672
     - DISHASHAGG_INPUT_TOPIC=0
-    - DISHASHAGG_HASH_AGGREGATORS=1
-    - DISHASHAGG_DISHASH_FILTERS=1
+    - DISHASHAGG_HASH_MAPPERS=3
+    - DISHASHAGG_BOTUSER_JOINERS=1
     - DISHASHAGG_OUTPUT_BULK_SIZE=10000
     - DISHASHAGG_LOG_LEVEL=INFO
     image: dishash_aggregator:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-  dishash_filter0:
-    container_name: dishash_filter0
-    depends_on:
-    - botuser_joiner0
-    entrypoint: /filter
-    environment:
-    - DISHASHFIL_WORKERS_POOL=16
-    - DISHASHFIL_LOG_BULK_RATE=50
-    - DISHASHFIL_INSTANCE=0
-    - DISHASHFIL_RABBITMQ_IP=rabbitmq
-    - DISHASHFIL_RABBITMQ_PORT=5672
-    - DISHASHFIL_DISHASH_AGGREGATORS=1
-    - DISHASHFIL_DISHASH_JOINERS=1
-    - DISHASHFIL_LOG_LEVEL=INFO
-    image: dishash_filter:latest
     links:
     - rabbitmq
     networks:
@@ -316,32 +295,9 @@ services:
     networks:
     - testing_net
     restart: on-failure
-  hash_aggregator0:
-    container_name: hash_aggregator0
-    depends_on:
-    - dishash_aggregator0
-    entrypoint: /aggregator
-    environment:
-    - HASHAGG_WORKERS_POOL=16
-    - HASHAGG_LOG_BULK_RATE=50
-    - HASHAGG_INSTANCE=0
-    - HASHAGG_RABBITMQ_IP=rabbitmq
-    - HASHAGG_RABBITMQ_PORT=5672
-    - HASHAGG_INPUT_TOPIC=0
-    - HASHAGG_HASH_MAPPERS=3
-    - HASHAGG_DISHASH_AGGREGATORS=1
-    - HASHAGG_OUTPUT_BULK_SIZE=10000
-    - HASHAGG_LOG_LEVEL=INFO
-    image: hash_aggregator:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
   hash_mapper0:
     container_name: hash_mapper0
-    depends_on:
-    - hash_aggregator0
+    depends_on: []
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
@@ -360,8 +316,7 @@ services:
     restart: on-failure
   hash_mapper1:
     container_name: hash_mapper1
-    depends_on:
-    - hash_aggregator0
+    depends_on: []
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
@@ -380,8 +335,7 @@ services:
     restart: on-failure
   hash_mapper2:
     container_name: hash_mapper2
-    depends_on:
-    - hash_aggregator0
+    depends_on: []
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16

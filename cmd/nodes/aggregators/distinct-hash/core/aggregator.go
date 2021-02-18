@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"encoding/json"
 	"github.com/streadway/amqp"
+	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
@@ -21,8 +22,8 @@ type AggregatorConfig struct {
 	RabbitPort			string
 	WorkersPool 		int
 	InputTopic			string
-	HashAggregators		int
-	DishashFilters		int
+	HashMappers			int
+	BotUserJoiners		int
 	OutputBulkSize		int
 }
 
@@ -33,15 +34,16 @@ type Aggregator struct {
 	workersPool 		int
 	calculator			*Calculator
 	inputDirect 		*rabbit.RabbitInputDirect
-	outputQueue 		*rabbit.RabbitOutputQueue
+	outputDirect 		*rabbit.RabbitOutputDirect
+	outputPartitions	map[string]string
 	endSignals			int
 }
 
 func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.AggregatorA5_Output, config.InputTopic, "")
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA6_Output, comms.EndSignals(config.DishashFilters))
+	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM4_Output, config.InputTopic, "")
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.AggregatorA5_Output)
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,
@@ -50,8 +52,9 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 		workersPool:		config.WorkersPool,
 		calculator:			NewCalculator(config.OutputBulkSize),
 		inputDirect:		inputDirect,
-		outputQueue:		outputQueue,
-		endSignals:			config.HashAggregators,
+		outputDirect:		outputDirect,
+		outputPartitions:	utils.GeneratePartitionMap(config.BotUserJoiners, PartitionableValues),
+		endSignals:			config.HashMappers,
 	}
 
 	return aggregator
@@ -79,7 +82,7 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 	aggregator.calculator.Clear(dataset)
 
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
@@ -92,26 +95,47 @@ func (aggregator *Aggregator) finishCallback(dataset int) {
 	}
 
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
-func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.DishashData) {
-	bytes, err := json.Marshal(aggregatedData)
-	if err != nil {
-		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulk, err)
-	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
-		err := aggregator.outputQueue.PublishData([]byte(data))
+func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.UserData) {
+	dataListByPartition := make(map[string][]comms.UserData)
+
+	for _, data := range aggregatedData {
+		partition := aggregator.outputPartitions[string(data.UserId[0])]
+
+		if partition == "" {
+			partition = proc.DefaultPartition
+			log.Errorf("Couldn't calculate partition for user '%s'. Setting default (%s).", data.UserId, partition)
+		}
+
+		userDataListPartitioned := dataListByPartition[partition]
+		if userDataListPartitioned != nil {
+			dataListByPartition[partition] = append(userDataListPartitioned, data)
+		} else {
+			dataListByPartition[partition] = append(make([]comms.UserData, 0), data)
+		}
+	}
+
+	for partition, userDataListPartitioned := range dataListByPartition {
+		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
-			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulk, aggregator.outputQueue.Name, err)
+			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to output queue %s.", bulk, aggregator.outputQueue.Name), bulk)
+			data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
+			err := aggregator.outputDirect.PublishData([]byte(data), partition)
+
+			if err != nil {
+				log.Errorf("Error sending bulk #%d to direct-exchange %s (partition %s). Err: '%s'", bulk, aggregator.outputDirect.Exchange, partition, err)
+			} else {
+				logb.Instance().Infof(fmt.Sprintf("Bulk #%d sent to direct-exchange %s (partition %s).", bulk, aggregator.outputDirect.Exchange, partition), bulk)
+			}	
 		}
 	}
 }

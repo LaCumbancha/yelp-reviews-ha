@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
-	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/aggregators/top-funny-city/core"
+	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/aggregators/top-funniest-cities/core"
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
@@ -15,7 +15,7 @@ import (
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv := viper.New()
 
-	// Configure viper to read env variables with the FUNCITFIL prefix
+	// Configure viper to read env variables with the FUNCITTOP prefix
 	configEnv.AutomaticEnv()
 	configEnv.SetEnvPrefix("funcittop")
 
@@ -24,7 +24,8 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("rabbitmq", "ip")
 	configEnv.BindEnv("rabbitmq", "port")
 	configEnv.BindEnv("workers", "pool")
-	configEnv.BindEnv("funcit", "aggregators")
+	configEnv.BindEnv("input", "topic")
+	configEnv.BindEnv("funcit", "joiners")
 	configEnv.BindEnv("top", "size")
 	configEnv.BindEnv("log", "bulk", "rate")
 	configEnv.BindEnv("log", "level")
@@ -64,7 +65,8 @@ func main() {
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")
 	rabbitPort := utils.GetConfigString(configEnv, configFile, "rabbitmq_port")
 	workersPool := utils.GetConfigInt(configEnv, configFile, "workers_pool")
-	funcitAggregators := utils.GetConfigInt(configEnv, configFile, "funcit_aggregators")
+	inputTopic := utils.GetConfigString(configEnv, configFile, "input_topic")
+	funcitJoiners := utils.GetConfigInt(configEnv, configFile, "funcit_joiners")
 	topSize := utils.GetConfigInt(configEnv, configFile, "top_size")
 
 	aggregatorConfig := core.AggregatorConfig {
@@ -72,7 +74,8 @@ func main() {
 		RabbitIp:				rabbitIp,
 		RabbitPort:				rabbitPort,
 		WorkersPool:			workersPool,
-		FuncitAggregators:		funcitAggregators,
+		InputTopic: 			inputTopic,
+		FuncitJoiners:			funcitJoiners,
 		TopSize:				topSize,
 	}
 

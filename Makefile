@@ -33,8 +33,7 @@ build: deps
 
 	# Aggregators
 	GOOS=linux go build -o bin/funbiz-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/funbiz-aggregator
-	GOOS=linux go build -o bin/funcit-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/funcit-aggregator
-	GOOS=linux go build -o bin/funcit-top $(GIT_REMOTE)/cmd/nodes/aggregators/funcit-top
+	GOOS=linux go build -o bin/funcit-top $(GIT_REMOTE)/cmd/nodes/aggregators/top-funniest-cities
 	GOOS=linux go build -o bin/weekday-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/weekday
 	GOOS=linux go build -o bin/user-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/user
 	GOOS=linux go build -o bin/stars-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/stars
@@ -50,6 +49,7 @@ build: deps
 	GOOS=linux go build -o bin/weekday-histogram $(GIT_REMOTE)/cmd/nodes/prettiers/weekday-histogram
 	GOOS=linux go build -o bin/top-users $(GIT_REMOTE)/cmd/nodes/prettiers/top-users
 	GOOS=linux go build -o bin/best-users $(GIT_REMOTE)/cmd/nodes/prettiers/best-users
+	GOOS=linux go build -o bin/bot-users $(GIT_REMOTE)/cmd/nodes/prettiers/bot-users
 
 	# Outputs
 	GOOS=linux go build -o bin/sink $(GIT_REMOTE)/cmd/nodes/outputs/sink
@@ -78,12 +78,11 @@ system-build:
 
 	# Aggregators
 	docker build -f ./cmd/nodes/aggregators/funny-business/Dockerfile -t "funbiz_aggregator:latest" .
-	docker build -f ./cmd/nodes/aggregators/funny-city/Dockerfile -t "funcit_aggregator:latest" .
+	docker build -f ./cmd/nodes/aggregators/top-funniest-cities/Dockerfile -t "funcit_top:latest" .
 	docker build -f ./cmd/nodes/aggregators/weekday/Dockerfile -t "weekday_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/user/Dockerfile -t "user_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/stars/Dockerfile -t "stars_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/distinct-hash/Dockerfile -t "dishash_aggregator:latest" .
-	docker build -f ./cmd/nodes/aggregators/top-funny-city/Dockerfile -t "funcit_top:latest" .
 
 	# Joiners
 	docker build -f ./cmd/nodes/joiners/funny-city/Dockerfile -t "funcit_joiner:latest" .

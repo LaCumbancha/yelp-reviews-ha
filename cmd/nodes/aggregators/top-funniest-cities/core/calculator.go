@@ -13,20 +13,20 @@ import (
 )
 
 type backupData struct {
-	Data				[]comms.FunnyCityData
+	Data				map[string]int
 	Dataset				int
 }
 
 type Calculator struct {
-	data 				[]comms.FunnyCityData
+	data 				map[string]int
 	dataMutex 			*sync.Mutex
 	dataset				int
 	topSize				int
 }
 
-func loadBackup() ([]comms.FunnyCityData, int) {
+func loadBackup() (map[string]int, int) {
 	var backup backupData
-	data := make([]comms.FunnyCityData, 0)
+	data := make(map[string]int)
 	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
@@ -34,7 +34,7 @@ func loadBackup() ([]comms.FunnyCityData, int) {
 		json.Unmarshal([]byte(backupBytes), &backup)
 		data = backup.Data
 		dataset = backup.Dataset
-		log.Infof("Aggregator data restored from backup file. Funny cities loaded: %d .", len(data))
+		log.Infof("Aggregator data restored from backup file. Cities loaded: %d (%d messages).", len(data))
 	}
 
 	return data, dataset
@@ -55,7 +55,7 @@ func NewCalculator(topSize int) *Calculator {
 
 func (calculator *Calculator) Clear(newDataset int) {
 	calculator.dataMutex.Lock()
-	calculator.data = []comms.FunnyCityData{}
+	calculator.data = make(map[string]int)
 	calculator.dataMutex.Unlock()
 
 	calculator.dataset = newDataset
@@ -72,7 +72,7 @@ func (calculator *Calculator) Save(inputNode string, dataset int, instance strin
 		calculator.saveData,
 	)
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d funny cities stored.", dataset, bulk, len(calculator.data)), bulk)
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", dataset, bulk, len(calculator.data)), bulk)
 }
 
 // This function is guaranteed to be call in a mutual exclusion scenario.
@@ -82,7 +82,12 @@ func (calculator *Calculator) saveData(rawData string) {
 
 	// Storing data
 	for _, funcitData := range funcitDataList {
-		calculator.data = append(calculator.data, funcitData)
+		if value, found := calculator.data[funcitData.City]; found {
+			newAmount := value + funcitData.Funny
+		    calculator.data[funcitData.City] = newAmount
+		} else {
+			calculator.data[funcitData.City] = funcitData.Funny
+		}
 	}
 
 	// Updating backup
@@ -95,17 +100,23 @@ func (calculator *Calculator) AggregateData(dataset int) []comms.FunnyCityData {
 		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
 		return make([]comms.FunnyCityData, 0)
 	}
-	
-	sort.SliceStable(calculator.data, func(cityIdx1, cityIdx2 int) bool {
-	    return calculator.data[cityIdx1].Funny > calculator.data[cityIdx2].Funny
+
+	funnyCities := make([]comms.FunnyCityData, 0)
+	for city, funny := range calculator.data {
+		aggregatedData := comms.FunnyCityData { City: city, Funny: funny }
+		funnyCities = append(funnyCities, aggregatedData)
+	}
+
+	sort.SliceStable(funnyCities, func(cityIdx1, cityIdx2 int) bool {
+	    return funnyCities[cityIdx1].Funny > funnyCities[cityIdx2].Funny
 	})
 
-	funnyCities := len(calculator.data)
-	if (funnyCities > calculator.topSize) {
-		log.Infof("%d cities where discarded due to not being funny enoguh.", funnyCities - calculator.topSize)
-		return calculator.data[0:calculator.topSize]
+	totalFunnyCities := len(funnyCities)
+	if (totalFunnyCities > calculator.topSize) {
+		log.Infof("%d cities where discarded due to not being funny enoguh.", totalFunnyCities - calculator.topSize)
+		return funnyCities[0:calculator.topSize]
 	} else {
-		log.Infof("They where just %d cities with a funniness higher than 0!", funnyCities)
-		return calculator.data[0:funnyCities]
+		log.Infof("They where just %d cities with a funniness higher than 0!", totalFunnyCities)
+		return funnyCities[0:totalFunnyCities]
 	}
 }

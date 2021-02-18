@@ -230,32 +230,9 @@ services:
     networks:
     - testing_net
     restart: on-failure
-  funcit_aggregator0:
-    container_name: funcit_aggregator0
-    depends_on:
-    - funcit_top0
-    entrypoint: /aggregator
-    environment:
-    - FUNCITAGG_WORKERS_POOL=16
-    - FUNCITAGG_LOG_BULK_RATE=50
-    - FUNCITAGG_INSTANCE=0
-    - FUNCITAGG_RABBITMQ_IP=rabbitmq
-    - FUNCITAGG_RABBITMQ_PORT=5672
-    - FUNCITAGG_FUNCIT_JOINERS=1
-    - FUNCITAGG_FUNCIT_FILTERS=1
-    - FUNCITAGG_INPUT_TOPIC=0
-    - FUNCITAGG_OUTPUT_BULK_SIZE=10000
-    - FUNCITAGG_LOG_LEVEL=INFO
-    image: funcit_aggregator:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
   funcit_joiner0:
     container_name: funcit_joiner0
-    depends_on:
-    - funcit_aggregator0
+    depends_on: []
     entrypoint: /joiner
     environment:
     - FUNCITJOIN_WORKERS_POOL=16
@@ -287,8 +264,9 @@ services:
     - FUNCITTOP_RABBITMQ_IP=rabbitmq
     - FUNCITTOP_RABBITMQ_PORT=5672
     - FUNCITTOP_TOP_SIZE=10
-    - FUNCITTOP_FUNCIT_AGGREGATORS=1
+    - FUNCITTOP_FUNCIT_JOINERS=1
     - FUNCITTOP_LOG_LEVEL=INFO
+    - FUNCITTOP_INPUT_TOPIC=0
     image: funcit_top:latest
     links:
     - rabbitmq

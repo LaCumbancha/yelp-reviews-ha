@@ -153,25 +153,9 @@ for idx in range(0, funcit_tops):
 		'image': 'funcit_top:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITTOP_WORKERS_POOL={common_pool_size}', f'FUNCITTOP_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITTOP_INSTANCE={idx}', 'FUNCITTOP_RABBITMQ_IP=rabbitmq', 'FUNCITTOP_RABBITMQ_PORT=5672', f'FUNCITTOP_TOP_SIZE={funniest_cities_top_size}', f'FUNCITTOP_FUNCIT_AGGREGATORS={funcit_aggregators}', f'FUNCITTOP_LOG_LEVEL={log_level}'],
+		'environment': [f'FUNCITTOP_WORKERS_POOL={common_pool_size}', f'FUNCITTOP_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITTOP_INSTANCE={idx}', 'FUNCITTOP_RABBITMQ_IP=rabbitmq', 'FUNCITTOP_RABBITMQ_PORT=5672', f'FUNCITTOP_TOP_SIZE={funniest_cities_top_size}', f'FUNCITTOP_FUNCIT_JOINERS={funcit_joiners}', f'FUNCITTOP_LOG_LEVEL={log_level}', f'FUNCITTOP_INPUT_TOPIC={idx}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNCITTOP_DEPS),
-		'networks': ['testing_net'],
-	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
-
-for idx in range(0, funcit_aggregators):
-	container_name = f'funcit_aggregator{idx}'
-	services += [container_name]
-	FUNCITJOIN_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funcit_aggregator:latest',
-		'entrypoint': '/aggregator',
-		'restart': 'on-failure',
-		'environment': [f'FUNCITAGG_WORKERS_POOL={common_pool_size}', f'FUNCITAGG_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITAGG_INSTANCE={idx}', 'FUNCITAGG_RABBITMQ_IP=rabbitmq', 'FUNCITAGG_RABBITMQ_PORT=5672', f'FUNCITAGG_FUNCIT_JOINERS={funcit_joiners}', f'FUNCITAGG_FUNCIT_FILTERS={funcit_tops}', f'FUNCITAGG_INPUT_TOPIC={idx}', f'FUNCITAGG_OUTPUT_BULK_SIZE={funcitagg_bulk_size}', f'FUNCITAGG_LOG_LEVEL={log_level}'],
-		'links': ['rabbitmq'],
-		'depends_on': list(FUNCITAGG_DEPS),
 		'networks': ['testing_net'],
 	}
 	config_logs('funniest_cities_logging', service=file['services'][container_name])

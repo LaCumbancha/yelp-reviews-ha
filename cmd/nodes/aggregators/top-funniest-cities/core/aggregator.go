@@ -1,12 +1,10 @@
 package core
 
 import (
-	"fmt"
 	"encoding/json"
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
@@ -22,8 +20,7 @@ type AggregatorConfig struct {
 	WorkersPool 		int
 	InputTopic			string
 	FuncitJoiners		int
-	FuncitFilters 		int
-	OutputBulkSize		int
+	TopSize				int
 }
 
 type Aggregator struct {
@@ -41,17 +38,17 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.JoinerJ1_Output, config.InputTopic, "")
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA2_Output, comms.EndSignals(config.FuncitFilters))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA2_Output, comms.EndSignals(1))
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,
 		connection:			connection,
 		channel:			channel,
 		workersPool:		config.WorkersPool,
-		calculator:			NewCalculator(config.OutputBulkSize),
+		calculator:			NewCalculator(config.TopSize),
 		inputDirect:		inputDirect,
 		outputQueue:		outputQueue,
-		endSignals:			config.FuncitFilters,
+		endSignals:			config.FuncitJoiners,
 	}
 
 	return aggregator
@@ -84,11 +81,10 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
 	// Calculating aggregations
-	outputBulk := 0
-	for _, aggregatedData := range aggregator.calculator.AggregateData(dataset) {
-		outputBulk++
-		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulk), outputBulk)
-		aggregator.sendAggregatedData(dataset, outputBulk, aggregatedData)
+	cityNumber := 0
+	for _, cityData := range aggregator.calculator.AggregateData(dataset) {
+		cityNumber++
+		aggregator.sendAggregatedData(dataset, cityNumber, cityData)
 	}
 
 	// Sending Finish-Message to consumers.
@@ -100,18 +96,18 @@ func (aggregator *Aggregator) closeCallback() {
 	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputQueue)
 }
 
-func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.FunnyCityData) {
-	bytes, err := json.Marshal(aggregatedData)
+func (aggregator *Aggregator) sendAggregatedData(dataset int, cityNumber int, topTenCity comms.FunnyCityData) {
+	bytes, err := json.Marshal(topTenCity)
 	if err != nil {
-		log.Errorf("Error generating Json from aggregated bulk #%d. Err: '%s'", bulk, err)
+		log.Errorf("Error generating Json from funniest city #%d. Err: '%s'", cityNumber, err)
 	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
+		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, cityNumber, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
-			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", bulk, aggregator.outputQueue.Name, err)
+			log.Errorf("Error sending aggregated bulk #%d to output queue %s. Err: '%s'", cityNumber, aggregator.outputQueue.Name, err)
 		} else {
-			logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d sent to output queue %s.", bulk, aggregator.outputQueue.Name), bulk)
+			log.Infof("Aggregated bulk #%d sent to output queue %s.", cityNumber, aggregator.outputQueue.Name)
 		}
 	}
 }

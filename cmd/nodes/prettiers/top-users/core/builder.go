@@ -86,8 +86,8 @@ func (builder *Builder) storeNewUsersData(rawData string) {
 	}	
 
 	// Updating backup
-	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	backup := &backupData { Data: builder.data, Dataset: builder.dataset }
+	proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

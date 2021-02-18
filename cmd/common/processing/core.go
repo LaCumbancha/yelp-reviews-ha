@@ -22,17 +22,18 @@ func Transformation(
 
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var receivedMsgsMutex = &sync.Mutex{}
 	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
 	neededInputs := 1
 	savedInputs := 0
-	startSignals, finishSignals, closeSignals := LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := LoadBackupedSignals()
 	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 
 	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
-	go ProcessData(workersPool, mainChannel, mainCallback, procWgs, procWgsMutex)
+	go ProcessData(workersPool, mainChannel, mainCallback, receivedMsgs, receivedMsgsMutex, procWgs, procWgsMutex)
 	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
 	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
 	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
@@ -66,17 +67,18 @@ func Join(
 	
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var receivedMsgsMutex = &sync.Mutex{}
 	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	startSignals, finishSignals, closeSignals := LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := LoadBackupedSignals()
 	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 	
 	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
 	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
-	go ProcessData(int(workersPool/2), mainChannel1, mainCallback1, procWgs, procWgsMutex)
-	go ProcessData(int(workersPool/2), mainChannel2, mainCallback2, procWgs, procWgsMutex)
+	go ProcessData(int(workersPool/2), mainChannel1, mainCallback1, receivedMsgs, receivedMsgsMutex, procWgs, procWgsMutex)
+	go ProcessData(int(workersPool/2), mainChannel2, mainCallback2, receivedMsgs, receivedMsgsMutex, procWgs, procWgsMutex)
 	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
 	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
 	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)

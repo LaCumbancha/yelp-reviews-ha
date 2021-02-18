@@ -14,12 +14,14 @@ type BackupType string
 const StartBkp = "Starting-Signals"
 const FinishBkp = "Finishing-Signals"
 const CloseBkp = "Closing-Signals"
+const ReceivedBkp = "Received-Messages"
 const DataBkp = "Data"
 
 const BkpMainPath = "/bkps"
 const StartPath = "starting"
 const FinishPath = "finishing"
 const ClosePath = "closing"
+const ReceivedPath = "received"
 const DataPath = "data"
 
 const FileKey1 = "1"
@@ -28,7 +30,7 @@ const FileKey2 = "2"
 func InitializeBackupStructure() {
 	if _, err := os.Stat(BkpMainPath); os.IsNotExist(err) {
 		path := BkpMainPath
-		log.Infof("Creating backup directories from scratch.")
+		log.Infof("Creating backup structures from scratch.")
 
 		err := os.Mkdir(path, os.ModePerm)
 		if err != nil {
@@ -59,13 +61,21 @@ func InitializeBackupStructure() {
 			initializeBackupFiles(path)
 		}
 	
+		path = fmt.Sprintf("%s/%s", BkpMainPath, ReceivedPath)
+		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			log.Fatalf("Error creating received messages backup folder. Err: '%s'", err)
+		} else {
+			initializeBackupFiles(path)
+		}
+	
 		path = fmt.Sprintf("%s/%s", BkpMainPath, DataPath)
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating data backup folder. Err: '%s'", err)
 		} else {
 			initializeBackupFiles(path)
-		}	
+		}
 	} else {
 		log.Infof("Backup directory found.")
 	}
@@ -77,7 +87,7 @@ func initializeBackupFiles(path string) {
 	writeBackup(FileKey2, path, emptyContent)
 }
 
-func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
+func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int, map[string]bool) {
 	startingSignals := make(map[int]int)
 	bkpStartSignals := LoadBackup(StartBkp)
 
@@ -102,7 +112,15 @@ func LoadBackupedSignals() (map[int]int, map[int]int, map[string]int) {
 		log.Infof("Closing signals restored from backup file. Signals: %v", closingSignals)
 	}
 
-	return startingSignals, finishingSignals, closingSignals
+	receivedMessages := make(map[string]bool)
+	bkpReceivedMessages := LoadBackup(ReceivedBkp)
+
+	if bkpReceivedMessages != nil {
+		json.Unmarshal([]byte(bkpReceivedMessages), &receivedMessages)
+		log.Infof("Received messages restored from backup file. Messages: %d", len(receivedMessages))
+	}
+
+	return startingSignals, finishingSignals, closingSignals, receivedMessages
 }
 
 func LoadBackup(bkpType BackupType) []byte {
@@ -120,7 +138,7 @@ func LoadBackup(bkpType BackupType) []byte {
 		bkpBytes = loadBackupFromFile(FileKey2, path)
 		if bkpBytes == nil || string(bkpBytes) == "" {
 			if bkpBytes == nil {
-				log.Warnf("Couldn't load '%s' backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
+				log.Errorf("Couldn't load '%s' backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
 			} else {
 				log.Tracef("Empty '%s' backup file #%s ignored. Setting empty backup as default.", bkpType, FileKey2)
 				bkpBytes = nil
@@ -137,7 +155,7 @@ func loadBackupFromFile(fileKey string, path string) []byte {
 
 	_, err := os.Stat(okFileName)
 	if os.IsNotExist(err) {
-		log.Infof("Ok file #%s not found.", fileKey)
+		log.Warnf("Ok file #%s not found.", fileKey)
 	} else {
 		jsonFile, err := os.Open(backupFileName)
 		if err != nil {
@@ -183,7 +201,7 @@ func writeBackup(backupFileKey string, path string, data []byte) {
 
 	_, err := os.Stat(backupFileName)
 	if os.IsNotExist(err) {
-		log.Infof("Creating backup file '%s'.", backupFileName)
+		log.Debugf("Creating backup file '%s'.", backupFileName)
 		backupFile, err = os.Create(backupFileName)
 		if err != nil {
 			log.Fatalf("Error creating backup file '%s'. Err: %s", backupFileName, err)
@@ -200,12 +218,13 @@ func writeBackup(backupFileKey string, path string, data []byte) {
 	backupFile.Close()
 
 	okFile, err := os.Create(okFileName)
+	log.Tracef("Creating ok file '%s'.", okFileName)
 	if err != nil {
 		log.Errorf("Error creating ok file '%s'. Err: %s", okFileName, err)
 	}
 	okFile.Close()
 
-	log.Tracef("Backup file %s saved.", backupFileName)
+	log.Debugf("Backup file %s saved.", backupFileName)
 }
 
 func calculateBackupPath(bkpType BackupType) string {
@@ -218,6 +237,8 @@ func calculateBackupPath(bkpType BackupType) string {
 		path = BkpMainPath + "/" + FinishPath
 	case CloseBkp:
 		path = BkpMainPath + "/" + ClosePath
+	case ReceivedBkp:
+		path = BkpMainPath + "/" + ReceivedPath
 	case DataBkp:
 		path = BkpMainPath + "/" + DataPath
 	default:

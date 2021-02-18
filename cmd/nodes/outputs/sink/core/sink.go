@@ -62,22 +62,23 @@ func (sink *Sink) Run() {
 
 	var procWgs = make(map[int]*sync.WaitGroup)
 	var procWgsMutex = &sync.Mutex{}
+	var receivedMsgsMutex = &sync.Mutex{}
 	var finishWg sync.WaitGroup
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
 	neededInputs := 5
 	savedInputs := 0
-	startSignals, finishSignals, closeSignals := proc.LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := proc.LoadBackupedSignals()
 	proc.InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 
-	go proc.ProcessData(1, mainChannel, sink.mainCallback, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(FUNCIT, sink.funniestCitiesQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 	go proc.ReceiveInputs(WEEKDAY, sink.weekdayHistogramQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
 
+	go proc.ProcessData(1, mainChannel, sink.mainCallback, receivedMsgs, receivedMsgsMutex, procWgs, procWgsMutex)
 	go proc.ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, sink.startCallback)
 	go proc.ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, sink.finishCallback, procWgs, procWgsMutex, &finishWg)
 	go proc.ProcessClose(closeSignals, neededInputs, closingChannel, sink.closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)

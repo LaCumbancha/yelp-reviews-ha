@@ -14,44 +14,37 @@ import (
 
 type backupData struct {
 	Data				map[string]int
-	Received			map[string]bool
 	Dataset				int
 }
 
 type Calculator struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[string]bool
-	receivedMutex 		*sync.Mutex
 	dataset				int
 }
 
-func loadBackup() (map[string]int, map[string]bool, int) {
+func loadBackup() (map[string]int, int) {
 	var backup backupData
 	data := make(map[string]int)
-	received := make(map[string]bool)
 	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
 	if backupBytes != nil {
 		json.Unmarshal(backupBytes, &backup)
 		data = backup.Data
-		received = backup.Received
 		dataset = backup.Dataset
-		log.Infof("Aggregator data restored from backup file. Weekdays loaded: %d (%d messages).", len(data), len(received))
+		log.Infof("Aggregator data restored from backup file. Weekdays loaded: %d.", len(data))
 	}
 
-	return data, received, dataset
+	return data, dataset
 }
 
 func NewCalculator() *Calculator {
-	data, received, dataset := loadBackup()
+	data, dataset := loadBackup()
 	
 	calculator := &Calculator {
 		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			received,
-		receivedMutex:		&sync.Mutex{},
 		dataset:			dataset,
 	}
 
@@ -62,10 +55,6 @@ func (calculator *Calculator) Clear(newDataset int) {
 	calculator.dataMutex.Lock()
 	calculator.data = make(map[string]int)
 	calculator.dataMutex.Unlock()
-
-	calculator.receivedMutex.Lock()
-	calculator.received = make(map[string]bool)
-	calculator.receivedMutex.Unlock()
 
 	calculator.dataset = newDataset
 
@@ -87,12 +76,9 @@ func (calculator *Calculator) status(dataset int, bulk int) string {
 func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex,
-		calculator.received,
-		calculator.receivedMutex,
 		calculator.saveData,
 	)
 
@@ -115,7 +101,7 @@ func (calculator *Calculator) saveData(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data: calculator.data, Received: calculator.received, Dataset: calculator.dataset }
+	backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

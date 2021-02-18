@@ -3,6 +3,7 @@ package processing
 import (
 	"fmt"
 	"sync"
+	"time"
 	"encoding/json"
 	"github.com/streadway/amqp"
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
@@ -21,6 +22,14 @@ const DefaultPartition = "0"
 type FlowMessage struct {
 	Flow 		string
 	Message 	amqp.Delivery
+}
+
+func flowLogMessage(messageType string, flow string) {
+	if flow == DefaultFlow {
+		log.Infof("%s received.", messageType)
+	} else {
+		log.Infof("%s from the %s flow received.", messageType, flow)
+	}
 }
 
 func ReceiveInputs(
@@ -46,12 +55,12 @@ func ReceiveInputs(
 			newStartReceived, allStartReceived := comms.MultiDatasetControl(dataset, instance, distinctStartSignals, inputSignals)
 
 			if newStartReceived {
-				flowMessageLog(fmt.Sprintf("Start-Message #%d from dataset #%d", len(distinctStartSignals[dataset]), dataset), flow)
+				flowLogMessage(fmt.Sprintf("Start-Message #%d from dataset #%d", len(distinctStartSignals[dataset]), dataset), flow)
 			}
 
 			if allStartReceived {
 				utils.DefineWaitGroupByDataset(dataset, procWgs, procWgsMutex).Add(1)
-				flowMessageLog(fmt.Sprintf("All Start-Message from dataset #%d", dataset), flow)
+				flowLogMessage(fmt.Sprintf("All Start-Messages from dataset #%d", dataset), flow)
 				startingChannel <- message
 			} else {
 				rabbit.AckMessage(message)
@@ -61,12 +70,12 @@ func ReceiveInputs(
 			newFinishReceived, allFinishReceived := comms.MultiDatasetControl(dataset, instance, distinctFinishSignals, inputSignals)
 
 			if newFinishReceived {
-				flowMessageLog(fmt.Sprintf("Finish-Message #%d from dataset #%d", len(distinctFinishSignals[dataset]), dataset), flow)
+				flowLogMessage(fmt.Sprintf("Finish-Message #%d from dataset #%d", len(distinctFinishSignals[dataset]), dataset), flow)
 			}
 
 			if allFinishReceived {
 				utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Done()
-				flowMessageLog(fmt.Sprintf("All Finish-Message from dataset #%d", dataset), flow)
+				flowLogMessage(fmt.Sprintf("All Finish-Messages from dataset #%d", dataset), flow)
 				finishingChannel <- message
 			} else {
 				rabbit.AckMessage(message)
@@ -76,11 +85,11 @@ func ReceiveInputs(
 			newCloseReceived, allCloseReceived := comms.SingleControl(instance, distinctCloseSignals, inputSignals)
 
 			if newCloseReceived {
-				flowMessageLog(fmt.Sprintf("Close-Message #%d", len(distinctCloseSignals)), flow)
+				flowLogMessage(fmt.Sprintf("Close-Message #%d", len(distinctCloseSignals)), flow)
 			}
 
 			if allCloseReceived {
-				flowMessageLog("All Close-Message", flow)
+				flowLogMessage("All Close-Messages", flow)
 				closingChannel <- &FlowMessage { flow, message }
 			} else {
 				rabbit.AckMessage(message)
@@ -99,6 +108,8 @@ func ProcessData(
 	workersPool int, 
 	mainChannel chan amqp.Delivery, 
 	callback func(string, int, string, int, string), 
+	receivedMsgs map[string]bool,
+	receivedMsgsMutex *sync.Mutex,
 	procWgs map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,
 ) {
@@ -112,8 +123,37 @@ func ProcessData(
 				inputNode, dataset, instance, bulk, data := comms.UnsignMessage(messageBody)
 
 				if data != "" {
+					messageId := MessageSavingId(inputNode, dataset, bulk)
 					logb.Instance().Infof(fmt.Sprintf("Message #%s.%s.%d.%d received.", inputNode, instance, dataset, bulk), bulk)
-					callback(inputNode, dataset, instance, bulk, data)
+
+					receivedMsgsMutex.Lock()
+					if _, found := receivedMsgs[messageId]; found {
+						receivedMsgsMutex.Unlock()
+						log.Warnf("Message #%s was already received and processed.", messageId)
+					} else {
+						receivedMsgs[messageId] = true
+						receivedMsgsMutex.Unlock()
+						callback(inputNode, dataset, instance, bulk, data)
+
+						receivedMsgsMutex.Lock()
+						receivedMsgsBytes, err := json.Marshal(receivedMsgs)
+						receivedMsgsMutex.Unlock()
+						if err != nil {
+							log.Errorf("Error serializing data from received messages map. Err: %s", err)
+						} else {
+							StoreBackup(ReceivedBkp, receivedMsgsBytes)
+						}
+					}
+
+					// TODO: REMOVE! JUST FOR TESTING
+					if inputNode == "M3" && bulk == 10 {
+						receivedMsgsMutex.Lock()
+						log.Infof("CORTAR AHORA!!!!")
+						time.Sleep(10 * time.Second)
+						receivedMsgsMutex.Unlock()
+					}
+
+
 					rabbit.AckMessage(message)
     				utils.WaitGroupByDataset(dataset, procWgs, procWgsMutex).Done()
 				} else {
@@ -235,14 +275,6 @@ func ProcessClose(
 		}
 
 		rabbit.AckMessage(closeMessage.Message)
-	}
-}
-
-func flowMessageLog(messageType string, flow string) {
-	if flow == DefaultFlow {
-		log.Infof("%s received.", messageType)
-	} else {
-		log.Infof("%s from the %s flow received.", messageType, flow)
 	}
 }
 

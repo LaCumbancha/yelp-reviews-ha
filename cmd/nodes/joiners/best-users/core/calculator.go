@@ -14,8 +14,6 @@ import (
 type backupData struct {
 	Data1				map[string]int
 	Data2 				map[string]int
-	Received1			map[string]bool
-	Received2			map[string]bool
 	Dataset				int
 }
 
@@ -24,19 +22,13 @@ type Calculator struct {
 	data2 				map[string]int
 	dataMutex1 			*sync.Mutex
 	dataMutex2 			*sync.Mutex
-	received1			map[string]bool
-	received2			map[string]bool
-	receivedMutex1 		*sync.Mutex
-	receivedMutex2 		*sync.Mutex
 	dataset				int
 }
 
-func loadBackup() (map[string]int, map[string]int, map[string]bool, map[string]bool, int) {
+func loadBackup() (map[string]int, map[string]int, int) {
 	var backup backupData
 	data1 := make(map[string]int)
 	data2 := make(map[string]int)
-	received1 := make(map[string]bool)
-	received2 := make(map[string]bool)
 	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
@@ -44,27 +36,21 @@ func loadBackup() (map[string]int, map[string]int, map[string]bool, map[string]b
 		json.Unmarshal([]byte(backupBytes), &backup)
 		data1 = backup.Data1
 		data2 = backup.Data2
-		received1 = backup.Received1
-		received2 = backup.Received2
 		dataset = backup.Dataset
-		log.Infof("Joiner data restored from backup file. Best users loaded: %d (%d messages). Common users loaded %d (%d messages).", len(data1), len(received1), len(data2), len(received2))
+		log.Infof("Joiner data restored from backup file. Best users loaded: %d. Common users loaded: %d.", len(data1), len(data2))
 	}
 
-	return data1, data2, received1, received2, dataset
+	return data1, data2, dataset
 }
 
 func NewCalculator() *Calculator {
-	data1, data2, received1, received2, dataset := loadBackup()
+	data1, data2, dataset := loadBackup()
 	
 	calculator := &Calculator {
 		data1:				data1,
 		data2:				data2,
 		dataMutex1:			&sync.Mutex{},
 		dataMutex2:			&sync.Mutex{},
-		received1:			received1,
-		received2:			received2,
-		receivedMutex1:		&sync.Mutex{},
-		receivedMutex2:		&sync.Mutex{},
 		dataset:			dataset,
 	}
 
@@ -76,17 +62,9 @@ func (calculator *Calculator) Clear(newDataset int) {
 	calculator.data1 = make(map[string]int)
 	calculator.dataMutex1.Unlock()
 
-	calculator.receivedMutex1.Lock()
-	calculator.received1 = make(map[string]bool)
-	calculator.receivedMutex1.Unlock()
-
 	calculator.dataMutex2.Lock()
 	calculator.data2 = make(map[string]int)
 	calculator.dataMutex2.Unlock()
-
-	calculator.receivedMutex2.Lock()
-	calculator.received2 = make(map[string]bool)
-	calculator.receivedMutex2.Unlock()
 
 	calculator.dataset = newDataset
 
@@ -96,12 +74,9 @@ func (calculator *Calculator) Clear(newDataset int) {
 func (calculator *Calculator) AddBestUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex1,
-		calculator.received1,
-		calculator.receivedMutex1,
 		calculator.saveBestUser,
 	)
 
@@ -119,7 +94,7 @@ func (calculator *Calculator) saveBestUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Received1: calculator.received1, Received2: calculator.received2, Dataset: calculator.dataset }
+	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {
@@ -132,12 +107,9 @@ func (calculator *Calculator) saveBestUser(rawData string) {
 func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&calculator.dataset,
 		calculator.dataMutex2,
-		calculator.received2,
-		calculator.receivedMutex2,
 		calculator.saveUser,
 	)
 
@@ -155,7 +127,7 @@ func (calculator *Calculator) saveUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Received1: calculator.received1, Received2: calculator.received2, Dataset: calculator.dataset }
+	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

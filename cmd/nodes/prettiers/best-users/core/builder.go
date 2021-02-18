@@ -13,45 +13,38 @@ import (
 
 type backupData struct {
 	Data				map[string]int
-	Received			map[string]bool
 	Dataset				int
 }
 
 type Builder struct {
 	data 				map[string]int
 	dataMutex 			*sync.Mutex
-	received			map[string]bool
-	receivedMutex 		*sync.Mutex
 	dataset				int
 	reviews				int
 }
 
-func loadBackup() (map[string]int, map[string]bool, int) {
+func loadBackup() (map[string]int, int) {
 	var backup backupData
 	data := make(map[string]int)
-	received := make(map[string]bool)
 	dataset	:= proc.DefaultDataset
 
 	backupBytes := proc.LoadBackup(proc.DataBkp)
 	if backupBytes != nil {
 		json.Unmarshal([]byte(backupBytes), &backup)
 		data = backup.Data
-		received = backup.Received
 		dataset = backup.Dataset
-		log.Infof("Prettier data restored from backup file. Users with 5-stars reviews loaded: %d (%d messages).", len(data), len(received))
+		log.Infof("Prettier data restored from backup file. Users with 5-stars reviews loaded: %d .", len(data))
 	}
 
-	return data, received, dataset
+	return data, dataset
 }
 
 func NewBuilder(minReviews int) *Builder {
-	data, received, dataset := loadBackup()
+	data, dataset := loadBackup()
 	
 	builder := &Builder {
 		data:				data,
 		dataMutex:			&sync.Mutex{},
-		received:			received,
-		receivedMutex:		&sync.Mutex{},
 		dataset:			dataset,
 		reviews:			minReviews,
 	}
@@ -64,10 +57,6 @@ func (builder *Builder) Clear(newDataset int) {
 	builder.data = make(map[string]int)
 	builder.dataMutex.Unlock()
 
-	builder.receivedMutex.Lock()
-	builder.received = make(map[string]bool)
-	builder.receivedMutex.Unlock()
-
 	builder.dataset = newDataset
 
 	log.Infof("Builder storage cleared.")
@@ -76,12 +65,9 @@ func (builder *Builder) Clear(newDataset int) {
 func (builder *Builder) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
 	proc.ValidateDataSaving(
 		dataset,
-		proc.MessageSavingId(inputNode, dataset, bulk),
 		rawData,
 		&builder.dataset,
 		builder.dataMutex,
-		builder.received,
-		builder.receivedMutex,
 		builder.storeNewUserData,
 	)
 }
@@ -99,7 +85,7 @@ func (builder *Builder) storeNewUserData(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data: builder.data, Received: builder.received, Dataset: builder.dataset }
+	backup := &backupData { Data: builder.data, Dataset: builder.dataset }
 	backupBytes, err := json.Marshal(backup)
 
 	if err != nil {

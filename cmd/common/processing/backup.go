@@ -173,12 +173,17 @@ func loadBackupFromFile(fileKey string, path string) []byte {
 	return nil
 }
 
-func StoreBackup(bkpType BackupType, data []byte) {
-	path := calculateBackupPath(bkpType)
-	removeOk(FileKey1, path)
-	writeBackup(FileKey1, path, data)
-	removeOk(FileKey2, path)
-	writeBackup(FileKey2, path, data)
+func StoreBackup(data interface{}, bkpType BackupType) {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		log.Errorf("Error serializing %s. Err: %s", bkpType, err)
+	} else {
+		path := calculateBackupPath(bkpType)
+		removeOk(FileKey1, path)
+		writeBackup(FileKey1, path, bytes)
+		removeOk(FileKey2, path)
+		writeBackup(FileKey2, path, bytes)
+	}
 }
 
 func removeOk(okFileKey string, path string) {

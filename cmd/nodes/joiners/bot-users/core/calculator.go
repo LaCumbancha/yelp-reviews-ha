@@ -94,14 +94,8 @@ func (calculator *Calculator) saveBotUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	backupBytes, err := json.Marshal(backup)
-
-	if err != nil {
-		log.Errorf("Error serializing Joiner backup. Err: %s", err)
-	} else {
-		proc.StoreBackup(proc.DataBkp, backupBytes)
-	}
+	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
@@ -127,14 +121,8 @@ func (calculator *Calculator) saveUser(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	backupBytes, err := json.Marshal(backup)
-
-	if err != nil {
-		log.Errorf("Error serializing Joiner backup. Err: %s", err)
-	} else {
-		proc.StoreBackup(proc.DataBkp, backupBytes)
-	}
+	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) RetrieveMatches(dataset int) []comms.UserData {

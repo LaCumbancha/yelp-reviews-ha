@@ -41,8 +41,8 @@ type Mapper struct {
 func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputFanout := rabbit.NewRabbitInputFanout(channel, props.ReviewsScatterOutput, props.WeekdayMapperInput)
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.WeekdayMapperOutput)
+	inputFanout := rabbit.NewRabbitInputFanout(channel, props.InputI2_Output, props.MapperM3_Input)
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.MapperM3_Output)
 
 	mapper := &Mapper {
 		instance:			config.Instance,

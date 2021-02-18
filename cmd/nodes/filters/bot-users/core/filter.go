@@ -41,8 +41,8 @@ type Filter struct {
 func NewFilter(config FilterConfig) *Filter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputQueue := rabbit.NewRabbitInputQueue(channel, props.BotUsersAggregatorOutput)
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.BotUsersFilterOutput)
+	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA7_Output1)
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FilterF3_Output)
 
 	filter := &Filter {
 		instance:			config.Instance,

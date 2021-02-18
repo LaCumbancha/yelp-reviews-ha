@@ -41,9 +41,9 @@ type Joiner struct {
 func NewJoiner(config JoinerConfig) *Joiner {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.StarsAggregatorOutput, config.InputTopic, "")
-	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.BestUsersFilterOutput, config.InputTopic, "")
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.BestUsersJoinerOutput, comms.EndSignals(1))
+	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.AggregatorA8_Output, config.InputTopic, "")
+	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.FilterF4_Output2, config.InputTopic, "")
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.JoinerJ3_Output, comms.EndSignals(1))
 
 	joiner := &Joiner {
 		instance:			config.Instance,

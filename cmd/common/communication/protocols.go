@@ -44,17 +44,18 @@ func IsCloseMessage(message string) bool {
 }
 
 // Signaling control, for closing and finishin.
-func signalsControl(signaledInstance string, storedSignals map[string]int, expectedSignals int) (bool, bool) {
+func signalsControl(signaledInstance string, storedSignals map[string]int, expectedSignals int) (bool, bool, bool) {
+	firstSignal := len(storedSignals) == 0
 	storedSignals[signaledInstance] = storedSignals[signaledInstance] + 1
 	distinctSignals := len(storedSignals)
 
 	newSignal := storedSignals[signaledInstance] == 1
 	allSignals := (distinctSignals == expectedSignals) && newSignal
-	return newSignal, allSignals
+	return firstSignal, newSignal, allSignals
 }
 
 // Detect if all signals from multiple datasets were received
-func MultiDatasetControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool) {
+func MultiDatasetControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool, bool) {
 	if _, found := receivedSignals[dataset]; !found {
 		receivedSignals[dataset] = make(map[string]int)
 	}
@@ -62,7 +63,7 @@ func MultiDatasetControl(dataset int, instance string, receivedSignals map[int]m
 	return signalsControl(instance, receivedSignals[dataset], expectedSignals)
 }
 
-// Detect if all close signals were received
-func SingleControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool) {
+// Detect if all signals from a single dataset were received
+func SingleControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool, bool) {
 	return signalsControl(instance, receivedSignals, expectedSignals)
 }

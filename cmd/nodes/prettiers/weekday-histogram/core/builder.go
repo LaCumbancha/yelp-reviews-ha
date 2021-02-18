@@ -79,14 +79,8 @@ func (builder *Builder) storeNewWeekdayData(rawData string) {
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
 
 	// Updating backup
-	backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	backupBytes, err := json.Marshal(backup)
-
-	if err != nil {
-		log.Errorf("Error serializing Prettier backup. Err: %s", err)
-	} else {
-		proc.StoreBackup(proc.DataBkp, backupBytes)
-	}
+	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

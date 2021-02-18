@@ -38,8 +38,8 @@ type Mapper struct {
 func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputFanout := rabbit.NewRabbitInputFanout(channel, props.ReviewsScatterOutput, props.StarsMapperInput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.StarsMapperOutput, comms.EndSignals(config.StarsFilters))
+	inputFanout := rabbit.NewRabbitInputFanout(channel, props.InputI2_Output, props.MapperM6_Input)
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.MapperM6_Output, comms.EndSignals(config.StarsFilters))
 
 	mapper := &Mapper {
 		instance:			config.Instance,

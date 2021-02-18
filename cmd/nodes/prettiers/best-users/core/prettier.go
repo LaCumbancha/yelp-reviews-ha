@@ -33,8 +33,8 @@ type Prettier struct {
 func NewPrettier(config PrettierConfig) *Prettier {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputQueue := rabbit.NewRabbitInputQueue(channel, props.BestUsersJoinerOutput)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.BestUsersPrettierOutput, comms.EndSignals(1))
+	inputQueue := rabbit.NewRabbitInputQueue(channel, props.JoinerJ3_Output)
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP5_Output, comms.EndSignals(1))
 
 	prettier := &Prettier {
 		connection:			connection,

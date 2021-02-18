@@ -34,11 +34,11 @@ type Sink struct {
 func NewSink(config SinkConfig) *Sink {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	funniestCitiesQueue := rabbit.NewRabbitInputQueue(channel, props.FunniestCitiesPrettierOutput)
-	weekdayHistogramQueue := rabbit.NewRabbitInputQueue(channel, props.WeekdayHistogramPrettierOutput)
-	topUsersQueue := rabbit.NewRabbitInputQueue(channel, props.TopUsersPrettierOutput)
-	bestUsersQueue := rabbit.NewRabbitInputQueue(channel, props.BestUsersPrettierOutput)
-	botUsersQueue := rabbit.NewRabbitInputQueue(channel, props.BotUsersPrettierOutput)
+	funniestCitiesQueue := rabbit.NewRabbitInputQueue(channel, props.PrettierP1_Output)
+	weekdayHistogramQueue := rabbit.NewRabbitInputQueue(channel, props.PrettierP2_Output)
+	topUsersQueue := rabbit.NewRabbitInputQueue(channel, props.PrettierP4_Output)
+	bestUsersQueue := rabbit.NewRabbitInputQueue(channel, props.PrettierP5_Output)
+	botUsersQueue := rabbit.NewRabbitInputQueue(channel, props.PrettierP3_Output)
 
 	sink := &Sink {
 		connection:				connection,

@@ -42,8 +42,8 @@ type Aggregator struct {
 func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.FunbizFilterOutput, config.InputTopic, "")
-	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FunbizAggregatorOutput)
+	inputDirect := rabbit.NewRabbitInputDirect(channel, props.FilterF1_Output, config.InputTopic, "")
+	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.AggregatorA1_Output)
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,

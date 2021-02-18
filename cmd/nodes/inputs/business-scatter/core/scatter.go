@@ -39,7 +39,7 @@ type Scatter struct {
 func NewScatter(config ScatterConfig) *Scatter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	scatterQueue := rabbit.NewRabbitOutputQueue(channel, props.BusinessesScatterOutput, comms.EndSignals(config.CitbizMappers))
+	scatterQueue := rabbit.NewRabbitOutputQueue(channel, props.InputI1_Output, comms.EndSignals(config.CitbizMappers))
 
 	scatter := &Scatter {
 		data: 				config.Data,

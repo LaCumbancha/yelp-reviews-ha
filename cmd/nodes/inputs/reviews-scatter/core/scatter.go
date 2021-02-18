@@ -46,7 +46,7 @@ type Scatter struct {
 func NewScatter(config ScatterConfig) *Scatter {
     connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-    outputFanout := rabbit.NewRabbitOutputFanout(channel, props.ReviewsScatterOutput)
+    outputFanout := rabbit.NewRabbitOutputFanout(channel, props.InputI2_Output)
     
     scatter := &Scatter {
         instance:           config.Instance,
@@ -158,6 +158,7 @@ func (scatter *Scatter) processFile(filePath string, dataset int) {
             bulk++
             bulkData := buffer.String()
             scatter.sendBulk(dataset, bulk, bulkData[:len(bulkData)-1])
+            //time.Sleep(5 * time.Second)
 
             buffer = bytes.NewBufferString("")
             chunk = 0

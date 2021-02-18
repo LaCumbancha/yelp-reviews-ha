@@ -90,14 +90,8 @@ func (calculator *Calculator) saveData(rawData string) {
 	}
 
 	// Updating backup
-	backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
-	backupBytes, err := json.Marshal(backup)
-
-	if err != nil {
-		log.Errorf("Error serializing Aggregator backup. Err: %s", err)
-	} else {
-		proc.StoreBackup(proc.DataBkp, backupBytes)
-	}
+	//backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
+	//proc.StoreBackup(backup, proc.DataBkp)
 }
 
 func (calculator *Calculator) AggregateData(dataset int) [][]comms.DishashData {

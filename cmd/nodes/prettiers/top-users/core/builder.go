@@ -43,23 +43,29 @@ func (builder *Builder) loadBackup() {
 
 func (builder *Builder) Clear(dataset int) {
 	builder.mutex.Lock()
+
 	if _, found := builder.data[dataset]; found {
 		delete(builder.data, dataset)
 		log.Infof("Dataset #%d removed from Builder storage.", dataset)
 	} else {
 		log.Infof("Attempting to remove dataset #%d from Builder storage but it wasn't registered.", dataset)
 	}
+	
+	bkp.RemoveDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 
 func (builder *Builder) RegisterDataset(dataset int) {
 	builder.mutex.Lock()
+
 	if _, found := builder.data[dataset]; !found {
 		builder.data[dataset] = make(map[string]int)
 		log.Infof("Dataset %d initialized in Builder.", dataset)
 	} else {
 		log.Warnf("Dataset %d was already initialized in Builder.", dataset)
 	}
+	
+	bkp.InitializeDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 

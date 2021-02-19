@@ -53,11 +53,31 @@ func InitializeBackupStructure() {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatalf("Error creating data backup folder. Err: '%s'", err)
-		} else {
-			initializeBackupFiles(path)
 		}
 	} else {
 		log.Infof("Backup directory found.")
+	}
+}
+
+func InitializeDatasetBackup(dataset int) {
+	mainPath := calculateBackupPath(DataBkp)
+	datasetBackupPath := fmt.Sprintf("%s/dataset.%d", mainPath, dataset)
+
+	err := os.MkdirAll(datasetBackupPath, os.ModePerm)
+	if err != nil {
+		log.Errorf("Error creating dataset #%d backup folder. Err: '%s'", err)
+	} else {
+		initializeBackupFiles(datasetBackupPath)
+	}
+}
+
+func RemoveDatasetBackup(dataset int) {
+	mainPath := calculateBackupPath(DataBkp)
+	datasetPath := fmt.Sprintf("%s/dataset.%d", mainPath, dataset)
+
+	err := os.RemoveAll(datasetPath)
+	if err != nil {
+		log.Errorf("Error removing dataset #%d backup. Err: %s", dataset, err)
 	}
 }
 

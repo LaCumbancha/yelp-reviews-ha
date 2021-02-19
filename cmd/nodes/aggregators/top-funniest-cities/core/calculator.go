@@ -45,23 +45,29 @@ func (calculator *Calculator) loadBackup() {
 
 func (calculator *Calculator) Clear(dataset int) {
 	calculator.mutex.Lock()
+	
 	if _, found := calculator.data[dataset]; found {
 		delete(calculator.data, dataset)
 		log.Infof("Dataset #%d removed from Calculator storage.", dataset)
 	} else {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage but it wasn't registered.", dataset)
 	}
+	
+	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex.Unlock()
 }
 
 func (calculator *Calculator) RegisterDataset(dataset int) {
 	calculator.mutex.Lock()
+
 	if _, found := calculator.data[dataset]; !found {
 		calculator.data[dataset] = make(map[string]int)
 		log.Infof("Dataset %d initialized in Calculator.", dataset)
 	} else {
 		log.Warnf("Dataset %d was already initialized in Calculator.", dataset)
 	}
+
+	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex.Unlock()
 }
 

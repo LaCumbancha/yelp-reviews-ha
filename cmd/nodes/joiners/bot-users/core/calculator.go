@@ -60,42 +60,48 @@ func (calculator *Calculator) loadBackup() {
 
 func (calculator *Calculator) Clear(dataset int) {
 	calculator.mutex1.Lock()
+	calculator.mutex2.Lock()
+
 	if _, found := calculator.data1[dataset]; found {
 		delete(calculator.data1, dataset)
 		log.Infof("Dataset #%d removed from Calculator storage #1.", dataset)
 	} else {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage #1 but it wasn't registered.", dataset)
 	}
-	calculator.mutex1.Unlock()
-
-	calculator.mutex2.Lock()
+	
 	if _, found := calculator.data2[dataset]; found {
 		delete(calculator.data2, dataset)
 		log.Infof("Dataset #%d removed from Calculator storage #2.", dataset)
 	} else {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage #2 but it wasn't registered.", dataset)
 	}
+
+	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex2.Unlock()
+	calculator.mutex1.Unlock()
 }
 
 func (calculator *Calculator) RegisterDataset(dataset int) {
 	calculator.mutex1.Lock()
+	calculator.mutex2.Lock()
+
 	if _, found := calculator.data1[dataset]; !found {
 		calculator.data1[dataset] = make(map[string]int)
 		log.Infof("Dataset %d initialized in Calculator storage #1.", dataset)
 	} else {
 		log.Warnf("Dataset %d was already initialized in Calculator storage #1.", dataset)
 	}
-	calculator.mutex1.Unlock()
-
-	calculator.mutex2.Lock()
+	
 	if _, found := calculator.data2[dataset]; !found {
 		calculator.data2[dataset] = make(map[string]int)
 		log.Infof("Dataset %d initialized in Calculator storage #2.", dataset)
 	} else {
 		log.Warnf("Dataset %d was already initialized in Calculator storage #2.", dataset)
 	}
+
+	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex2.Unlock()
+	calculator.mutex1.Unlock()
 }
 
 func (calculator *Calculator) AddBotUser(dataset int, bulk int, rawData string) {

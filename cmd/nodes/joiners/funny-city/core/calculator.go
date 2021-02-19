@@ -61,23 +61,29 @@ func (calculator *Calculator) loadBackup() {
 // Just the funny-businesses information is cleared because city-businesses data is needed for futures datasets.
 func (calculator *Calculator) Clear(dataset int) {
 	calculator.mutex1.Lock()
+
 	if _, found := calculator.data1[dataset]; found {
 		delete(calculator.data1, dataset)
 		log.Infof("Dataset #%d removed from Calculator storage #1.", dataset)
 	} else {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage #1 but it wasn't registered.", dataset)
 	}
+
+	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex1.Unlock()
 }
 
 func (calculator *Calculator) RegisterDataset(dataset int) {
 	calculator.mutex1.Lock()
+
 	if _, found := calculator.data1[dataset]; !found {
 		calculator.data1[dataset] = make(map[string]int)
 		log.Infof("Dataset %d initialized in Calculator storage #1.", dataset)
 	} else {
 		log.Warnf("Dataset %d was already initialized in Calculator storage #1.", dataset)
 	}
+
+	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex1.Unlock()
 }
 

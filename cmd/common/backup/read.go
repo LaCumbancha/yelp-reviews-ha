@@ -10,17 +10,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type InnerDataBackup struct {
+	Dataset		int
+	Data		[]byte
+}
+
 func LoadDataBackup() []DataBackup {
 	data := make([]DataBackup, 0)
-	backup := loadBackup(DataBkp)
+	backups := loadMultiBackup(DataBkp)
 
-	if backup != nil {
-		backupRawData := string(backup)
+	for _, backup := range backups {
+		backupRawData := string(backup.Data)
 		backupDataList := strings.Split(backupRawData, "\n")
 		for _, backupData := range backupDataList {
 			if backupData != "" {
-				backupDataUnpackaged := unpackageBackupMessage(backupData)
-				if backupDataUnpackaged.Dataset != -1 {
+				backupDataUnpackaged := unpackBackupMessage(backupData)
+				if backupDataUnpackaged.Flow != -1 {
+					backupDataUnpackaged.Dataset = backup.Dataset
 					data = append(data, backupDataUnpackaged)
 				} else {
 					log.Warnf("Error parsing backup information. Data: '%s'", backupDataUnpackaged)
@@ -34,7 +40,7 @@ func LoadDataBackup() []DataBackup {
 
 func LoadSignalsBackup() (map[int]int, map[int]int, map[string]int, map[string]bool) {
 	startingSignals := make(map[int]int)
-	bkpStartSignals := loadBackup(StartBkp)
+	bkpStartSignals := loadCommonBackup(StartBkp)
 
 	if bkpStartSignals != nil {
 		json.Unmarshal([]byte(bkpStartSignals), &startingSignals)
@@ -42,7 +48,7 @@ func LoadSignalsBackup() (map[int]int, map[int]int, map[string]int, map[string]b
 	}
 
 	finishingSignals := make(map[int]int)
-	bkpFinishSignals := loadBackup(FinishBkp)
+	bkpFinishSignals := loadCommonBackup(FinishBkp)
 
 	if bkpFinishSignals != nil {
 		json.Unmarshal([]byte(bkpFinishSignals), &finishingSignals)
@@ -50,7 +56,7 @@ func LoadSignalsBackup() (map[int]int, map[int]int, map[string]int, map[string]b
 	}
 
 	closingSignals := make(map[string]int)
-	bkpCloseSignals := loadBackup(CloseBkp)
+	bkpCloseSignals := loadCommonBackup(CloseBkp)
 
 	if bkpCloseSignals != nil {
 		json.Unmarshal([]byte(bkpCloseSignals), &closingSignals)
@@ -58,7 +64,7 @@ func LoadSignalsBackup() (map[int]int, map[int]int, map[string]int, map[string]b
 	}
 
 	receivedMessages := make(map[string]bool)
-	bkpReceivedMessages := loadBackup(ReceivedBkp)
+	bkpReceivedMessages := loadCommonBackup(ReceivedBkp)
 
 	if bkpReceivedMessages != nil {
 		json.Unmarshal([]byte(bkpReceivedMessages), &receivedMessages)
@@ -68,24 +74,52 @@ func LoadSignalsBackup() (map[int]int, map[int]int, map[string]int, map[string]b
 	return startingSignals, finishingSignals, closingSignals, receivedMessages
 }
 
-func loadBackup(bkpType BackupType) []byte {
+func loadCommonBackup(bkpType BackupType) []byte {
 	path := calculateBackupPath(bkpType)
+	return loadBackup(path)
+}
 
-	bkpBytes := loadBackupFromFile(FileKey1, path)
+func loadMultiBackup(bkpType BackupType) []InnerDataBackup {
+	mainPath := calculateBackupPath(bkpType)
+
+	backups := make([]InnerDataBackup, 0)
+	backupFolders, err := ioutil.ReadDir(mainPath)
+	if err != nil {
+		log.Errorf("Couldn't open data backup folder. Err: %s", err)
+	} else {
+		log.Debugf("Data backup folders found: %d.", len(backupFolders))
+
+		for _, backupFolder := range backupFolders {
+			backupFolderName := backupFolder.Name()
+			dataset := datasetFromBackupDirectory(backupFolderName)
+			if dataset != -1 {
+				backupPath := fmt.Sprintf("%s/%s", mainPath, backupFolderName)
+				backups = append(backups, InnerDataBackup{ Dataset: dataset, Data: loadBackup(backupPath) })
+			} else {
+				log.Warnf("Error parsing backup folder dataset. Directory: '%s'", backupFolderName)
+			}
+		}
+	}
+
+	return backups
+}
+
+func loadBackup(path string) []byte {
+	bkpBytes := loadBackupFromDirectory(FileKey1, path)
 	if bkpBytes == nil || string(bkpBytes) == "" {
 		if bkpBytes == nil {
-			log.Warnf("Couldn't load '%s' backup file #%s. Attempting with #%s.", bkpType, FileKey1, FileKey2)
+			log.Warnf("Couldn't load backup file '%s' #%s. Attempting with #%s.", path, FileKey1, FileKey2)
 		} else {
-			log.Tracef("Empty '%s' backup file #%s ignored. Attempting with #%s.", bkpType, FileKey1, FileKey2)
+			log.Tracef("Empty backup file '%s' #%s ignored. Attempting with #%s.", path, FileKey1, FileKey2)
 			bkpBytes = nil
 		}
 		
-		bkpBytes = loadBackupFromFile(FileKey2, path)
+		bkpBytes = loadBackupFromDirectory(FileKey2, path)
 		if bkpBytes == nil || string(bkpBytes) == "" {
 			if bkpBytes == nil {
-				log.Errorf("Couldn't load '%s' backup file #%s. Setting empty backup as default.", bkpType, FileKey2)
+				log.Errorf("Couldn't load backup file '%s' #%s. Setting empty backup as default.", path, FileKey2)
 			} else {
-				log.Tracef("Empty '%s' backup file #%s ignored. Setting empty backup as default.", bkpType, FileKey2)
+				log.Tracef("Empty backup file '%s' #%s ignored. Setting empty backup as default.", path, FileKey2)
 				bkpBytes = nil
 			}
 		}
@@ -94,7 +128,7 @@ func loadBackup(bkpType BackupType) []byte {
 	return bkpBytes
 }
 
-func loadBackupFromFile(fileKey string, path string) []byte {
+func loadBackupFromDirectory(fileKey string, path string) []byte {
 	okFileName := fmt.Sprintf("%s/ok.%s", path, fileKey)
 	backupFileName := fmt.Sprintf("%s/bkp.%s", path, fileKey)
 

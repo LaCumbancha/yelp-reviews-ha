@@ -53,30 +53,34 @@ type DataBackup struct {
 	Data		string
 }
 
-func packageBackupMessage(toBackup DataBackup) string {
-	return fmt.Sprintf("%d|%d|%s", toBackup.Dataset, toBackup.Flow, toBackup.Data)
+func packBackupMessage(toBackup DataBackup) string {
+	return fmt.Sprintf("%d|%s", toBackup.Flow, toBackup.Data)
 }
 
-func unpackageBackupMessage(backup string) DataBackup {
+func unpackBackupMessage(backup string) DataBackup {
 	idx1 := strings.Index(backup, "|")
 	if idx1 < 0 {
-		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
-	}
-	
-	idx2 := strings.Index(backup[idx1+1:], "|")
-	if idx2 < 0 {
-		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
+		return DataBackup { Flow: -1, Data: "" }
 	}
 
-	dataset, err := strconv.Atoi(backup[:idx1])
+	flow, err := strconv.Atoi(backup[:idx1])
 	if err != nil {
-		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
+		return DataBackup { Flow: -1, Data: "" }
 	}
 
-	flow, err := strconv.Atoi(backup[idx1+1:idx1+idx2+1])
+	return DataBackup { Flow: flow, Data: backup[idx1+1:] }
+}
+
+func datasetFromBackupDirectory(directoryName string) int {
+	idx1 := strings.Index(directoryName, ".")
+	if idx1 < 0 {
+		return -1
+	}
+
+	dataset, err := strconv.Atoi(directoryName[idx1+1:])
 	if err != nil {
-		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
+		return -1
 	}
 
-	return DataBackup { Dataset: dataset, Flow: flow, Data: backup[idx1+idx2+2:] }
+	return dataset
 }

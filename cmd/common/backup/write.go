@@ -13,10 +13,10 @@ func StoreSingleFlowDataBackup(dataset int, data string) {
 }
 
 func StoreMultiFlowDataBackup(dataset int, flow int, data string) {
-	multiFlowData := packageBackupMessage(DataBackup { Dataset: dataset, Flow: flow, Data: data })
+	multiFlowData := packBackupMessage(DataBackup { Flow: flow, Data: data })
 	path := calculateBackupPath(DataBkp)
-	storeDataBackup(FileKey1, path, multiFlowData)
-	storeDataBackup(FileKey2, path, multiFlowData)
+	storeDataBackup(dataset, FileKey1, path, multiFlowData)
+	storeDataBackup(dataset, FileKey2, path, multiFlowData)
 }
 
 func StoreSignalsBackup(data interface{}, bkpType BackupType) {
@@ -30,10 +30,13 @@ func StoreSignalsBackup(data interface{}, bkpType BackupType) {
 	}
 }
 
-func storeDataBackup(fileKey string, path string, data string) {
-	removeOk(fileKey, path)
-	appendBackup(fileKey, path, data)
-	writeOk(fileKey, path)
+func storeDataBackup(dataset int, fileKey string, path string, data string) {
+	datasetBackupPath := fmt.Sprintf("%s/dataset.%d", path, dataset)
+	if checkDatasetBackupFolder(datasetBackupPath) {
+		removeOk(fileKey, datasetBackupPath)
+		appendBackup(fileKey, datasetBackupPath, data)
+		writeOk(fileKey, datasetBackupPath)
+	}
 }
 
 func storeSpecialBackup(fileKey string, path string, data []byte) {
@@ -117,4 +120,21 @@ func appendBackup(backupFileKey string, path string, data string) {
 	backupFile.Close()
 
 	log.Debugf("Backup file %s updated.", backupFileName)
+}
+
+func checkDatasetBackupFolder(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		log.Errorf("Data backup folder '%s' not found. Creating empty.", path)
+		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			log.Errorf("Error creating data backup folder '%s'. Err: '%s'", path, err)
+		} else {
+			log.Debugf("Data backup folder '%s' created.", path)
+			return true
+		}
+	} else {
+		return true
+	}
+
+	return false
 }

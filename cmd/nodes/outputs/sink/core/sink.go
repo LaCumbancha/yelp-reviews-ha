@@ -1,6 +1,7 @@
 package core
 
 import (
+	"time"
 	"sync"
 	"github.com/streadway/amqp"
 
@@ -30,6 +31,8 @@ type Sink struct {
 	topUsersQueue 				*rabbit.RabbitInputQueue
 	bestUsersQueue 				*rabbit.RabbitInputQueue
 	botUsersQueue 				*rabbit.RabbitInputQueue
+	timeMap						map[int]time.Time
+	timeMutex					*sync.Mutex
 }
 
 func NewSink(config SinkConfig) *Sink {
@@ -49,6 +52,8 @@ func NewSink(config SinkConfig) *Sink {
 		topUsersQueue:			topUsersQueue,
 		bestUsersQueue:			bestUsersQueue,
 		botUsersQueue:			botUsersQueue,
+		timeMap:				make(map[int]time.Time),
+		timeMutex:				&sync.Mutex{},
 	}
 
 	return sink
@@ -92,10 +97,23 @@ func (sink *Sink) mainCallback(nodeCode string, dataset int, instance string, bu
 
 func (sink *Sink) startCallback(dataset int) {
 	log.Infof("Dataset #%d analysis started.", dataset)
+	sink.timeMutex.Lock()
+	sink.timeMap[dataset] = time.Now()
+	sink.timeMutex.Unlock()
 }
 
 func (sink *Sink) finishCallback(dataset int) {
-	log.Infof("Dataset #%d analysis finished.", dataset)
+	sink.timeMutex.Lock()
+	startTime, found := sink.timeMap[dataset]
+	delete(sink.timeMap, dataset)
+	sink.timeMutex.Unlock()
+
+	if found {
+		log.Infof("Dataset #%d analysis finished in %s.", dataset, time.Now().Sub(startTime).String())
+	} else {
+		log.Warnf("Starting time not found for dataset %d.", dataset)
+		log.Infof("Dataset #%d analysis finished.", dataset)
+	}
 }
 
 func (sink *Sink) closeCallback() {

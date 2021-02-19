@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
@@ -17,11 +18,6 @@ type DistinctHash struct {
 	Reviews 			int
 }
 
-type backupData struct {
-	Data				map[string]DistinctHash
-	Dataset				int
-}
-
 type Calculator struct {
 	data 				map[string]DistinctHash
 	dataMutex 			*sync.Mutex
@@ -29,30 +25,18 @@ type Calculator struct {
 	bulkSize			int
 }
 
-func loadBackup() (map[string]DistinctHash, int) {
-	var backup backupData
-	data := make(map[string]DistinctHash)
-	dataset	:= proc.DefaultDataset
-
-	backupBytes := proc.LoadBackup(proc.DataBkp)
-	if backupBytes != nil {
-		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.Data
-		dataset = backup.Dataset
-		log.Infof("Aggregator data restored from backup file. Users loaded: %d.", len(data))
+func NewCalculator(bulkSize int) *Calculator {
+	calculator := &Calculator {
+		data:				make(map[string]DistinctHash),
+		dataMutex:			&sync.Mutex{},
+		dataset:			proc.DefaultDataset,
+		bulkSize:			bulkSize,
 	}
 
-	return data, dataset
-}
-
-func NewCalculator(bulkSize int) *Calculator {
-	data, dataset := loadBackup()
-
-	calculator := &Calculator {
-		data:				data,
-		dataMutex:			&sync.Mutex{},
-		dataset:			dataset,
-		bulkSize:			bulkSize,
+	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
+		calculator.dataMutex.Lock()
+		calculator.saveData(backupData)
+		calculator.dataMutex.Unlock()
 	}
 
 	return calculator
@@ -97,8 +81,7 @@ func (calculator *Calculator) saveData(rawData string) {
 	}
 
 	// Updating backup
-	//backup := &backupData { Data: calculator.data, Dataset: calculator.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreSingleFlowDataBackup(rawData)
 }
 
 func (calculator *Calculator) AggregateData(dataset int) [][]comms.UserData {

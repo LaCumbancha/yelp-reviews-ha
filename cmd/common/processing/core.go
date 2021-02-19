@@ -3,6 +3,8 @@ package processing
 import (
 	"sync"
 	"github.com/streadway/amqp"
+
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 )
 
 // Common processing for Mappers, Filters, Aggregators and Prettiers.
@@ -29,7 +31,7 @@ func Transformation(
 
 	neededInputs := 1
 	savedInputs := 0
-	startSignals, finishSignals, closeSignals, receivedMsgs := LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
 	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 
 	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
@@ -72,7 +74,7 @@ func Join(
 	var connWg sync.WaitGroup
 	connWg.Add(1)
 
-	startSignals, finishSignals, closeSignals, receivedMsgs := LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
 	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 	
 	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)

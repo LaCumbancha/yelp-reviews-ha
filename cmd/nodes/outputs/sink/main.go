@@ -8,7 +8,7 @@ import (
 	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/outputs/sink/core"
 
 	log "github.com/sirupsen/logrus"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -52,7 +52,7 @@ func main() {
 	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
 	utils.SetLogLevel(logLevel)
 
-	proc.InitializeBackupStructure()
+	bkp.InitializeBackupStructure()
 
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")
 	rabbitPort := utils.GetConfigString(configEnv, configFile, "rabbitmq_port")

@@ -7,14 +7,10 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
-
-type backupData struct {
-	Data				[]comms.FunnyCityData
-	Dataset				int
-}
 
 type Builder struct {
 	data 				[]comms.FunnyCityData
@@ -23,30 +19,18 @@ type Builder struct {
 	topSize				int
 }
 
-func loadBackup() ([]comms.FunnyCityData, int) {
-	var backup backupData
-	data := make([]comms.FunnyCityData, 0)
-	dataset	:= proc.DefaultDataset
-
-	backupBytes := proc.LoadBackup(proc.DataBkp)
-	if backupBytes != nil {
-		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.Data
-		dataset = backup.Dataset
-		log.Infof("Prettier data restored from backup file. Funny cities loaded: %d .", len(data))
+func NewBuilder(topSize int) *Builder {
+	builder := &Builder {
+		data:				make([]comms.FunnyCityData, 0),
+		dataMutex:			&sync.Mutex{},
+		dataset:			proc.DefaultDataset,
+		topSize:			topSize,
 	}
 
-	return data, dataset
-}
-
-func NewBuilder(topSize int) *Builder {
-	data, dataset := loadBackup()
-	
-	builder := &Builder {
-		data:				data,
-		dataMutex:			&sync.Mutex{},
-		dataset:			dataset,
-		topSize:			topSize,
+	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
+		builder.dataMutex.Lock()
+		builder.storeNewCityData(backupData)
+		builder.dataMutex.Unlock()
 	}
 
 	return builder
@@ -82,8 +66,7 @@ func (builder *Builder) storeNewCityData(rawData string) {
 	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)	
 
 	// Updating backup
-	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreSingleFlowDataBackup(rawData)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

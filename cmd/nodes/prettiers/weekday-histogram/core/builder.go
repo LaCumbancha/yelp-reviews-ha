@@ -6,14 +6,10 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
-
-type backupData struct {
-	Data				map[string]int
-	Dataset				int
-}
 
 type Builder struct {
 	data 				map[string]int
@@ -21,29 +17,17 @@ type Builder struct {
 	dataset				int
 }
 
-func loadBackup() (map[string]int, int) {
-	var backup backupData
-	data := make(map[string]int)
-	dataset	:= proc.DefaultDataset
-
-	backupBytes := proc.LoadBackup(proc.DataBkp)
-	if backupBytes != nil {
-		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.Data
-		dataset = backup.Dataset
-		log.Infof("Prettier data restored from backup file. Weekdays loaded: %d .", len(data))
+func NewBuilder() *Builder {
+	builder := &Builder {
+		data:				make(map[string]int),
+		dataMutex:			&sync.Mutex{},
+		dataset:			proc.DefaultDataset,
 	}
 
-	return data, dataset
-}
-
-func NewBuilder() *Builder {
-	data, dataset := loadBackup()
-	
-	builder := &Builder {
-		data:				data,
-		dataMutex:			&sync.Mutex{},
-		dataset:			dataset,
+	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
+		builder.dataMutex.Lock()
+		builder.storeNewWeekdayData(backupData)
+		builder.dataMutex.Unlock()
 	}
 
 	return builder
@@ -79,8 +63,7 @@ func (builder *Builder) storeNewWeekdayData(rawData string) {
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
 
 	// Updating backup
-	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreSingleFlowDataBackup(rawData)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

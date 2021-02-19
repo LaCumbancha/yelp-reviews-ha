@@ -3,11 +3,11 @@ package processing
 import (
 	"fmt"
 	"sync"
-	//"time"
 	"github.com/streadway/amqp"
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
@@ -53,16 +53,16 @@ func ReceiveInputs(
 		if comms.IsStartMessage(mainMessage) {
 			firstStartReceived, newStartReceived, _ := comms.MultiDatasetControl(dataset, instance, distinctStartSignals, inputSignals)
 
-			if newStartReceived {
-				flowLogMessage(fmt.Sprintf("Start-Message #%d from dataset #%d", len(distinctStartSignals[dataset]), dataset), flow)
-				utils.DefineWaitGroupByDataset(dataset, procWgs, procWgsMutex).Add(1)
-			}
-
 			if firstStartReceived {
 				flowLogMessage(fmt.Sprintf("First Start-Messages from dataset #%d", dataset), flow)
 				startingChannel <- message
 			} else {
 				rabbit.AckMessage(message)
+			}
+
+			if newStartReceived {
+				flowLogMessage(fmt.Sprintf("Start-Message #%d from dataset #%d", len(distinctStartSignals[dataset]), dataset), flow)
+				utils.DefineWaitGroupByDataset(dataset, procWgs, procWgsMutex).Add(1)
 			}
 
 		} else if comms.IsFinishMessage(mainMessage) {
@@ -135,7 +135,7 @@ func ProcessData(
 						callback(inputNode, dataset, instance, bulk, data)
 
 						procMutex.Lock()
-						//StoreBackup(receivedMsgs, ReceivedBkp)
+						bkp.StoreSignalsBackup(receivedMsgs, bkp.ReceivedBkp)
 						procMutex.Unlock()
 					}
 
@@ -173,7 +173,7 @@ func ProcessStart(
 			callback(datasetStarted)
 		}
 
-		//StoreBackup(startingSignals, StartBkp)
+		bkp.StoreSignalsBackup(startingSignals, bkp.StartBkp)
 		rabbit.AckMessage(message)
 	}
 }
@@ -208,7 +208,7 @@ func ProcessFinish(
 			finishWg.Done()
 		}
 
-		//StoreBackup(finishingSignals, FinishBkp)
+		bkp.StoreSignalsBackup(finishingSignals, bkp.FinishBkp)
 		rabbit.AckMessage(finishMessage)
 	}
 }
@@ -240,7 +240,7 @@ func ProcessClose(
 			connWg.Done()
 		}
 
-		//StoreBackup(closingSignals, CloseBkp)
+		bkp.StoreSignalsBackup(closingSignals, bkp.CloseBkp)
 		rabbit.AckMessage(closeMessage.Message)
 	}
 }

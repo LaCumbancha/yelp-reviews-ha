@@ -6,14 +6,10 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
-
-type backupData struct {
-	Data				map[string]int
-	Dataset				int
-}
 
 type Builder struct {
 	data 				map[string]int
@@ -22,30 +18,18 @@ type Builder struct {
 	reviews 			int
 }
 
-func loadBackup() (map[string]int, int) {
-	var backup backupData
-	data := make(map[string]int)
-	dataset	:= proc.DefaultDataset
-
-	backupBytes := proc.LoadBackup(proc.DataBkp)
-	if backupBytes != nil {
-		json.Unmarshal([]byte(backupBytes), &backup)
-		data = backup.Data
-		dataset = backup.Dataset
-		log.Infof("Prettier data restored from backup file. Top users loaded: %d .", len(data))
+func NewBuilder(minReviews int) *Builder {
+	builder := &Builder {
+		data:				make(map[string]int),
+		dataMutex:			&sync.Mutex{},
+		dataset:			proc.DefaultDataset,
+		reviews:			minReviews,
 	}
 
-	return data, dataset
-}
-
-func NewBuilder(minReviews int) *Builder {
-	data, dataset := loadBackup()
-	
-	builder := &Builder {
-		data:				data,
-		dataMutex:			&sync.Mutex{},
-		dataset:			dataset,
-		reviews:			minReviews,
+	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
+		builder.dataMutex.Lock()
+		builder.storeNewUsersData(backupData)
+		builder.dataMutex.Unlock()
 	}
 
 	return builder
@@ -86,8 +70,7 @@ func (builder *Builder) storeNewUsersData(rawData string) {
 	}	
 
 	// Updating backup
-	//backup := &backupData { Data: builder.data, Dataset: builder.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreSingleFlowDataBackup(rawData)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

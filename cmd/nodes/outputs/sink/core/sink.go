@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
@@ -69,7 +70,7 @@ func (sink *Sink) Run() {
 
 	neededInputs := 5
 	savedInputs := 0
-	startSignals, finishSignals, closeSignals, receivedMsgs := proc.LoadBackupedSignals()
+	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
 	proc.InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
 
 	go proc.ReceiveInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)

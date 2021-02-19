@@ -6,16 +6,11 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
-
-type backupData struct {
-	Data1				map[string]int
-	Data2 				map[string]int
-	Dataset				int
-}
 
 type Calculator struct {
 	data1 				map[string]int
@@ -25,33 +20,26 @@ type Calculator struct {
 	dataset				int
 }
 
-func loadBackup() (map[string]int, map[string]int, int) {
-	var backup backupData
-	data1 := make(map[string]int)
-	data2 := make(map[string]int)
-	dataset	:= proc.DefaultDataset
-
-	backupBytes := proc.LoadBackup(proc.DataBkp)
-	if backupBytes != nil {
-		json.Unmarshal([]byte(backupBytes), &backup)
-		data1 = backup.Data1
-		data2 = backup.Data2
-		dataset = backup.Dataset
-		log.Infof("Joiner data restored from backup file. Best users loaded: %d. Common users loaded: %d.", len(data1), len(data2))
-	}
-
-	return data1, data2, dataset
-}
-
 func NewCalculator() *Calculator {
-	data1, data2, dataset := loadBackup()
-	
 	calculator := &Calculator {
-		data1:				data1,
-		data2:				data2,
+		data1:				make(map[string]int),
+		data2:				make(map[string]int),
 		dataMutex1:			&sync.Mutex{},
 		dataMutex2:			&sync.Mutex{},
-		dataset:			dataset,
+		dataset:			proc.DefaultDataset,
+	}
+
+	for _, backupData := range bkp.LoadMultiFlowDataBackup() {
+		switch backupData.Flow {
+		case 1:
+			calculator.dataMutex1.Lock()
+			calculator.saveBestUser(backupData.Data)
+			calculator.dataMutex1.Unlock()
+		case 2:
+			calculator.dataMutex2.Lock()
+			calculator.saveUser(backupData.Data)
+			calculator.dataMutex2.Unlock()
+		}
 	}
 
 	return calculator
@@ -94,8 +82,7 @@ func (calculator *Calculator) saveBestUser(rawData string) {
 	}
 
 	// Updating backup
-	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreMultiFlowDataBackup(1, rawData)
 }
 
 func (calculator *Calculator) AddUser(inputNode string, dataset int, instance string, bulk int, rawData string) {
@@ -121,8 +108,7 @@ func (calculator *Calculator) saveUser(rawData string) {
 	}
 
 	// Updating backup
-	//backup := &backupData { Data1: calculator.data1, Data2: calculator.data2, Dataset: calculator.dataset }
-	//proc.StoreBackup(backup, proc.DataBkp)
+	bkp.StoreMultiFlowDataBackup(2, rawData)
 }
 
 func (calculator *Calculator) RetrieveMatches(dataset int) []comms.UserData {

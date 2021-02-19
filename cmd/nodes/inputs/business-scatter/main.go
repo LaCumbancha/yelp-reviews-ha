@@ -10,7 +10,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -58,8 +57,6 @@ func main() {
 
 	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
 	utils.SetLogLevel(logLevel)
-
-	proc.InitializeBackupStructure()
 
 	businessData := utils.GetConfigString(configEnv, configFile, "business_data")
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")

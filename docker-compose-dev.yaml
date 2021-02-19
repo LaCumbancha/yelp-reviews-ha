@@ -30,7 +30,7 @@ services:
     entrypoint: /joiner
     environment:
     - BESTUSERJOIN_WORKERS_POOL=16
-    - BESTUSERJOIN_LOG_BULK_RATE=50
+    - BESTUSERJOIN_LOG_BULK_RATE=25
     - BESTUSERJOIN_INSTANCE=0
     - BESTUSERJOIN_RABBITMQ_IP=rabbitmq
     - BESTUSERJOIN_RABBITMQ_PORT=5672
@@ -51,7 +51,7 @@ services:
     entrypoint: /scatter
     environment:
     - BIZSCA_WORKERS_POOL=16
-    - BIZSCA_LOG_BULK_RATE=50
+    - BIZSCA_LOG_BULK_RATE=25
     - BIZSCA_INSTANCE=0
     - BIZSCA_BUSINESS_DATA=/data/business.json
     - BIZSCA_RABBITMQ_IP=rabbitmq
@@ -92,7 +92,7 @@ services:
     entrypoint: /filter
     environment:
     - BOTUSERFIL_WORKERS_POOL=16
-    - BOTUSERFIL_LOG_BULK_RATE=50
+    - BOTUSERFIL_LOG_BULK_RATE=25
     - BOTUSERFIL_INSTANCE=0
     - BOTUSERFIL_RABBITMQ_IP=rabbitmq
     - BOTUSERFIL_RABBITMQ_PORT=5672
@@ -113,7 +113,7 @@ services:
     entrypoint: /joiner
     environment:
     - BOTUSERJOIN_WORKERS_POOL=16
-    - BOTUSERJOIN_LOG_BULK_RATE=50
+    - BOTUSERJOIN_LOG_BULK_RATE=25
     - BOTUSERJOIN_INSTANCE=0
     - BOTUSERJOIN_RABBITMQ_IP=rabbitmq
     - BOTUSERJOIN_RABBITMQ_PORT=5672
@@ -134,7 +134,7 @@ services:
     entrypoint: /mapper
     environment:
     - CITBIZMAP_WORKERS_POOL=16
-    - CITBIZMAP_LOG_BULK_RATE=50
+    - CITBIZMAP_LOG_BULK_RATE=25
     - CITBIZMAP_INSTANCE=0
     - CITBIZMAP_RABBITMQ_IP=rabbitmq
     - CITBIZMAP_RABBITMQ_PORT=5672
@@ -153,7 +153,7 @@ services:
     entrypoint: /aggregator
     environment:
     - DISHASHAGG_WORKERS_POOL=16
-    - DISHASHAGG_LOG_BULK_RATE=50
+    - DISHASHAGG_LOG_BULK_RATE=25
     - DISHASHAGG_INSTANCE=0
     - DISHASHAGG_RABBITMQ_IP=rabbitmq
     - DISHASHAGG_RABBITMQ_PORT=5672
@@ -175,7 +175,7 @@ services:
     entrypoint: /aggregator
     environment:
     - FUNBIZAGG_WORKERS_POOL=16
-    - FUNBIZAGG_LOG_BULK_RATE=50
+    - FUNBIZAGG_LOG_BULK_RATE=25
     - FUNBIZAGG_INSTANCE=0
     - FUNBIZAGG_RABBITMQ_IP=rabbitmq
     - FUNBIZAGG_RABBITMQ_PORT=5672
@@ -197,7 +197,7 @@ services:
     entrypoint: /filter
     environment:
     - FUNBIZFIL_WORKERS_POOL=16
-    - FUNBIZFIL_LOG_BULK_RATE=50
+    - FUNBIZFIL_LOG_BULK_RATE=25
     - FUNBIZFIL_INSTANCE=0
     - FUNBIZFIL_RABBITMQ_IP=rabbitmq
     - FUNBIZFIL_RABBITMQ_PORT=5672
@@ -217,7 +217,7 @@ services:
     entrypoint: /mapper
     environment:
     - FUNBIZMAP_WORKERS_POOL=16
-    - FUNBIZMAP_LOG_BULK_RATE=50
+    - FUNBIZMAP_LOG_BULK_RATE=25
     - FUNBIZMAP_INSTANCE=0
     - FUNBIZMAP_RABBITMQ_IP=rabbitmq
     - FUNBIZMAP_RABBITMQ_PORT=5672
@@ -236,7 +236,7 @@ services:
     entrypoint: /joiner
     environment:
     - FUNCITJOIN_WORKERS_POOL=16
-    - FUNCITJOIN_LOG_BULK_RATE=50
+    - FUNCITJOIN_LOG_BULK_RATE=25
     - FUNCITJOIN_INSTANCE=0
     - FUNCITJOIN_RABBITMQ_IP=rabbitmq
     - FUNCITJOIN_RABBITMQ_PORT=5672
@@ -259,7 +259,7 @@ services:
     entrypoint: /aggregator
     environment:
     - FUNCITTOP_WORKERS_POOL=16
-    - FUNCITTOP_LOG_BULK_RATE=50
+    - FUNCITTOP_LOG_BULK_RATE=25
     - FUNCITTOP_INSTANCE=0
     - FUNCITTOP_RABBITMQ_IP=rabbitmq
     - FUNCITTOP_RABBITMQ_PORT=5672
@@ -279,7 +279,7 @@ services:
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=50
+    - HASHMAP_LOG_BULK_RATE=25
     - HASHMAP_INSTANCE=0
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
@@ -298,7 +298,7 @@ services:
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=50
+    - HASHMAP_LOG_BULK_RATE=25
     - HASHMAP_INSTANCE=1
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
@@ -317,7 +317,7 @@ services:
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=50
+    - HASHMAP_LOG_BULK_RATE=25
     - HASHMAP_INSTANCE=2
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
@@ -367,7 +367,7 @@ services:
     entrypoint: /aggregator
     environment:
     - STARSAGG_WORKERS_POOL=16
-    - STARSAGG_LOG_BULK_RATE=50
+    - STARSAGG_LOG_BULK_RATE=25
     - STARSAGG_INSTANCE=0
     - STARSAGG_RABBITMQ_IP=rabbitmq
     - STARSAGG_RABBITMQ_PORT=5672
@@ -389,7 +389,7 @@ services:
     entrypoint: /filter
     environment:
     - STARSFIL_WORKERS_POOL=16
-    - STARSFIL_LOG_BULK_RATE=50
+    - STARSFIL_LOG_BULK_RATE=25
     - STARSFIL_INSTANCE=0
     - STARSFIL_RABBITMQ_IP=rabbitmq
     - STARSFIL_RABBITMQ_PORT=5672
@@ -409,7 +409,7 @@ services:
     entrypoint: /mapper
     environment:
     - STARSMAP_WORKERS_POOL=16
-    - STARSMAP_LOG_BULK_RATE=50
+    - STARSMAP_LOG_BULK_RATE=25
     - STARSMAP_INSTANCE=0
     - STARSMAP_RABBITMQ_IP=rabbitmq
     - STARSMAP_RABBITMQ_PORT=5672
@@ -447,7 +447,7 @@ services:
     entrypoint: /prettier
     environment:
     - TOPUSERPRE_WORKERS_POOL=16
-    - TOPUSERPRE_LOG_BULK_RATE=50
+    - TOPUSERPRE_LOG_BULK_RATE=25
     - TOPUSERPRE_RABBITMQ_IP=rabbitmq
     - TOPUSERPRE_RABBITMQ_PORT=5672
     - TOPUSERPRE_MIN_REVIEWS=50
@@ -467,7 +467,7 @@ services:
     entrypoint: /aggregator
     environment:
     - USERAGG_WORKERS_POOL=16
-    - USERAGG_LOG_BULK_RATE=50
+    - USERAGG_LOG_BULK_RATE=25
     - USERAGG_INSTANCE=0
     - USERAGG_RABBITMQ_IP=rabbitmq
     - USERAGG_RABBITMQ_PORT=5672
@@ -491,7 +491,7 @@ services:
     entrypoint: /filter
     environment:
     - USERFIL_WORKERS_POOL=16
-    - USERFIL_LOG_BULK_RATE=50
+    - USERFIL_LOG_BULK_RATE=25
     - USERFIL_INSTANCE=0
     - USERFIL_RABBITMQ_IP=rabbitmq
     - USERFIL_RABBITMQ_PORT=5672
@@ -512,7 +512,7 @@ services:
     entrypoint: /mapper
     environment:
     - USERMAP_WORKERS_POOL=16
-    - USERMAP_LOG_BULK_RATE=50
+    - USERMAP_LOG_BULK_RATE=25
     - USERMAP_INSTANCE=0
     - USERMAP_RABBITMQ_IP=rabbitmq
     - USERMAP_RABBITMQ_PORT=5672
@@ -532,7 +532,7 @@ services:
     entrypoint: /aggregator
     environment:
     - WEEKDAYAGG_WORKERS_POOL=16
-    - WEEKDAYAGG_LOG_BULK_RATE=50
+    - WEEKDAYAGG_LOG_BULK_RATE=25
     - WEEKDAYAGG_INSTANCE=0
     - WEEKDAYAGG_RABBITMQ_IP=rabbitmq
     - WEEKDAYAGG_RABBITMQ_PORT=5672
@@ -570,7 +570,7 @@ services:
     entrypoint: /mapper
     environment:
     - WEEKDAYMAP_WORKERS_POOL=16
-    - WEEKDAYMAP_LOG_BULK_RATE=50
+    - WEEKDAYMAP_LOG_BULK_RATE=25
     - WEEKDAYMAP_INSTANCE=0
     - WEEKDAYMAP_RABBITMQ_IP=rabbitmq
     - WEEKDAYMAP_RABBITMQ_PORT=5672

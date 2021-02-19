@@ -63,20 +63,23 @@ func (prettier *Prettier) Run() {
 }
 
 func (prettier *Prettier) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
-	prettier.builder.Save(inputNode, dataset, instance, bulk, data)
+	prettier.builder.Save(dataset, bulk, data)
 }
 
 func (prettier *Prettier) startCallback(dataset int) {
-	// Clearing Calculator for next dataset.
-	prettier.builder.Clear(dataset)
-	
+	// Initializing new dataset in Builder.
+	prettier.builder.RegisterDataset(dataset)
+
 	// Sending Start-Message to consumers.
 	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) finishCallback(dataset int) {
-	// Sending results
+	// Sending results.
 	prettier.sendResults(dataset)
+
+	// Removing processed dataset from Builder.
+	prettier.builder.Clear(dataset)
 
     // Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)

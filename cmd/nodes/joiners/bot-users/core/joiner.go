@@ -84,16 +84,16 @@ func (joiner *Joiner) Run() {
 }
 
 func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddBotUser(inputNode, dataset, instance, bulk, data)
+	joiner.calculator.AddBotUser(dataset, bulk, data)
 }
 
 func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddUser(inputNode, dataset, instance, bulk, data)
+	joiner.calculator.AddUser(dataset, bulk, data)
 }
 
 func (joiner *Joiner) startCallback(dataset int) {
-	// Clearing Calculator for next dataset.
-	joiner.calculator.Clear(dataset)
+	// Initializing new dataset in Calculator.
+	joiner.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
 	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputQueue)
@@ -103,9 +103,15 @@ func (joiner *Joiner) finishCallback(dataset int) {
 	// Retrieving join matches.
 	joinMatches := joiner.calculator.RetrieveMatches(dataset)
 
-	if len(joinMatches) == 0 {
+	totalJoinMatches := len(joinMatches)
+	if totalJoinMatches == 0 {
 		log.Warnf("No join match to send.")
+	} else {
+		log.Infof("Join matches to send: %d.", totalJoinMatches)
 	}
+
+	// Removing processed dataset from Calculator.
+	joiner.calculator.Clear(dataset)
 
 	messageNumber := 0
 	for _, joinedData := range joinMatches {

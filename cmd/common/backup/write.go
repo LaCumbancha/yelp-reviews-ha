@@ -8,17 +8,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func StoreMultiFlowDataBackup(flow int, data string) {
-	multiFlowData := setFlowAndData(MultiFlowBackup { Flow: flow, Data: data })
+func StoreSingleFlowDataBackup(dataset int, data string) {
+	StoreMultiFlowDataBackup(dataset, 1, data)
+}
+
+func StoreMultiFlowDataBackup(dataset int, flow int, data string) {
+	multiFlowData := packageBackupMessage(DataBackup { Dataset: dataset, Flow: flow, Data: data })
 	path := calculateBackupPath(DataBkp)
 	storeDataBackup(FileKey1, path, multiFlowData)
 	storeDataBackup(FileKey2, path, multiFlowData)
-}
-
-func StoreSingleFlowDataBackup(data string) {
-	path := calculateBackupPath(DataBkp)
-	storeDataBackup(FileKey1, path, data)
-	storeDataBackup(FileKey2, path, data)
 }
 
 func StoreSignalsBackup(data interface{}, bkpType BackupType) {

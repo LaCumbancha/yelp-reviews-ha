@@ -8,78 +8,105 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type CalculatorData map[int]map[string]int
+
 type Calculator struct {
-	data 				map[string]int
-	dataMutex 			*sync.Mutex
-	dataset				int
-	bulkSize			int
+	data 			CalculatorData
+	mutex 			*sync.Mutex
+	bulkSize		int
 }
 
 func NewCalculator(bulkSize int) *Calculator {
 	calculator := &Calculator {
-		data:				make(map[string]int),
-		dataMutex:			&sync.Mutex{},
-		dataset:			proc.DefaultDataset,
-		bulkSize:			bulkSize,
+		data:			make(CalculatorData),
+		mutex:			&sync.Mutex{},
+		bulkSize:		bulkSize,
 	}
 
-	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
-		calculator.dataMutex.Lock()
-		calculator.saveData(backupData)
-		calculator.dataMutex.Unlock()
-	}
+	calculator.loadBackup()
 
 	return calculator
 }
 
-func (calculator *Calculator) Clear(newDataset int) {
-	calculator.dataMutex.Lock()
-	calculator.data = make(map[string]int)
-	calculator.dataMutex.Unlock()
+// This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
+func (calculator *Calculator) loadBackup() {
+	for _, backupData := range bkp.LoadDataBackup() {
+		calculator.saveData(backupData.Dataset, backupData.Data)
+	}
 
-	calculator.dataset = newDataset
-
-	log.Infof("Calculator storage cleared.")
+	for dataset, datasetData := range calculator.data {
+		log.Infof("Dataset #%d retrieved from backup, with %d businesses.", dataset, len(datasetData))
+	}
 }
 
-func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
-	proc.ValidateDataSaving(
-		dataset,
-		rawData,
-		&calculator.dataset,
-		calculator.dataMutex,
-		calculator.saveData,
-	)
+func (calculator *Calculator) Clear(dataset int) {
+	calculator.mutex.Lock()
+	if _, found := calculator.data[dataset]; found {
+		delete(calculator.data, dataset)
+		log.Infof("Dataset #%d removed from Calculator storage.", dataset)
+	} else {
+		log.Infof("Attempting to remove dataset #%d from Calculator storage but it wasn't registered.", dataset)
+	}
+	calculator.mutex.Unlock()
+}
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d businesses stored.", dataset, bulk, len(calculator.data)), bulk)
+func (calculator *Calculator) RegisterDataset(dataset int) {
+	calculator.mutex.Lock()
+	if _, found := calculator.data[dataset]; !found {
+		calculator.data[dataset] = make(map[string]int)
+		log.Infof("Dataset %d initialized in Calculator.", dataset)
+	} else {
+		log.Warnf("Dataset %d was already initialized in Calculator.", dataset)
+	}
+	calculator.mutex.Unlock()
+}
+
+func (calculator *Calculator) Save(dataset int, bulk int, rawData string) {
+	calculator.mutex.Lock()
+	datasetDataLength := calculator.saveData(dataset, rawData)
+	calculator.mutex.Unlock()
+
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d businesses stored.", dataset, bulk, datasetDataLength), bulk)
 }
 
 // This function is guaranteed to be call in a mutual exclusion scenario.
-func (calculator *Calculator) saveData(rawData string) {
+func (calculator *Calculator) saveData(dataset int, rawData string) int {
 	var funbizDataList []comms.FunnyBusinessData
 	json.Unmarshal([]byte(rawData), &funbizDataList)
 
+	// Retrieving dataset
+	datasetData, found := calculator.data[dataset]
+	if !found {
+		calculator.data[dataset] = make(map[string]int)
+		log.Warnf("Data received from a dataset not initialized: %d.", dataset)
+		datasetData = calculator.data[dataset]
+	}
+
 	// Storing data
 	for _, funbizData := range funbizDataList {
-		if value, found := calculator.data[funbizData.BusinessId]; found {
+		if value, found := datasetData[funbizData.BusinessId]; found {
 			newAmount := value + 1
-		    calculator.data[funbizData.BusinessId] = newAmount
+		    datasetData[funbizData.BusinessId] = newAmount
 		} else {
-			calculator.data[funbizData.BusinessId] = 1
+			datasetData[funbizData.BusinessId] = 1
 		}
 	}
 
 	// Updating backup
-	bkp.StoreSingleFlowDataBackup(rawData)
+	bkp.StoreSingleFlowDataBackup(dataset, rawData)
+
+	return len(datasetData)
 }
 
 func (calculator *Calculator) AggregateData(dataset int) [][]comms.FunnyBusinessData {
-	if dataset != calculator.dataset {
-		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
+	calculator.mutex.Lock()
+
+	datasetData, found := calculator.data[dataset]
+	if !found {
+		log.Warnf("Aggregating data for a dataset not stored (#%d).", dataset)
 		return make([][]comms.FunnyBusinessData, 0)
 	}
 	
@@ -87,7 +114,7 @@ func (calculator *Calculator) AggregateData(dataset int) [][]comms.FunnyBusiness
 	bulkedList := make([][]comms.FunnyBusinessData, 0)
 
 	actualBulk := 0
-	for businessId, funny := range calculator.data {
+	for businessId, funny := range datasetData {
 		actualBulk++
 		aggregatedData := comms.FunnyBusinessData { BusinessId: businessId, Funny: funny }
 		bulk = append(bulk, aggregatedData)
@@ -103,5 +130,6 @@ func (calculator *Calculator) AggregateData(dataset int) [][]comms.FunnyBusiness
 		bulkedList = append(bulkedList, bulk)
 	}
 
+	calculator.mutex.Unlock()
 	return bulkedList
 }

@@ -1,6 +1,6 @@
 # Logging
 log_level: "INFO"
-log_bulk_rate: 50
+log_bulk_rate: 25
 
 # System configuration.
 reviews_streaming: false

@@ -91,16 +91,16 @@ func (joiner *Joiner) Run() {
 }
 
 func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddFunnyBusiness(inputNode, dataset, instance, bulk, data)
+	joiner.calculator.AddFunnyBusiness(dataset, bulk, data)
 }
 
 func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddCityBusiness(inputNode, dataset, instance, bulk, data)
+	joiner.calculator.AddCityBusiness(dataset, bulk, data)
 }
 
 func (joiner *Joiner) startCallback(dataset int) {
-	// Clearing Calculator for next dataset.
-	joiner.calculator.Clear(dataset)
+	// Initializing new dataset in Calculator.
+	joiner.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
 	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
@@ -110,8 +110,11 @@ func (joiner *Joiner) finishCallback(dataset int) {
 	// Retrieving join matches.
 	joinMatches := joiner.calculator.RetrieveMatches(dataset)
 
-	if len(joinMatches) == 0 {
+	totalJoinMatches := len(joinMatches)
+	if totalJoinMatches == 0 {
 		log.Warnf("No join match to send.")
+	} else {
+		log.Infof("Join matches to send: %d.", totalJoinMatches)
 	}
 
 	messageNumber := 0
@@ -119,6 +122,9 @@ func (joiner *Joiner) finishCallback(dataset int) {
 		messageNumber++
 		joiner.sendJoinedData(dataset, messageNumber, joinedData)
 	}
+
+	// Removing processed dataset from Calculator.
+	joiner.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
 	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)

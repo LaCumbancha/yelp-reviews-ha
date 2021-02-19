@@ -47,25 +47,36 @@ func calculateBackupPath(bkpType BackupType) string {
 	return path
 }
 
-type MultiFlowBackup struct {
-	Flow	int
-	Data	string
+type DataBackup struct {
+	Dataset		int
+	Flow		int
+	Data		string
 }
 
-func setFlowAndData(toBackup MultiFlowBackup) string {
-	return fmt.Sprintf("%d||%s", toBackup.Flow, toBackup.Data)
+func packageBackupMessage(toBackup DataBackup) string {
+	return fmt.Sprintf("%d|%d|%s", toBackup.Dataset, toBackup.Flow, toBackup.Data)
 }
 
-func getFlowAndData(backup string) MultiFlowBackup {
-	separator := strings.Index(backup, "|")
-	if separator < 0 {
-		return MultiFlowBackup { Flow: -1, Data: "" }
+func unpackageBackupMessage(backup string) DataBackup {
+	idx1 := strings.Index(backup, "|")
+	if idx1 < 0 {
+		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
 	}
 	
-	flow, err := strconv.Atoi(backup[:separator])
-	if err != nil {
-		return MultiFlowBackup { Flow: -1, Data: "" }
+	idx2 := strings.Index(backup[idx1+1:], "|")
+	if idx2 < 0 {
+		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
 	}
 
-	return MultiFlowBackup { Flow: flow, Data: backup[separator+1:] }
+	dataset, err := strconv.Atoi(backup[:idx1])
+	if err != nil {
+		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
+	}
+
+	flow, err := strconv.Atoi(backup[idx1+1:idx1+idx2+1])
+	if err != nil {
+		return DataBackup { Dataset: -1, Flow: -1, Data: "" }
+	}
+
+	return DataBackup { Dataset: dataset, Flow: flow, Data: backup[idx1+idx2+2:] }
 }

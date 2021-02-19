@@ -68,24 +68,27 @@ func (aggregator *Aggregator) Run() {
 }
 
 func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
-	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
+	aggregator.calculator.Save(dataset, bulk, data)
 }
 
 func (aggregator *Aggregator) startCallback(dataset int) {
-	// Clearing Calculator for next dataset.
-	aggregator.calculator.Clear(dataset)
+	// Initializing new dataset in Calculator.
+	aggregator.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
 	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
-	// Calculating aggregations
+	// Computing aggregations.
 	cityNumber := 0
 	for _, cityData := range aggregator.calculator.AggregateData(dataset) {
 		cityNumber++
 		aggregator.sendAggregatedData(dataset, cityNumber, cityData)
 	}
+
+	// Removing processed dataset from Calculator.
+	aggregator.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)

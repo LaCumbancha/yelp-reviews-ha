@@ -9,83 +9,110 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
+type CalculatorData map[int]map[string]int
+
 type Calculator struct {
-	data 				map[string]int
-	dataMutex 			*sync.Mutex
-	dataset				int
-	topSize				int
+	data 			CalculatorData
+	mutex 			*sync.Mutex
+	topSize			int
 }
 
 func NewCalculator(topSize int) *Calculator {
 	calculator := &Calculator {
-		data:				make(map[string]int),
-		dataMutex:			&sync.Mutex{},
-		dataset:			proc.DefaultDataset,
-		topSize:			topSize,
+		data:			make(CalculatorData),
+		mutex:			&sync.Mutex{},
+		topSize:		topSize,
 	}
 
-	for _, backupData := range bkp.LoadSingleFlowDataBackup() {
-		calculator.dataMutex.Lock()
-		calculator.saveData(backupData)
-		calculator.dataMutex.Unlock()
-	}
+	calculator.loadBackup()
 
 	return calculator
 }
 
-func (calculator *Calculator) Clear(newDataset int) {
-	calculator.dataMutex.Lock()
-	calculator.data = make(map[string]int)
-	calculator.dataMutex.Unlock()
+// This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
+func (calculator *Calculator) loadBackup() {
+	for _, backupData := range bkp.LoadDataBackup() {
+		calculator.saveData(backupData.Dataset, backupData.Data)
+	}
 
-	calculator.dataset = newDataset
-
-	log.Infof("Calculator storage cleared.")
+	for dataset, datasetData := range calculator.data {
+		log.Infof("Dataset #%d retrieved from backup, with %d cities.", dataset, len(datasetData))
+	}
 }
 
-func (calculator *Calculator) Save(inputNode string, dataset int, instance string, bulk int, rawData string) {
-	proc.ValidateDataSaving(
-		dataset,
-		rawData,
-		&calculator.dataset,
-		calculator.dataMutex,
-		calculator.saveData,
-	)
+func (calculator *Calculator) Clear(dataset int) {
+	calculator.mutex.Lock()
+	if _, found := calculator.data[dataset]; found {
+		delete(calculator.data, dataset)
+		log.Infof("Dataset #%d removed from Calculator storage.", dataset)
+	} else {
+		log.Infof("Attempting to remove dataset #%d from Calculator storage but it wasn't registered.", dataset)
+	}
+	calculator.mutex.Unlock()
+}
 
-	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", dataset, bulk, len(calculator.data)), bulk)
+func (calculator *Calculator) RegisterDataset(dataset int) {
+	calculator.mutex.Lock()
+	if _, found := calculator.data[dataset]; !found {
+		calculator.data[dataset] = make(map[string]int)
+		log.Infof("Dataset %d initialized in Calculator.", dataset)
+	} else {
+		log.Warnf("Dataset %d was already initialized in Calculator.", dataset)
+	}
+	calculator.mutex.Unlock()
+}
+
+func (calculator *Calculator) Save(dataset int, bulk int, rawData string) {
+	calculator.mutex.Lock()
+	datasetDataLength := calculator.saveData(dataset, rawData)
+	calculator.mutex.Unlock()
+
+	logb.Instance().Infof(fmt.Sprintf("Status by bulk #%d.%d in Aggregator: %d cities stored.", dataset, bulk, datasetDataLength), bulk)
 }
 
 // This function is guaranteed to be call in a mutual exclusion scenario.
-func (calculator *Calculator) saveData(rawData string) {
+func (calculator *Calculator) saveData(dataset int, rawData string) int {
 	var funcitDataList []comms.FunnyCityData
 	json.Unmarshal([]byte(rawData), &funcitDataList)
 
+	// Retrieving dataset
+	datasetData, found := calculator.data[dataset]
+	if !found {
+		calculator.data[dataset] = make(map[string]int)
+		log.Warnf("Data received from a dataset not initialized: %d.", dataset)
+		datasetData = calculator.data[dataset]
+	}
+
 	// Storing data
 	for _, funcitData := range funcitDataList {
-		if value, found := calculator.data[funcitData.City]; found {
+		if value, found := datasetData[funcitData.City]; found {
 			newAmount := value + funcitData.Funny
-		    calculator.data[funcitData.City] = newAmount
+		    datasetData[funcitData.City] = newAmount
 		} else {
-			calculator.data[funcitData.City] = funcitData.Funny
+			datasetData[funcitData.City] = funcitData.Funny
 		}
 	}
 
 	// Updating backup
-	bkp.StoreSingleFlowDataBackup(rawData)
+	bkp.StoreSingleFlowDataBackup(dataset, rawData)
+
+	return len(datasetData)
 }
 
 func (calculator *Calculator) AggregateData(dataset int) []comms.FunnyCityData {
-	if dataset != calculator.dataset {
-		log.Warnf("Aggregating data for a dataset not stored (stored #%d but requested data from #%d).", calculator.dataset, dataset)
+	calculator.mutex.Lock()
+
+	datasetData, found := calculator.data[dataset]
+	if !found {
+		log.Warnf("Aggregating data for a dataset not stored (#%d).", dataset)
 		return make([]comms.FunnyCityData, 0)
 	}
 
 	funnyCities := make([]comms.FunnyCityData, 0)
-	for city, funny := range calculator.data {
+	for city, funny := range datasetData {
 		aggregatedData := comms.FunnyCityData { City: city, Funny: funny }
 		funnyCities = append(funnyCities, aggregatedData)
 	}
@@ -95,11 +122,16 @@ func (calculator *Calculator) AggregateData(dataset int) []comms.FunnyCityData {
 	})
 
 	totalFunnyCities := len(funnyCities)
+	var maxCityNumber int
 	if (totalFunnyCities > calculator.topSize) {
 		log.Infof("%d cities where discarded due to not being funny enoguh.", totalFunnyCities - calculator.topSize)
-		return funnyCities[0:calculator.topSize]
+		maxCityNumber = calculator.topSize
 	} else {
 		log.Infof("They where just %d cities with a funniness higher than 0!", totalFunnyCities)
-		return funnyCities[0:totalFunnyCities]
+		maxCityNumber = totalFunnyCities
+		
 	}
+
+	calculator.mutex.Unlock()
+	return funnyCities[0:maxCityNumber]
 }

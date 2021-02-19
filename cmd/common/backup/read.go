@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func LoadMultiFlowDataBackup() []MultiFlowBackup {
-	data := make([]MultiFlowBackup, 0)
+func LoadDataBackup() []DataBackup {
+	data := make([]DataBackup, 0)
 	backup := loadBackup(DataBkp)
 
 	if backup != nil {
@@ -19,29 +19,12 @@ func LoadMultiFlowDataBackup() []MultiFlowBackup {
 		backupDataList := strings.Split(backupRawData, "\n")
 		for _, backupData := range backupDataList {
 			if backupData != "" {
-				backupDataByFlow := getFlowAndData(backupData)
-				if backupDataByFlow.Flow != -1 {
-					data = append(data, backupDataByFlow)
+				backupDataUnpackaged := unpackageBackupMessage(backupData)
+				if backupDataUnpackaged.Dataset != -1 {
+					data = append(data, backupDataUnpackaged)
 				} else {
-					log.Warnf("Error parsing backup information. Data: '%s'", backupDataByFlow)
+					log.Warnf("Error parsing backup information. Data: '%s'", backupDataUnpackaged)
 				}
-			}
-		}
-	}
-
-	return data
-}
-
-func LoadSingleFlowDataBackup() []string {
-	data := make([]string, 0)
-	backup := loadBackup(DataBkp)
-
-	if backup != nil {
-		backupRawData := string(backup)
-		backupDataList := strings.Split(backupRawData, "\n")
-		for _, backupData := range backupDataList {
-			if backupData != "" {
-				data = append(data, backupData)
 			}
 		}
 	}

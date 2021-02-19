@@ -170,6 +170,7 @@ func ProcessStart(
 		}
 
 		if startingSignals[datasetStarted] == neededInputs {
+			log.Infof("Every Start-Message needed were received.")
 			callback(datasetStarted)
 		}
 
@@ -201,6 +202,7 @@ func ProcessFinish(
 		}
 
 		if finishingSignals[datasetFinished] == neededInputs {
+			log.Infof("Every Finish-Message needed were received.")
 			finishWg.Add(1)
 			utils.WaitGroupByDataset(datasetFinished, procWgs, procWgsMutex).Wait()
 			utils.DeleteWaitGroupByDataset(datasetFinished, procWgs, procWgsMutex)
@@ -232,6 +234,7 @@ func ProcessClose(
 		}
 		
 		if len(closingSignals) == neededInputs {
+			log.Infof("Every Close-Message needed were received.")
 			for _, datasetWg := range utils.AllDatasetsWaitGroups(procWgs, procWgsMutex) { 
 				datasetWg.Wait()
 			}

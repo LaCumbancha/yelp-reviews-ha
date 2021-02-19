@@ -75,12 +75,12 @@ func (aggregator *Aggregator) Run() {
 }
 
 func (aggregator *Aggregator) mainCallback(inputNode string, dataset int, instance string, bulk int, data string) {
-	aggregator.calculator.Save(inputNode, dataset, instance, bulk, data)
+	aggregator.calculator.Save(dataset, bulk, data)
 }
 
 func (aggregator *Aggregator) startCallback(dataset int) {
-	// Clearing Calculator for next dataset.
-	aggregator.calculator.Clear(dataset)
+	// Initializing new dataset in Calculator.
+	aggregator.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
 	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue1)
@@ -88,13 +88,16 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
-	// Calculating aggregations
+	// Computing aggregations.
 	outputBulk := 0
 	for _, aggregatedData := range aggregator.calculator.AggregateData(dataset) {
 		outputBulk++
 		logb.Instance().Infof(fmt.Sprintf("Aggregated bulk #%d generated.", outputBulk), outputBulk)
 		aggregator.sendAggregatedData(dataset, outputBulk, aggregatedData)
 	}
+
+	// Removing processed dataset from Calculator.
+	aggregator.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
 	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue1)

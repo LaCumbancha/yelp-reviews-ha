@@ -154,7 +154,7 @@ func (calculator *Calculator) RetrieveMatches(dataset int) [][]comms.FunnyCityDa
 	}
 
 	if len(calculator.data2) == 0 {
-		log.Warnf("Joining data with an empty city-businesses collection.", dataset)
+		log.Warnf("Joining data with an empty city-businesses collection.")
 		return make([][]comms.FunnyCityData, 0)
 	}
 

@@ -23,7 +23,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("rabbitmq", "ip")
 	configEnv.BindEnv("rabbitmq", "port")
 	configEnv.BindEnv("workers", "pool")
-	configEnv.BindEnv("funcit", "filters")
+	configEnv.BindEnv("funcit", "tops")
 	configEnv.BindEnv("top", "size")
 	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
@@ -61,14 +61,14 @@ func main() {
 	rabbitIp := utils.GetConfigString(configEnv, configFile, "rabbitmq_ip")
 	rabbitPort := utils.GetConfigString(configEnv, configFile, "rabbitmq_port")
 	workersPool := utils.GetConfigInt(configEnv, configFile, "workers_pool")
-	funcitFilters := utils.GetConfigInt(configEnv, configFile, "funcit_filters")
+	funcitTops := utils.GetConfigInt(configEnv, configFile, "funcit_tops")
 	topSize := utils.GetConfigInt(configEnv, configFile, "top_size")
 
 	prettierConfig := core.PrettierConfig {
 		RabbitIp:				rabbitIp,
 		RabbitPort:				rabbitPort,
 		WorkersPool:			workersPool,
-		FuncitFilters:			funcitFilters,
+		FuncitTops:				funcitTops,
 		TopSize:				topSize,
 	}
 

@@ -11,8 +11,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "A2"
-
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -31,14 +29,16 @@ type Aggregator struct {
 	calculator			*Calculator
 	inputDirect 		*rabbit.RabbitInputDirect
 	outputQueue 		*rabbit.RabbitOutputQueue
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.JoinerJ1_Output, config.InputTopic, "")
+	inputDirect := rabbit.NewRabbitInputDirect(channel, props.JoinerJ1_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA2_Input, config.Instance))
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA2_Output, comms.EndSignals(1))
+
+	endSignalsNeeded := map[string]int{props.JoinerJ1_Name: config.FuncitJoiners}
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,
@@ -48,7 +48,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 		calculator:			NewCalculator(config.TopSize),
 		inputDirect:		inputDirect,
 		outputQueue:		outputQueue,
-		endSignals:			config.FuncitJoiners,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return aggregator
@@ -56,11 +56,15 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 
 func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for funny-city data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.JoinerJ1_Name: aggregator.inputDirect.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.JoinerJ1_Name: aggregator.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		aggregator.workersPool,
-		aggregator.endSignals,
-		aggregator.inputDirect.ConsumeData(),
-		aggregator.mainCallback,
+		aggregator.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,
@@ -76,7 +80,7 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 	aggregator.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.AggregatorA2_Name, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
@@ -91,12 +95,12 @@ func (aggregator *Aggregator) finishCallback(dataset int) {
 	aggregator.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.AggregatorA2_Name, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.AggregatorA2_Name, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) sendAggregatedData(dataset int, cityNumber int, topTenCity comms.FunnyCityData) {
@@ -104,7 +108,7 @@ func (aggregator *Aggregator) sendAggregatedData(dataset int, cityNumber int, to
 	if err != nil {
 		log.Errorf("Error generating Json from funniest city #%d. Err: '%s'", cityNumber, err)
 	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, cityNumber, string(bytes))
+		data := comms.SignMessage(props.AggregatorA2_Name, dataset, aggregator.instance, cityNumber, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

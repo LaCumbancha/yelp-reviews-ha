@@ -77,7 +77,7 @@ services:
     - BOTUSERPRE_RABBITMQ_IP=rabbitmq
     - BOTUSERPRE_RABBITMQ_PORT=5672
     - BOTUSERPRE_MIN_REVIEWS=5
-    - BOTUSERPRE_BOTUSER_JOINERS=1
+    - BOTUSERPRE_BOTS_AGGREGATORS=1
     - BOTUSERPRE_LOG_LEVEL=INFO
     image: bot_users_prettier:latest
     links:
@@ -85,43 +85,21 @@ services:
     networks:
     - testing_net
     restart: on-failure
-  botuser_filter0:
-    container_name: botuser_filter0
-    depends_on:
-    - botuser_joiner0
-    entrypoint: /filter
+  bots_aggregator0:
+    container_name: bots_aggregator0
+    depends_on: []
+    entrypoint: /aggregator
     environment:
-    - BOTUSERFIL_WORKERS_POOL=16
-    - BOTUSERFIL_LOG_BULK_RATE=25
-    - BOTUSERFIL_INSTANCE=0
-    - BOTUSERFIL_RABBITMQ_IP=rabbitmq
-    - BOTUSERFIL_RABBITMQ_PORT=5672
-    - BOTUSERFIL_MIN_REVIEWS=5
-    - BOTUSERFIL_USER_AGGREGATORS=1
-    - BOTUSERFIL_DISHASH_JOINERS=1
-    - BOTUSERFIL_LOG_LEVEL=INFO
-    image: botuser_filter:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-  botuser_joiner0:
-    container_name: botuser_joiner0
-    depends_on:
-    - bot_users_prettier
-    entrypoint: /joiner
-    environment:
-    - BOTUSERJOIN_WORKERS_POOL=16
-    - BOTUSERJOIN_LOG_BULK_RATE=25
-    - BOTUSERJOIN_INSTANCE=0
-    - BOTUSERJOIN_RABBITMQ_IP=rabbitmq
-    - BOTUSERJOIN_RABBITMQ_PORT=5672
-    - BOTUSERJOIN_INPUT_TOPIC=0
-    - BOTUSERJOIN_DISHASH_FILTERS=1
-    - BOTUSERJOIN_BOTUSERS_FILTERS=1
-    - BOTUSERJOIN_LOG_LEVEL=INFO
-    image: botuser_joiner:latest
+    - BOTAGG_WORKERS_POOL=16
+    - BOTAGG_LOG_BULK_RATE=25
+    - BOTAGG_INSTANCE=0
+    - BOTAGG_RABBITMQ_IP=rabbitmq
+    - BOTAGG_RABBITMQ_PORT=5672
+    - BOTAGG_INPUT_TOPIC=0
+    - BOTAGG_HASH_MAPPERS=3
+    - BOTAGG_MIN_REVIEWS=5
+    - BOTAGG_LOG_LEVEL=INFO
+    image: bots_aggregator:latest
     links:
     - rabbitmq
     networks:
@@ -142,27 +120,6 @@ services:
     - CITBIZMAP_FUNCIT_JOINERS=1
     - CITBIZMAP_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-  dishash_aggregator0:
-    container_name: dishash_aggregator0
-    depends_on: []
-    entrypoint: /aggregator
-    environment:
-    - DISHASHAGG_WORKERS_POOL=16
-    - DISHASHAGG_LOG_BULK_RATE=25
-    - DISHASHAGG_INSTANCE=0
-    - DISHASHAGG_RABBITMQ_IP=rabbitmq
-    - DISHASHAGG_RABBITMQ_PORT=5672
-    - DISHASHAGG_INPUT_TOPIC=0
-    - DISHASHAGG_HASH_MAPPERS=3
-    - DISHASHAGG_BOTUSER_JOINERS=1
-    - DISHASHAGG_OUTPUT_BULK_SIZE=10000
-    - DISHASHAGG_LOG_LEVEL=INFO
-    image: dishash_aggregator:latest
     links:
     - rabbitmq
     networks:
@@ -232,7 +189,8 @@ services:
     restart: on-failure
   funcit_joiner0:
     container_name: funcit_joiner0
-    depends_on: []
+    depends_on:
+    - funcit_top0
     entrypoint: /joiner
     environment:
     - FUNCITJOIN_WORKERS_POOL=16
@@ -242,7 +200,7 @@ services:
     - FUNCITJOIN_RABBITMQ_PORT=5672
     - FUNCITJOIN_FUNBIZ_AGGREGATORS=1
     - FUNCITJOIN_CITBIZ_MAPPERS=1
-    - FUNCITJOIN_FUNCIT_AGGREGATORS=1
+    - FUNCITJOIN_FUNCIT_TOPS=1
     - FUNCITJOIN_INPUT_TOPIC=0
     - FUNCITJOIN_OUTPUT_BULK_SIZE=10000
     - FUNCITJOIN_LOG_LEVEL=INFO
@@ -275,7 +233,8 @@ services:
     restart: on-failure
   hash_mapper0:
     container_name: hash_mapper0
-    depends_on: []
+    depends_on:
+    - bots_aggregator0
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
@@ -284,7 +243,7 @@ services:
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_BOTS_AGGREGATORS=1
     - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
@@ -294,7 +253,8 @@ services:
     restart: on-failure
   hash_mapper1:
     container_name: hash_mapper1
-    depends_on: []
+    depends_on:
+    - bots_aggregator0
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
@@ -303,7 +263,7 @@ services:
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_BOTS_AGGREGATORS=1
     - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
@@ -313,7 +273,8 @@ services:
     restart: on-failure
   hash_mapper2:
     container_name: hash_mapper2
-    depends_on: []
+    depends_on:
+    - bots_aggregator0
     entrypoint: /mapper
     environment:
     - HASHMAP_WORKERS_POOL=16
@@ -322,7 +283,7 @@ services:
     - HASHMAP_RABBITMQ_IP=rabbitmq
     - HASHMAP_RABBITMQ_PORT=5672
     - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_HASH_AGGREGATORS=1
+    - HASHMAP_BOTS_AGGREGATORS=1
     - HASHMAP_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
@@ -432,7 +393,7 @@ services:
     - FUNCITPRE_RABBITMQ_IP=rabbitmq
     - FUNCITPRE_RABBITMQ_PORT=5672
     - FUNCITPRE_TOP_SIZE=10
-    - FUNCITPRE_FUNCIT_FILTERS=1
+    - FUNCITPRE_FUNCIT_TOPS=1
     - FUNCITPRE_LOG_LEVEL=INFO
     image: top_funniest_cities_prettier:latest
     links:
@@ -462,7 +423,6 @@ services:
   user_aggregator0:
     container_name: user_aggregator0
     depends_on:
-    - botuser_filter0
     - user_filter0
     entrypoint: /aggregator
     environment:
@@ -474,7 +434,6 @@ services:
     - USERAGG_INPUT_TOPIC=0
     - USERAGG_USER_MAPPERS=1
     - USERAGG_USER_FILTERS=1
-    - USERAGG_BOTUSER_FILTERS=1
     - USERAGG_OUTPUT_BULK_SIZE=10000
     - USERAGG_LOG_LEVEL=INFO
     image: user_aggregator:latest

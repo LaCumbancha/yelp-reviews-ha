@@ -14,8 +14,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "F5"
-
 type FilterConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -33,7 +31,7 @@ type Filter struct {
 	inputQueue 			*rabbit.RabbitInputQueue
 	outputDirect 		*rabbit.RabbitOutputDirect
 	outputPartitions	map[string]string
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewFilter(config FilterConfig) *Filter {
@@ -41,6 +39,8 @@ func NewFilter(config FilterConfig) *Filter {
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.MapperM6_Output)
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FilterF5_Output)
+
+	endSignalsNeeded := map[string]int{props.MapperM6_Name: config.StarsMappers}
 
 	filter := &Filter {
 		instance:			config.Instance,
@@ -50,7 +50,7 @@ func NewFilter(config FilterConfig) *Filter {
 		inputQueue:			inputQueue,
 		outputDirect:		outputDirect,
 		outputPartitions:	utils.GeneratePartitionMap(config.StarsAggregators, PartitionableValues),
-		endSignals:			config.StarsMappers,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return filter
@@ -58,11 +58,15 @@ func NewFilter(config FilterConfig) *Filter {
 
 func (filter *Filter) Run() {
 	log.Infof("Starting to listen for user stars data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.MapperM6_Name: filter.inputQueue.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.MapperM6_Name: filter.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		filter.workersPool,
-		filter.endSignals,
-		filter.inputQueue.ConsumeData(),
-		filter.mainCallback,
+		filter.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		filter.startCallback,
 		filter.finishCallback,
 		filter.closeCallback,
@@ -76,17 +80,17 @@ func (filter *Filter) mainCallback(inputNode string, dataset int, instance strin
 
 func (filter *Filter) startCallback(dataset int) {
 	// Sending Start-Message to consumers.
-	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(props.FilterF5_Name, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) finishCallback(dataset int) {
 	// Sending Finish-Message to consumers.
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(props.FilterF5_Name, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(props.FilterF5_Name, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) filterData(rawStarsDataBulk string) []comms.StarsData {
@@ -128,7 +132,7 @@ func (filter *Filter) sendFilteredData(dataset int, bulk int, filteredData []com
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(NODE_CODE, dataset, filter.instance, bulk, string(bytes))
+			data := comms.SignMessage(props.FilterF5_Name, dataset, filter.instance, bulk, string(bytes))
 			err := filter.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {

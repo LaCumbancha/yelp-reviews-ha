@@ -37,3 +37,12 @@ func IntInSlice(aInt int, aSlice []int) bool {
     }
     return false
 }
+
+func StringInSlice(aString string, aSlice []string) bool {
+    for _, value := range aSlice {
+        if aString == value {
+            return true
+        }
+    }
+    return false
+}

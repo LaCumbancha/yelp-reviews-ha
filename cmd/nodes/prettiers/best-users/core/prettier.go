@@ -10,8 +10,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "P5"
-
 type PrettierConfig struct {
 	RabbitIp			string
 	RabbitPort			string
@@ -27,7 +25,7 @@ type Prettier struct {
 	builder				*Builder
 	inputQueue 			*rabbit.RabbitInputQueue
 	outputQueue 		*rabbit.RabbitOutputQueue
-	endSignals 			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewPrettier(config PrettierConfig) *Prettier {
@@ -36,6 +34,8 @@ func NewPrettier(config PrettierConfig) *Prettier {
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.JoinerJ3_Output)
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP5_Output, comms.EndSignals(1))
 
+	endSignalsNeeded := map[string]int{props.JoinerJ3_Name: config.BestUserJoiners}
+
 	prettier := &Prettier {
 		connection:			connection,
 		channel:			channel,
@@ -43,7 +43,7 @@ func NewPrettier(config PrettierConfig) *Prettier {
 		builder:			NewBuilder(config.MinReviews),
 		inputQueue:			inputQueue,
 		outputQueue:		outputQueue,
-		endSignals:			config.BestUserJoiners,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return prettier
@@ -51,11 +51,15 @@ func NewPrettier(config PrettierConfig) *Prettier {
 
 func (prettier *Prettier) Run() {
 	log.Infof("Starting to listen for users with +50 reviews, only 5-stars.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.JoinerJ3_Name: prettier.inputQueue.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.JoinerJ3_Name: prettier.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		prettier.workersPool,
-		prettier.endSignals,
-		prettier.inputQueue.ConsumeData(),
-		prettier.mainCallback,
+		prettier.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		prettier.startCallback,
 		prettier.finishCallback,
 		prettier.closeCallback,
@@ -71,7 +75,7 @@ func (prettier *Prettier) startCallback(dataset int) {
 	prettier.builder.RegisterDataset(dataset)
 	
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.PrettierP5_Name, dataset, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) finishCallback(dataset int) {
@@ -82,18 +86,18 @@ func (prettier *Prettier) finishCallback(dataset int) {
 	prettier.builder.Clear(dataset)
 	
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.PrettierP5_Name, dataset, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, "0"), prettier.outputQueue)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.PrettierP5_Name, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) sendResults(dataset int) {
 	messageNumber := 1
 	prettierInstance := "0"
-	data := comms.SignMessage(NODE_CODE, dataset, prettierInstance, messageNumber, prettier.builder.BuildData(dataset))
+	data := comms.SignMessage(props.PrettierP5_Name, dataset, prettierInstance, messageNumber, prettier.builder.BuildData(dataset))
 	err := prettier.outputQueue.PublishData([]byte(data))
 
 	if err != nil {

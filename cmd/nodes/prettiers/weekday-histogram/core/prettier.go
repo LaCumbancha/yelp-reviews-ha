@@ -10,8 +10,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "P2"
-
 type PrettierConfig struct {
 	RabbitIp			string
 	RabbitPort			string
@@ -26,7 +24,7 @@ type Prettier struct {
 	builder				*Builder
 	inputQueue 			*rabbit.RabbitInputQueue
 	outputQueue 		*rabbit.RabbitOutputQueue
-	endSignals 			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewPrettier(config PrettierConfig) *Prettier {
@@ -35,6 +33,8 @@ func NewPrettier(config PrettierConfig) *Prettier {
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA4_Output)
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP2_Output, comms.EndSignals(1))
 
+	endSignalsNeeded := map[string]int{props.AggregatorA4_Name: config.WeekdayAggregators}
+
 	prettier := &Prettier {
 		connection:			connection,
 		channel:			channel,
@@ -42,7 +42,7 @@ func NewPrettier(config PrettierConfig) *Prettier {
 		builder:			NewBuilder(),
 		inputQueue:			inputQueue,
 		outputQueue:		outputQueue,
-		endSignals:			config.WeekdayAggregators,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return prettier
@@ -50,11 +50,15 @@ func NewPrettier(config PrettierConfig) *Prettier {
 
 func (prettier *Prettier) Run() {
 	log.Infof("Starting to listen for weekday reviews data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.AggregatorA4_Name: prettier.inputQueue.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.AggregatorA4_Name: prettier.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		prettier.workersPool,
-		prettier.endSignals,
-		prettier.inputQueue.ConsumeData(),
-		prettier.mainCallback,
+		prettier.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		prettier.startCallback,
 		prettier.finishCallback,
 		prettier.closeCallback,
@@ -70,7 +74,7 @@ func (prettier *Prettier) startCallback(dataset int) {
 	prettier.builder.RegisterDataset(dataset)
 	
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, "0"), prettier.outputQueue)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.PrettierP2_Name, dataset, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) finishCallback(dataset int) {
@@ -81,24 +85,24 @@ func (prettier *Prettier) finishCallback(dataset int) {
 	prettier.builder.Clear(dataset)
 
     // Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, ""), prettier.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.PrettierP2_Name, dataset, ""), prettier.outputQueue)
 }
 
 func (prettier *Prettier) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, "0"), prettier.outputQueue)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.PrettierP2_Name, "0"), prettier.outputQueue)
 }
 
 func (prettier *Prettier) sendResults(dataset int) {
 	messageNumber := 1
 	prettierInstance := "0"
-	data := comms.SignMessage(NODE_CODE, dataset, prettierInstance, messageNumber, prettier.builder.BuildData(dataset))
+	data := comms.SignMessage(props.PrettierP2_Name, dataset, prettierInstance, messageNumber, prettier.builder.BuildData(dataset))
 	err := prettier.outputQueue.PublishData([]byte(data))
 
 	if err != nil {
-		log.Errorf("Error sending best users results to output queue %s. Err: '%s'", prettier.outputQueue.Name, err)
+		log.Errorf("Error sending weekday histogram results to output queue %s. Err: '%s'", prettier.outputQueue.Name, err)
 	} else {
-		log.Infof("Best user results sent to output queue %s.", prettier.outputQueue.Name)
+		log.Infof("Weekday histogram results sent to output queue %s.", prettier.outputQueue.Name)
 	}
 }
 

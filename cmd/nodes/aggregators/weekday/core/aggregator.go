@@ -12,8 +12,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "A4"
-
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -31,14 +29,16 @@ type Aggregator struct {
 	calculator			*Calculator
 	inputDirect 		*rabbit.RabbitInputDirect
 	outputQueue 		*rabbit.RabbitOutputQueue
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM3_Output, config.InputTopic, "")
+	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM3_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA4_Input, config.Instance))
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA4_Output, comms.EndSignals(1))
+
+	endSignalsNeeded := map[string]int{props.MapperM3_Name: config.WeekdayMappers}
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,
@@ -48,7 +48,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 		calculator:			NewCalculator(),
 		inputDirect:		inputDirect,
 		outputQueue:		outputQueue,
-		endSignals:			config.WeekdayMappers,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return aggregator
@@ -56,11 +56,15 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 
 func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for weekday data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.MapperM3_Name: aggregator.inputDirect.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.MapperM3_Name: aggregator.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		aggregator.workersPool,
-		aggregator.endSignals,
-		aggregator.inputDirect.ConsumeData(),
-		aggregator.mainCallback,
+		aggregator.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,
@@ -76,7 +80,7 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 	aggregator.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.AggregatorA4_Name, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
@@ -91,12 +95,12 @@ func (aggregator *Aggregator) finishCallback(dataset int) {
 	aggregator.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.AggregatorA4_Name, dataset, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputQueue)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.AggregatorA4_Name, aggregator.instance), aggregator.outputQueue)
 }
 
 func (aggregator *Aggregator) sendAggregatedData(dataset int, weekdayNumber int, aggregatedWeekday comms.WeekdayData) {
@@ -106,7 +110,7 @@ func (aggregator *Aggregator) sendAggregatedData(dataset int, weekdayNumber int,
 	if err != nil {
 		log.Errorf("Error generating Json from %s aggregated data. Err: '%s'", weekday, err)
 	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, weekdayNumber, string(bytes))
+		data := comms.SignMessage(props.AggregatorA4_Name, dataset, aggregator.instance, weekdayNumber, string(bytes))
 		err := aggregator.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

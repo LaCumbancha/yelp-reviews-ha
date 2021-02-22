@@ -14,8 +14,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "F4"
-
 type FilterConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -36,15 +34,17 @@ type Filter struct {
 	outputQueue 		*rabbit.RabbitOutputQueue
 	outputDirect 		*rabbit.RabbitOutputDirect
 	outputPartitions	map[string]string
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewFilter(config FilterConfig) *Filter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA7_Output2)
+	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA7_Output)
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.FilterF4_Output1, comms.EndSignals(1))
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FilterF4_Output2)
+
+	endSignalsNeeded := map[string]int{props.AggregatorA7_Name: config.UserAggregators}
 
 	filter := &Filter {
 		instance:			config.Instance,
@@ -56,7 +56,7 @@ func NewFilter(config FilterConfig) *Filter {
 		outputQueue:		outputQueue,
 		outputDirect:		outputDirect,
 		outputPartitions:	utils.GeneratePartitionMap(config.StarsJoiners, PartitionableValues),
-		endSignals:			config.UserAggregators,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return filter
@@ -64,11 +64,15 @@ func NewFilter(config FilterConfig) *Filter {
 
 func (filter *Filter) Run() {
 	log.Infof("Starting to listen for user reviews data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.AggregatorA7_Name: filter.inputQueue.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.AggregatorA7_Name: filter.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		filter.workersPool,
-		filter.endSignals,
-		filter.inputQueue.ConsumeData(),
-		filter.mainCallback,
+		filter.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		filter.startCallback,
 		filter.finishCallback,
 		filter.closeCallback,
@@ -82,20 +86,20 @@ func (filter *Filter) mainCallback(inputNode string, dataset int, instance strin
 
 func (filter *Filter) startCallback(dataset int) {
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputQueue)
-	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.FilterF4_Name, dataset, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(props.FilterF4_Name, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) finishCallback(dataset int) {
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputQueue)
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.FilterF4_Name, dataset, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(props.FilterF4_Name, dataset, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, filter.instance), filter.outputQueue)
-	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, filter.instance), filter.outputPartitions, filter.outputDirect)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.FilterF4_Name, filter.instance), filter.outputQueue)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(props.FilterF4_Name, filter.instance), filter.outputPartitions, filter.outputDirect)
 }
 
 func (filter *Filter) filterData(rawUserDataBulk string) []comms.UserData {
@@ -117,7 +121,7 @@ func (filter *Filter) sendFilteredData(dataset int, bulk int, filteredData []com
 	if err != nil {
 		log.Errorf("Error generating Json from filtered bulk #%d. Err: '%s'", bulk, err)
 	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, filter.instance, bulk, string(bytes))
+		data := comms.SignMessage(props.FilterF4_Name, dataset, filter.instance, bulk, string(bytes))
 		err := filter.outputQueue.PublishData([]byte(data))
 
 		if err != nil {
@@ -151,7 +155,7 @@ func (filter *Filter) sendFilteredData(dataset int, bulk int, filteredData []com
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(NODE_CODE, dataset, filter.instance, bulk, string(bytes))
+			data := comms.SignMessage(props.FilterF4_Name, dataset, filter.instance, bulk, string(bytes))
 			err := filter.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {

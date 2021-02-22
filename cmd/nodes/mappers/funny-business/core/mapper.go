@@ -14,8 +14,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "M2"
-
 type MapperConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -32,7 +30,7 @@ type Mapper struct {
 	workersPool 		int
 	inputFanout 		*rabbit.RabbitInputFanout
 	outputQueue 		*rabbit.RabbitOutputQueue
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewMapper(config MapperConfig) *Mapper {
@@ -41,6 +39,8 @@ func NewMapper(config MapperConfig) *Mapper {
 	inputFanout := rabbit.NewRabbitInputFanout(channel, props.InputI2_Output, props.MapperM2_Input)
 	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.MapperM2_Output, comms.EndSignals(config.FunbizFilters))
 
+	endSignalsNeeded := map[string]int{props.InputI2_Name: config.ReviewsInputs}
+
 	mapper := &Mapper {
 		instance:			config.Instance,
 		connection:			connection,
@@ -48,7 +48,7 @@ func NewMapper(config MapperConfig) *Mapper {
 		workersPool:		config.WorkersPool,
 		inputFanout:		inputFanout,
 		outputQueue:		outputQueue,
-		endSignals:			config.ReviewsInputs,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return mapper
@@ -56,11 +56,15 @@ func NewMapper(config MapperConfig) *Mapper {
 
 func (mapper *Mapper) Run() {
 	log.Infof("Starting to listen for reviews.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.InputI2_Name: mapper.inputFanout.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.InputI2_Name: mapper.mainCallback}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		mapper.workersPool,
-		mapper.endSignals,
-		mapper.inputFanout.ConsumeData(),
-		mapper.mainCallback,
+		mapper.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		mapper.startCallback,
 		mapper.finishCallback,
 		mapper.closeCallback,
@@ -74,17 +78,17 @@ func (mapper *Mapper) mainCallback(inputNode string, dataset int, instance strin
 
 func (mapper *Mapper) startCallback(dataset int) {
 	// Sending Start-Message to consumers.
-	rabbit.OutputQueueStart(comms.StartMessageSigned(NODE_CODE, dataset, mapper.instance), mapper.outputQueue)
+	rabbit.OutputQueueStart(comms.StartMessageSigned(props.MapperM2_Name, dataset, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) finishCallback(dataset int) {
 	// Sending Finish-Message to consumers.
-	rabbit.OutputQueueFinish(comms.FinishMessageSigned(NODE_CODE, dataset, mapper.instance), mapper.outputQueue)
+	rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.MapperM2_Name, dataset, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputQueueClose(comms.CloseMessageSigned(NODE_CODE, mapper.instance), mapper.outputQueue)
+	rabbit.OutputQueueClose(comms.CloseMessageSigned(props.MapperM2_Name, mapper.instance), mapper.outputQueue)
 }
 
 func (mapper *Mapper) mapData(rawReviewsBulk string) []comms.FunnyBusinessData {
@@ -115,7 +119,7 @@ func (mapper *Mapper) sendMappedData(dataset int, bulk int, mappedData []comms.F
 	if err != nil {
 		log.Errorf("Error generating Json from mapped bulk #%d.%d. Err: '%s'", dataset, bulk, err)
 	} else {
-		data := comms.SignMessage(NODE_CODE, dataset, mapper.instance, bulk, string(bytes))
+		data := comms.SignMessage(props.MapperM2_Name, dataset, mapper.instance, bulk, string(bytes))
 		err := mapper.outputQueue.PublishData([]byte(data))
 
 		if err != nil {

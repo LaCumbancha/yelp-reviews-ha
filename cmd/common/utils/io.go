@@ -8,7 +8,7 @@ import (
 func ReadInput(reader *bufio.Reader) string {
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		log.Fatalf("Error reading from STDIN.", err)
+		log.Fatalf("Error reading from STDIN. Err: %s", err)
 	}
 
     if text[len(text)-1:] == "\n" {

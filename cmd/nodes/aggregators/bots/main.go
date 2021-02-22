@@ -5,7 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
-	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/aggregators/distinct-hash/core"
+	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/aggregators/bots/core"
 
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
@@ -17,7 +17,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the DISHASHAGG prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("dishashagg")
+	configEnv.SetEnvPrefix("botagg")
 
 	// Add env variables supported
 	configEnv.BindEnv("instance")
@@ -26,9 +26,8 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("workers", "pool")
 	configEnv.BindEnv("input", "topic")
 	configEnv.BindEnv("hash", "mappers")
-	configEnv.BindEnv("botuser", "joiners")
 	configEnv.BindEnv("log", "bulk", "rate")
-	configEnv.BindEnv("output", "bulk", "size")
+	configEnv.BindEnv("min", "reviews")
 	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
 
@@ -68,8 +67,7 @@ func main() {
 	workersPool := utils.GetConfigInt(configEnv, configFile, "workers_pool")
 	inputTopic := utils.GetConfigString(configEnv, configFile, "input_topic")
 	hashMappers := utils.GetConfigInt(configEnv, configFile, "hash_mappers")
-	botUserJoiners := utils.GetConfigInt(configEnv, configFile, "botuser_joiners")
-	outputBulkSize := utils.GetConfigInt(configEnv, configFile, "output_bulk_size")
+	minReviews := utils.GetConfigInt(configEnv, configFile, "min_reviews")
 
 	aggregatorConfig := core.AggregatorConfig {
 		Instance:				instance,
@@ -78,8 +76,7 @@ func main() {
 		WorkersPool:			workersPool,
 		InputTopic: 			inputTopic,
 		HashMappers:			hashMappers,
-		BotUserJoiners:			botUserJoiners,
-		OutputBulkSize:			outputBulkSize,
+		MinReviews:				minReviews,
 	}
 
 	// Initializing custom logger.

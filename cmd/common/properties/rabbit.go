@@ -1,14 +1,13 @@
 package properties
 
-//// NODES OUTPUTS QUEUES AND EXCHANGES
+//// OUTPUTS QUEUES AND EXCHANGES
 // Aggregators
 const AggregatorA1_Output = "A1-to-J1"
 const AggregatorA2_Output = "A2-to-A3"
 const AggregatorA3_Output = "A3-to-P1"
 const AggregatorA4_Output = "A4-to-P2"
-const AggregatorA5_Output = "A5-to-J2"
-const AggregatorA7_Output1 = "A7-to-F3"
-const AggregatorA7_Output2 = "A7-to-F4"
+const AggregatorA5_Output = "A5-to-P3"
+const AggregatorA7_Output = "A7-to-F4"
 const AggregatorA8_Output = "A8-to-J3"
 
 // Filters
@@ -20,8 +19,8 @@ const FilterF5_Output = "F5-to-A8"
 
 // Inputs
 const InputI1_Output = "I1-to-M1"
-const InputI2_Output = "I2-to-M2,M3,M4,M5,M6"
-const InputI3_Output = "I3-to-M2,M3,M4,M5,M6"
+const InputI2_Output = "I2.0-to-M2,M3,M4,M5,M6"
+const InputI3_Output = "I2.1-to-M2,M3,M4,M5,M6"
 
 // Joiners
 const JoinerJ1_Output = "J1-to-A2"
@@ -44,7 +43,7 @@ const PrettierP4_Output = "P4-to-O1"
 const PrettierP5_Output = "P5-to-O1"
 
 
-//// NODES INPUTS QUEUES
+//// EXCHANGES INNER QUEUES
 // Aggregators
 const AggregatorA1_Input = "A1-from-F1"
 const AggregatorA2_Input = "A2-from-J1"
@@ -54,38 +53,15 @@ const AggregatorA5_Input = "A5-from-M4"
 const AggregatorA7_Input = "A7-from-M5"
 const AggregatorA8_Input = "A8-from-F5"
 
-// Filters
-const FilterF1_Input = "F1-from-M2"
-const FilterF3_Input = "F3-from-A7"
-const FilterF4_Input = "F4-from-A7"
-const FilterF5_Input = "F5-from-M6"
-
 // Joiners
 const JoinerJ1_Input1 = "J1-from-M1"
 const JoinerJ1_Input2 = "J1-from-A1"
-const JoinerJ2_Input1 = "J2-from-A5"
-const JoinerJ2_Input2 = "J2-from-F3"
 const JoinerJ3_Input1 = "J3-from-F4"
 const JoinerJ3_Input2 = "J3-from-A8"
 
 // Mappers
-const MapperM1_Input = "M1-from-I1"
-const MapperM2_Input = "M2-from-I2"
-const MapperM3_Input = "M3-from-I2"
-const MapperM4_Input = "M4-from-I2"
-const MapperM5_Input = "M5-from-I2"
-const MapperM6_Input = "M6-from-I2"
-
-// Prettiers
-const PrettierP1_Input = "P1-from-A3"
-const PrettierP2_Input = "P2-from-A4"
-const PrettierP3_Input = "P3-from-J2"
-const PrettierP4_Input = "P4-from-F4"
-const PrettierP5_Input = "P5-from-J3"
-
-// Output
-const OutputO1_Input1 = "O1-from-P1"
-const OutputO1_Input2 = "O1-from-P2"
-const OutputO1_Input3 = "O1-from-P3"
-const OutputO1_Input4 = "O1-from-P4"
-const OutputO1_Input5 = "O1-from-P5"
+const MapperM2_Input = "M2-from-I2.0"
+const MapperM3_Input = "M3-from-I2.0"
+const MapperM4_Input = "M4-from-I2.0"
+const MapperM5_Input = "M5-from-I2.0"
+const MapperM6_Input = "M6-from-I2.0"

@@ -1,5 +1,10 @@
 package communication
 
+import (
+	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
+)
+
+
 // Protocol special messages.
 const endMessage = "FINISH-MESSAGE"
 const startMessage = "START-MESSAGE"
@@ -43,27 +48,79 @@ func IsCloseMessage(message string) bool {
 	return message == closeMessage
 }
 
-// Signaling control, for closing and finishin.
-func signalsControl(signaledInstance string, storedSignals map[string]int, expectedSignals int) (bool, bool, bool) {
-	firstSignal := len(storedSignals) == 0
-	storedSignals[signaledInstance] = storedSignals[signaledInstance] + 1
-	distinctSignals := len(storedSignals)
+// Dataset signals control.
+func signalsControl(
+	signaledInput string, 
+	signaledInstance string, 
+	signalsReceivedByInput map[string]map[string]int, 
+	signalsNeededByInput map[string]int,
+	savedInputs []string,
+) (bool, bool, bool, bool) {
+	totalInputs := len(signalsNeededByInput)
 
-	newSignal := storedSignals[signaledInstance] == 1
-	allSignals := (distinctSignals == expectedSignals) && newSignal
-	return firstSignal, newSignal, allSignals
-}
+	if _, found := signalsReceivedByInput[signaledInput]; !found {
+		signalsReceivedByInput[signaledInput] = make(map[string]int)
+	}
+	inputStoredSignals := signalsReceivedByInput[signaledInput]
+	inputSignalsNeeded := signalsNeededByInput[signaledInput]
+	
+	inputFirstSignal := len(inputStoredSignals) == 0
+	inputStoredSignals[signaledInstance]++
+	inputDistinctSignals := len(inputStoredSignals)
 
-// Detect if all signals from multiple datasets were received
-func MultiDatasetControl(dataset int, instance string, receivedSignals map[int]map[string]int, expectedSignals int) (bool, bool, bool) {
-	if _, found := receivedSignals[dataset]; !found {
-		receivedSignals[dataset] = make(map[string]int)
+	inputNewSignal := inputStoredSignals[signaledInstance] == 1
+	inputAllSignals := (inputDistinctSignals == inputSignalsNeeded) && inputNewSignal
+
+	everyInputAllSignals := true
+	if inputNewSignal {
+		if len(signalsReceivedByInput) + len(savedInputs) >= totalInputs {
+			for inputCode, signalsNeeded := range signalsNeededByInput {
+				if !utils.StringInSlice(inputCode, savedInputs) {
+					if signalsReceivedByInstance, found := signalsReceivedByInput[inputCode]; found {
+						if signalsNeeded != len(signalsReceivedByInstance) {
+							everyInputAllSignals = false
+						}
+					} else {
+						everyInputAllSignals = false
+					}
+				}
+			}
+		} else {
+			everyInputAllSignals = false
+		}
+	} else {
+		everyInputAllSignals = false
 	}
 
-	return signalsControl(instance, receivedSignals[dataset], expectedSignals)
+	return inputFirstSignal, inputNewSignal, inputAllSignals, everyInputAllSignals
 }
 
-// Detect if all signals from a single dataset were received
-func SingleControl(instance string, receivedSignals map[string]int, expectedSignals int) (bool, bool, bool) {
-	return signalsControl(instance, receivedSignals, expectedSignals)
+// Signals control for multiple datasets.
+func MultiDatasetSignalsControl(
+	signaledDataset int, 
+	signaledInput string, 
+	signaledInstance string, 
+	signalsByDataset map[int]map[string]map[string]int, 
+	signalsNeededByInput map[string]int,
+	savedInputs []string,
+) (bool, bool, bool, bool) {
+	if _, found := signalsByDataset[signaledDataset]; !found {
+		signalsByDataset[signaledDataset] = make(map[string]map[string]int)
+	}
+
+	if signaledDataset > 0 {
+		return signalsControl(signaledInput, signaledInstance, signalsByDataset[signaledDataset], signalsNeededByInput, savedInputs)
+	} else {
+		return signalsControl(signaledInput, signaledInstance, signalsByDataset[signaledDataset], signalsNeededByInput, make([]string, 0))
+	}
+}
+
+// Signals control for single dataset.
+func SingleDatasetSignalsControl(
+	signaledInput string, 
+	signaledInstance string, 
+	signalsByInput map[string]map[string]int, 
+	signalsNeededByInput map[string]int,
+) (bool, bool, bool, bool) {
+	return signalsControl(signaledInput, signaledInstance, signalsByInput, signalsNeededByInput, make([]string, 0))
 }

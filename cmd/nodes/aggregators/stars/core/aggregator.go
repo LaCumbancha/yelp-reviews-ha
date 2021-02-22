@@ -14,8 +14,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "A8"
-
 type AggregatorConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -36,14 +34,16 @@ type Aggregator struct {
 	inputDirect 		*rabbit.RabbitInputDirect
 	outputDirect 		*rabbit.RabbitOutputDirect
 	outputPartitions	map[string]string
-	endSignals			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect := rabbit.NewRabbitInputDirect(channel, props.FilterF5_Output, config.InputTopic, "")
+	inputDirect := rabbit.NewRabbitInputDirect(channel, props.FilterF5_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA8_Input, config.Instance))
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.AggregatorA8_Output)
+
+	endSignalsNeeded := map[string]int{props.FilterF5_Name: config.StarsFilters}
 
 	aggregator := &Aggregator {
 		instance:			config.Instance,
@@ -54,7 +54,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 		inputDirect:		inputDirect,
 		outputDirect:		outputDirect,
 		outputPartitions:	utils.GeneratePartitionMap(config.StarsJoiners, PartitionableValues),
-		endSignals:			config.StarsFilters,
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return aggregator
@@ -62,11 +62,15 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 
 func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for user stars data.")
-	proc.Transformation(
+	dataByInput := map[string]<-chan amqp.Delivery{props.FilterF5_Name: aggregator.inputDirect.ConsumeData()}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){props.FilterF5_Name: aggregator.mainCallback}
+
+	proc.ProcessInputs(
+		dataByInput,
 		aggregator.workersPool,
-		aggregator.endSignals,
-		aggregator.inputDirect.ConsumeData(),
-		aggregator.mainCallback,
+		aggregator.endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,
@@ -82,7 +86,7 @@ func (aggregator *Aggregator) startCallback(dataset int) {
 	aggregator.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
-	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(props.AggregatorA8_Name, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) finishCallback(dataset int) {
@@ -98,12 +102,12 @@ func (aggregator *Aggregator) finishCallback(dataset int) {
 	aggregator.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(props.AggregatorA8_Name, dataset, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(props.AggregatorA8_Name, aggregator.instance), aggregator.outputPartitions, aggregator.outputDirect)
 }
 
 func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregatedData []comms.UserData) {
@@ -131,7 +135,7 @@ func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregat
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", funbizDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(NODE_CODE, dataset, aggregator.instance, bulk, string(bytes))
+			data := comms.SignMessage(props.AggregatorA8_Name, dataset, aggregator.instance, bulk, string(bytes))
 			err := aggregator.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {

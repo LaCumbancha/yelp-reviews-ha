@@ -65,7 +65,7 @@ func InitializeDatasetBackup(dataset int) {
 
 	err := os.MkdirAll(datasetBackupPath, os.ModePerm)
 	if err != nil {
-		log.Errorf("Error creating dataset #%d backup folder. Err: '%s'", err)
+		log.Errorf("Error creating dataset #%d backup folder. Err: '%s'", dataset, err)
 	} else {
 		initializeBackupFiles(datasetBackupPath)
 	}

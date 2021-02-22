@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"strings"
 	"github.com/streadway/amqp"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,6 +27,16 @@ func EstablishConnection(rabbitIp string, rabbitPort string) (*amqp.Connection, 
 
 func AckMessage(message amqp.Delivery) {
 	if err := message.Ack(false); err != nil {
-		log.Errorf("Error sending message %s ACK. Err: '%s'", message.MessageId, err)
+		log.Errorf("Error sending message ACK from message '%s'. Err: '%s'", message.MessageId, err)
+	}
+}
+
+func InnerQueueName(input string, instance string) string {
+	idx1 := strings.Index(input, "-from-")
+	
+	if idx1 < 0 {
+		return input + "." + instance
+	} else {
+		return input[:idx1] + "." + instance + input[idx1:]
 	}
 }

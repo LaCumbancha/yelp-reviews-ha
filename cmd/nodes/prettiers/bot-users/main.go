@@ -24,7 +24,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("rabbitmq", "port")
 	configEnv.BindEnv("workers", "pool")
 	configEnv.BindEnv("min", "reviews")
-	configEnv.BindEnv("botuser", "joiners")
+	configEnv.BindEnv("bots", "aggregators")
 	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
 
@@ -62,14 +62,14 @@ func main() {
 	rabbitPort := utils.GetConfigString(configEnv, configFile, "rabbitmq_port")
 	workersPool := utils.GetConfigInt(configEnv, configFile, "workers_pool")
 	minReviews := utils.GetConfigInt(configEnv, configFile, "min_reviews")
-	botUserJoiners := utils.GetConfigInt(configEnv, configFile, "botuser_joiners")
+	botsAggregators := utils.GetConfigInt(configEnv, configFile, "bots_aggregators")
 
 	prettierConfig := core.PrettierConfig {
 		RabbitIp:				rabbitIp,
 		RabbitPort:				rabbitPort,
 		WorkersPool:			workersPool,
 		MinReviews:				minReviews,
-		BotUserJoiners:			botUserJoiners,
+		BotsAggregators:		botsAggregators,
 	}
 
 	// Custom logger initialization.

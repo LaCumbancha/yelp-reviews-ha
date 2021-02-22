@@ -184,6 +184,8 @@ func (calculator *Calculator) RetrieveMatches(dataset int) []comms.UserData {
 		return make([]comms.UserData, 0)
 	}
 
+	log.Infof("Dataset #%d storage: %d common users and %d 5-stars reviewers.", dataset, len(datasetData2), len(datasetData1))
+
 	var list []comms.UserData
 	for userId, bestReviews := range datasetData1 {
 		if totalReviews, found := datasetData2[userId]; found {

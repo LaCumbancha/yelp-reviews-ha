@@ -29,7 +29,6 @@ build: deps
 	GOOS=linux go build -o bin/funbiz-filter $(GIT_REMOTE)/cmd/nodes/filters/funbiz-filter
 	GOOS=linux go build -o bin/user-filter $(GIT_REMOTE)/cmd/nodes/filters/user
 	GOOS=linux go build -o bin/stars-filter $(GIT_REMOTE)/cmd/nodes/filters/stars
-	GOOS=linux go build -o bin/botuser-filter $(GIT_REMOTE)/cmd/nodes/filters/bot-users
 
 	# Aggregators
 	GOOS=linux go build -o bin/funbiz-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/funbiz-aggregator
@@ -37,12 +36,11 @@ build: deps
 	GOOS=linux go build -o bin/weekday-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/weekday
 	GOOS=linux go build -o bin/user-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/user
 	GOOS=linux go build -o bin/stars-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/stars
-	GOOS=linux go build -o bin/dishash-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/distinct-hash
+	GOOS=linux go build -o bin/dishash-aggregator $(GIT_REMOTE)/cmd/nodes/aggregators/bots
 
 	# Joiners
 	GOOS=linux go build -o bin/funcit-joiner $(GIT_REMOTE)/cmd/nodes/joiners/funny-city
 	GOOS=linux go build -o bin/bestuser-joiner $(GIT_REMOTE)/cmd/nodes/joiners/best-users
-	GOOS=linux go build -o bin/botuser-joiner $(GIT_REMOTE)/cmd/nodes/joiners/bot-users
 
 	# Prettiers
 	GOOS=linux go build -o bin/top-funniest-cities $(GIT_REMOTE)/cmd/nodes/prettiers/top-funniest-cities
@@ -74,7 +72,6 @@ system-build:
 	docker build -f ./cmd/nodes/filters/funny-business/Dockerfile -t "funbiz_filter:latest" .
 	docker build -f ./cmd/nodes/filters/user/Dockerfile -t "user_filter:latest" .
 	docker build -f ./cmd/nodes/filters/stars/Dockerfile -t "stars_filter:latest" .
-	docker build -f ./cmd/nodes/filters/bot-users/Dockerfile -t "botuser_filter:latest" .
 
 	# Aggregators
 	docker build -f ./cmd/nodes/aggregators/funny-business/Dockerfile -t "funbiz_aggregator:latest" .
@@ -82,12 +79,11 @@ system-build:
 	docker build -f ./cmd/nodes/aggregators/weekday/Dockerfile -t "weekday_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/user/Dockerfile -t "user_aggregator:latest" .
 	docker build -f ./cmd/nodes/aggregators/stars/Dockerfile -t "stars_aggregator:latest" .
-	docker build -f ./cmd/nodes/aggregators/distinct-hash/Dockerfile -t "dishash_aggregator:latest" .
+	docker build -f ./cmd/nodes/aggregators/bots/Dockerfile -t "bots_aggregator:latest" .
 
 	# Joiners
 	docker build -f ./cmd/nodes/joiners/funny-city/Dockerfile -t "funcit_joiner:latest" .
 	docker build -f ./cmd/nodes/joiners/best-users/Dockerfile -t "bestuser_joiner:latest" .
-	docker build -f ./cmd/nodes/joiners/bot-users/Dockerfile -t "botuser_joiner:latest" .
 
 	# Prettiers
 	docker build -f ./cmd/nodes/prettiers/funniest-cities/Dockerfile -t "top_funniest_cities_prettier:latest" .

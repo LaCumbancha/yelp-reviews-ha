@@ -20,8 +20,6 @@ business_bulk_size = input_yaml['business_bulk_size']
 funbizagg_bulk_size = input_yaml['funbizagg_bulk_size']
 funcitjoin_bulk_size = input_yaml['funcitjoin_bulk_size']
 funcitagg_bulk_size = input_yaml['funcitagg_bulk_size']
-hashagg_bulk_size = input_yaml['hashagg_bulk_size']
-dishashagg_bulk_size = input_yaml['dishashagg_bulk_size']
 useragg_bulk_size = input_yaml['useragg_bulk_size']
 starsagg_bulk_size = input_yaml['starsagg_bulk_size']
 funniest_cities_logging = input_yaml['funniest_cities_logging']
@@ -37,7 +35,6 @@ funbiz_mappers = input_yaml['funbiz_mappers']
 funbiz_filters = input_yaml['funbiz_filters']
 funbiz_aggregators = input_yaml['funbiz_aggregators']
 funcit_joiners = input_yaml['funcit_joiners']
-funcit_aggregators = input_yaml['funcit_aggregators']
 funcit_tops = input_yaml['funcit_tops']
 weekday_mappers = input_yaml['weekday_mappers']
 weekday_aggregators = input_yaml['weekday_aggregators']
@@ -49,11 +46,7 @@ stars_filters = input_yaml['stars_filters']
 stars_aggregators = input_yaml['stars_aggregators']
 bestuser_joiners = input_yaml['bestuser_joiners']
 hash_mappers = input_yaml['hash_mappers']
-hash_aggregators = input_yaml['hash_aggregators']
-dishash_aggregators = input_yaml['dishash_aggregators']
-dishash_filters = input_yaml['dishash_filters']
-botuser_filters = input_yaml['botuser_filters']
-botuser_joiners = input_yaml['botuser_joiners']
+bots_aggregators = input_yaml['bots_aggregators']
 
 business_data = '/data/business.json'	
 reviews_inputs = 2 if reviews_streaming else 1
@@ -79,10 +72,8 @@ BESTUSERJOIN_DEPS = []
 BOTUSERJOIN_DEPS = []
 FUNBIZAGG_DEPS = []
 USERAGG_DEPS = []
-HASHAGG_DEPS = []
-DISHASHAGG_DEPS = []
+BOTAGG_DEPS = []
 WEEKDAYAGG_DEPS = []
-FUNCITAGG_DEPS = []
 STARSAGG_DEPS = []
 FUNBIZFIL_DEPS = []
 FUNCITTOP_DEPS = []
@@ -137,7 +128,7 @@ file['services'][service] = {
 	'image': 'top_funniest_cities_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'FUNCITPRE_WORKERS_POOL={common_pool_size}', 'FUNCITPRE_RABBITMQ_IP=rabbitmq', 'FUNCITPRE_RABBITMQ_PORT=5672', f'FUNCITPRE_TOP_SIZE={funniest_cities_top_size}', f'FUNCITPRE_FUNCIT_FILTERS={funcit_tops}', f'FUNCITPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'FUNCITPRE_WORKERS_POOL={common_pool_size}', 'FUNCITPRE_RABBITMQ_IP=rabbitmq', 'FUNCITPRE_RABBITMQ_PORT=5672', f'FUNCITPRE_TOP_SIZE={funniest_cities_top_size}', f'FUNCITPRE_FUNCIT_TOPS={funcit_tops}', f'FUNCITPRE_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(FUNCITPRE_DEPS),
 	'networks': ['testing_net'],
@@ -147,7 +138,7 @@ config_logs('funniest_cities_logging', service=file['services']['top_funniest_ci
 for idx in range(0, funcit_tops):
 	container_name = f'funcit_top{idx}'
 	services += [container_name]
-	FUNCITAGG_DEPS += [container_name]
+	FUNCITJOIN_DEPS += [container_name]
 	file['services'][container_name] = {
 		'container_name': container_name,
 		'image': 'funcit_top:latest',
@@ -170,7 +161,7 @@ for idx in range(0, funcit_joiners):
 		'image': 'funcit_joiner:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITJOIN_WORKERS_POOL={common_pool_size}', f'FUNCITJOIN_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITJOIN_INSTANCE={idx}', 'FUNCITJOIN_RABBITMQ_IP=rabbitmq', 'FUNCITJOIN_RABBITMQ_PORT=5672', f'FUNCITJOIN_FUNBIZ_AGGREGATORS={funbiz_aggregators}', f'FUNCITJOIN_CITBIZ_MAPPERS={citbiz_mappers}', f'FUNCITJOIN_FUNCIT_AGGREGATORS={funcit_aggregators}', f'FUNCITJOIN_INPUT_TOPIC={idx}', f'FUNCITJOIN_OUTPUT_BULK_SIZE={funcitjoin_bulk_size}', f'FUNCITJOIN_LOG_LEVEL={log_level}'],
+		'environment': [f'FUNCITJOIN_WORKERS_POOL={common_pool_size}', f'FUNCITJOIN_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITJOIN_INSTANCE={idx}', 'FUNCITJOIN_RABBITMQ_IP=rabbitmq', 'FUNCITJOIN_RABBITMQ_PORT=5672', f'FUNCITJOIN_FUNBIZ_AGGREGATORS={funbiz_aggregators}', f'FUNCITJOIN_CITBIZ_MAPPERS={citbiz_mappers}', f'FUNCITJOIN_FUNCIT_TOPS={funcit_tops}', f'FUNCITJOIN_INPUT_TOPIC={idx}', f'FUNCITJOIN_OUTPUT_BULK_SIZE={funcitjoin_bulk_size}', f'FUNCITJOIN_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(FUNCITJOIN_DEPS),
 		'networks': ['testing_net']
@@ -394,58 +385,25 @@ file['services'][service] = {
 	'image': 'bot_users_prettier:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'BOTUSERPRE_WORKERS_POOL={common_pool_size}', 'BOTUSERPRE_RABBITMQ_IP=rabbitmq', 'BOTUSERPRE_RABBITMQ_PORT=5672', f'BOTUSERPRE_MIN_REVIEWS={bots_min_reviews}', f'BOTUSERPRE_BOTUSER_JOINERS={botuser_joiners}', f'BOTUSERPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'BOTUSERPRE_WORKERS_POOL={common_pool_size}', 'BOTUSERPRE_RABBITMQ_IP=rabbitmq', 'BOTUSERPRE_RABBITMQ_PORT=5672', f'BOTUSERPRE_MIN_REVIEWS={bots_min_reviews}', f'BOTUSERPRE_BOTS_AGGREGATORS={bots_aggregators}', f'BOTUSERPRE_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
 	'depends_on': list(BOTUSERPRE_DEPS),
 	'networks': ['testing_net']
 }
 config_logs('bot_users_logging', service=file['services']['bot_users_prettier'])
 
-for idx in range(0, botuser_joiners):
-	container_name = f'botuser_joiner{idx}'
+for idx in range(0, bots_aggregators):
+	container_name = f'bots_aggregator{idx}'
 	services += [container_name]
-	DISHASHFIL_DEPS += [container_name]
-	BOTUSERFIL_DEPS += [container_name]
+	HASHMAP_DEPS += [container_name]
 	file['services'][container_name] = {
 		'container_name': container_name,
-		'image': 'botuser_joiner:latest',
-		'entrypoint': '/joiner',
-		'restart': 'on-failure',
-		'environment': [f'BOTUSERJOIN_WORKERS_POOL={common_pool_size}', f'BOTUSERJOIN_LOG_BULK_RATE={log_bulk_rate}', f'BOTUSERJOIN_INSTANCE={idx}', 'BOTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BOTUSERJOIN_RABBITMQ_PORT=5672', f'BOTUSERJOIN_INPUT_TOPIC={idx}', f'BOTUSERJOIN_DISHASH_FILTERS={dishash_filters}', f'BOTUSERJOIN_BOTUSERS_FILTERS={botuser_filters}', f'BOTUSERJOIN_LOG_LEVEL={log_level}'],
-		'links': ['rabbitmq'],
-		'depends_on': list(BOTUSERJOIN_DEPS),
-		'networks': ['testing_net']
-	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
-
-for idx in range(0, botuser_filters):
-	container_name = f'botuser_filter{idx}'
-	services += [container_name]
-	USERAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'botuser_filter:latest',
-		'entrypoint': '/filter',
-		'restart': 'on-failure',
-		'environment': [f'BOTUSERFIL_WORKERS_POOL={common_pool_size}', f'BOTUSERFIL_LOG_BULK_RATE={log_bulk_rate}', f'BOTUSERFIL_INSTANCE={idx}', 'BOTUSERFIL_RABBITMQ_IP=rabbitmq', 'BOTUSERFIL_RABBITMQ_PORT=5672', f'BOTUSERFIL_MIN_REVIEWS={bots_min_reviews}', f'BOTUSERFIL_USER_AGGREGATORS={user_aggregators}', f'BOTUSERFIL_DISHASH_JOINERS={botuser_joiners}', f'BOTUSERFIL_LOG_LEVEL={log_level}'],
-		'links': ['rabbitmq'],
-		'depends_on': list(BOTUSERFIL_DEPS),
-		'networks': ['testing_net']
-	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
-
-for idx in range(0, dishash_aggregators):
-	container_name = f'dishash_aggregator{idx}'
-	services += [container_name]
-	HASHAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'dishash_aggregator:latest',
+		'image': 'bots_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'DISHASHAGG_WORKERS_POOL={common_pool_size}', f'DISHASHAGG_LOG_BULK_RATE={log_bulk_rate}', f'DISHASHAGG_INSTANCE={idx}', 'DISHASHAGG_RABBITMQ_IP=rabbitmq', 'DISHASHAGG_RABBITMQ_PORT=5672', f'DISHASHAGG_INPUT_TOPIC={idx}', f'DISHASHAGG_HASH_MAPPERS={hash_mappers}', f'DISHASHAGG_BOTUSER_JOINERS={botuser_joiners}', f'DISHASHAGG_OUTPUT_BULK_SIZE={dishashagg_bulk_size}', f'DISHASHAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'BOTAGG_WORKERS_POOL={common_pool_size}', f'BOTAGG_LOG_BULK_RATE={log_bulk_rate}', f'BOTAGG_INSTANCE={idx}', 'BOTAGG_RABBITMQ_IP=rabbitmq', 'BOTAGG_RABBITMQ_PORT=5672', f'BOTAGG_INPUT_TOPIC={idx}', f'BOTAGG_HASH_MAPPERS={hash_mappers}', f'BOTAGG_MIN_REVIEWS={bots_min_reviews}', f'BOTAGG_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(DISHASHAGG_DEPS),
+		'depends_on': list(BOTAGG_DEPS),
 		'networks': ['testing_net']
 	}
 	config_logs('bot_users_logging', service=file['services'][container_name])
@@ -459,7 +417,7 @@ for idx in range(0, hash_mappers):
 		'image': 'hash_mapper:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'HASHMAP_WORKERS_POOL={common_pool_size}', f'HASHMAP_LOG_BULK_RATE={log_bulk_rate}', f'HASHMAP_INSTANCE={idx}', 'HASHMAP_RABBITMQ_IP=rabbitmq', 'HASHMAP_RABBITMQ_PORT=5672', f'HASHMAP_REVIEWS_INPUTS={reviews_inputs}', f'HASHMAP_HASH_AGGREGATORS={hash_aggregators}', f'HASHMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'HASHMAP_WORKERS_POOL={common_pool_size}', f'HASHMAP_LOG_BULK_RATE={log_bulk_rate}', f'HASHMAP_INSTANCE={idx}', 'HASHMAP_RABBITMQ_IP=rabbitmq', 'HASHMAP_RABBITMQ_PORT=5672', f'HASHMAP_REVIEWS_INPUTS={reviews_inputs}', f'HASHMAP_BOTS_AGGREGATORS={bots_aggregators}', f'HASHMAP_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(HASHMAP_DEPS),
 		'networks': ['testing_net']
@@ -507,7 +465,7 @@ for idx in range(0, user_aggregators):
 		'image': 'user_aggregator:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'USERAGG_WORKERS_POOL={common_pool_size}', f'USERAGG_LOG_BULK_RATE={log_bulk_rate}', f'USERAGG_INSTANCE={idx}', 'USERAGG_RABBITMQ_IP=rabbitmq', 'USERAGG_RABBITMQ_PORT=5672', f'USERAGG_INPUT_TOPIC={idx}', f'USERAGG_USER_MAPPERS={user_mappers}', f'USERAGG_USER_FILTERS={user_filters}', f'USERAGG_BOTUSER_FILTERS={botuser_filters}', f'USERAGG_OUTPUT_BULK_SIZE={useragg_bulk_size}', f'USERAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'USERAGG_WORKERS_POOL={common_pool_size}', f'USERAGG_LOG_BULK_RATE={log_bulk_rate}', f'USERAGG_INSTANCE={idx}', 'USERAGG_RABBITMQ_IP=rabbitmq', 'USERAGG_RABBITMQ_PORT=5672', f'USERAGG_INPUT_TOPIC={idx}', f'USERAGG_USER_MAPPERS={user_mappers}', f'USERAGG_USER_FILTERS={user_filters}', f'USERAGG_OUTPUT_BULK_SIZE={useragg_bulk_size}', f'USERAGG_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(USERAGG_DEPS),
 		'networks': ['testing_net']

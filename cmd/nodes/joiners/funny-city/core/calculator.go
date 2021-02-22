@@ -161,9 +161,11 @@ func (calculator *Calculator) RetrieveMatches(dataset int) [][]comms.FunnyCityDa
 	var bulkedList [][]comms.FunnyCityData
 	var bulk []comms.FunnyCityData
 
+	matches := 0
 	actualBulk := 0
 	for businessId, funny := range datasetData1 {
 		if city, found := calculator.data2[businessId]; found {
+			matches++
 			joinedData := comms.FunnyCityData { City: city, Funny: funny }
 
 			bulk = append(bulk, joinedData)
@@ -184,5 +186,6 @@ func (calculator *Calculator) RetrieveMatches(dataset int) [][]comms.FunnyCityDa
 	calculator.mutex2.Unlock()
 	calculator.mutex1.Unlock()
 
+	log.Infof("Join matches to send: %d.", matches)
 	return bulkedList
 }

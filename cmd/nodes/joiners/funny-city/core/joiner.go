@@ -14,10 +14,6 @@ import (
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "J1"
-const FLOW1 = "Funny-Businesses"
-const FLOW2 = "City-Businesses"
-
 type JoinerConfig struct {
 	Instance			string
 	RabbitIp			string
@@ -26,7 +22,7 @@ type JoinerConfig struct {
 	InputTopic			string
 	FunbizAggregators 	int
 	CitbizMappers		int
-	FuncitAggregators	int
+	FuncitTops			int
 	OutputBulkSize		int
 }
 
@@ -40,16 +36,20 @@ type Joiner struct {
 	inputDirect2 		*rabbit.RabbitInputDirect
 	outputDirect 		*rabbit.RabbitOutputDirect
 	outputPartitions	map[string]string
-	endSignals1			int
-	endSignals2			int
+	endSignalsNeeded	map[string]int
 }
 
 func NewJoiner(config JoinerConfig) *Joiner {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
-	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.AggregatorA1_Output, config.InputTopic, "")
-	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.MapperM1_Output, config.InputTopic, "")
+	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.MapperM1_Output, config.InputTopic, rabbit.InnerQueueName(props.JoinerJ1_Input1, config.Instance))
+	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.AggregatorA1_Output, config.InputTopic, rabbit.InnerQueueName(props.JoinerJ1_Input2, config.Instance))
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.JoinerJ1_Output)
+
+	endSignalsNeeded := map[string]int{ 
+		props.MapperM1_Name: 			config.CitbizMappers,
+		props.AggregatorA1_Name: 		config.FunbizAggregators,
+	}
 
 	joiner := &Joiner {
 		instance:			config.Instance,
@@ -60,30 +60,30 @@ func NewJoiner(config JoinerConfig) *Joiner {
 		inputDirect1:		inputDirect1,
 		inputDirect2:		inputDirect2,
 		outputDirect:		outputDirect,
-		outputPartitions:	utils.GeneratePartitionMap(config.FuncitAggregators, PartitionableValues),
-		endSignals1:		config.FunbizAggregators,
-		endSignals2:		config.CitbizMappers,
+		outputPartitions:	utils.GeneratePartitionMap(config.FuncitTops, PartitionableValues),
+		endSignalsNeeded:	endSignalsNeeded,
 	}
 
 	return joiner
 }
 
 func (joiner *Joiner) Run() {
-	neededInputs := 2
-	savedInputs := 1
 	log.Infof("Starting to listen for funny-business and city-business data.")
-	proc.Join(
-		FLOW1,
-		FLOW2,
-		neededInputs,
-		savedInputs,
+	dataByInput := map[string]<-chan amqp.Delivery{
+		props.MapperM1_Name: 			joiner.inputDirect1.ConsumeData(),
+		props.AggregatorA1_Name: 		joiner.inputDirect2.ConsumeData(),
+	}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){
+		props.MapperM1_Name: 			joiner.mainCallback1, 
+		props.AggregatorA1_Name:		joiner.mainCallback2,
+	}
+	
+	proc.ProcessInputs(
+		dataByInput,
 		joiner.workersPool,
-		joiner.endSignals1,
-		joiner.endSignals2,
-		joiner.inputDirect1.ConsumeData(),
-		joiner.inputDirect2.ConsumeData(),
-		joiner.mainCallback1,
-		joiner.mainCallback2,
+		joiner.endSignalsNeeded,
+		[]string{props.MapperM1_Name},
+		mainCallbackByInput,
 		joiner.startCallback,
 		joiner.finishCallback,
 		joiner.closeCallback,
@@ -91,11 +91,11 @@ func (joiner *Joiner) Run() {
 }
 
 func (joiner *Joiner) mainCallback1(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddFunnyBusiness(dataset, bulk, data)
+	joiner.calculator.AddCityBusiness(dataset, bulk, data)
 }
 
 func (joiner *Joiner) mainCallback2(inputNode string, dataset int, instance string, bulk int, data string) {
-	joiner.calculator.AddCityBusiness(dataset, bulk, data)
+	joiner.calculator.AddFunnyBusiness(dataset, bulk, data)
 }
 
 func (joiner *Joiner) startCallback(dataset int) {
@@ -103,7 +103,7 @@ func (joiner *Joiner) startCallback(dataset int) {
 	joiner.calculator.RegisterDataset(dataset)
 
 	// Sending Start-Message to consumers.
-	rabbit.OutputDirectStart(comms.StartMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectStart(comms.StartMessageSigned(props.JoinerJ1_Name, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) finishCallback(dataset int) {
@@ -113,8 +113,6 @@ func (joiner *Joiner) finishCallback(dataset int) {
 	totalJoinMatches := len(joinMatches)
 	if totalJoinMatches == 0 {
 		log.Warnf("No join match to send.")
-	} else {
-		log.Infof("Join matches to send: %d.", totalJoinMatches)
 	}
 
 	messageNumber := 0
@@ -127,12 +125,12 @@ func (joiner *Joiner) finishCallback(dataset int) {
 	joiner.calculator.Clear(dataset)
 
 	// Sending Finish-Message to consumers.
-	rabbit.OutputDirectFinish(comms.FinishMessageSigned(NODE_CODE, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectFinish(comms.FinishMessageSigned(props.JoinerJ1_Name, dataset, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) closeCallback() {
 	// Sending Close-Message to consumers.
-	rabbit.OutputDirectClose(comms.CloseMessageSigned(NODE_CODE, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
+	rabbit.OutputDirectClose(comms.CloseMessageSigned(props.JoinerJ1_Name, joiner.instance), joiner.outputPartitions, joiner.outputDirect)
 }
 
 func (joiner *Joiner) sendJoinedData(dataset int, bulk int, joinedData []comms.FunnyCityData) {
@@ -160,7 +158,7 @@ func (joiner *Joiner) sendJoinedData(dataset int, bulk int, joinedData []comms.F
 		if err != nil {
 			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
 		} else {
-			data := comms.SignMessage(NODE_CODE, dataset, joiner.instance, bulk, string(bytes))
+			data := comms.SignMessage(props.JoinerJ1_Name, dataset, joiner.instance, bulk, string(bytes))
 			err := joiner.outputDirect.PublishData([]byte(data), partition)
 
 			if err != nil {

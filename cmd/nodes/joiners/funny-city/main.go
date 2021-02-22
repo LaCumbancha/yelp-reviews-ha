@@ -27,7 +27,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("input", "topic")
 	configEnv.BindEnv("funbiz", "aggregators")
 	configEnv.BindEnv("citbiz", "mappers")
-	configEnv.BindEnv("funcit", "aggregators")
+	configEnv.BindEnv("funcit", "tops")
 	configEnv.BindEnv("log", "bulk", "rate")
 	configEnv.BindEnv("output", "bulk", "size")
 	configEnv.BindEnv("log", "level")
@@ -70,7 +70,7 @@ func main() {
 	inputTopic := utils.GetConfigString(configEnv, configFile, "input_topic")
 	funbizAggregators := utils.GetConfigInt(configEnv, configFile, "funbiz_aggregators")
 	citbizMappers := utils.GetConfigInt(configEnv, configFile, "citbiz_mappers")
-	funcitAggregators := utils.GetConfigInt(configEnv, configFile, "funcit_aggregators")
+	funcitTops := utils.GetConfigInt(configEnv, configFile, "funcit_tops")
 	outputBulkSize := utils.GetConfigInt(configEnv, configFile, "output_bulk_size")
 
 	joinerConfig := core.JoinerConfig {
@@ -81,12 +81,13 @@ func main() {
 		InputTopic: 			inputTopic,
 		FunbizAggregators:		funbizAggregators,
 		CitbizMappers:			citbizMappers,
-		FuncitAggregators:		funcitAggregators,
+		FuncitTops:				funcitTops,
 		OutputBulkSize:			outputBulkSize,
 	}
 
 	// Initializing custom logger.
-	logBulkRate := utils.GetConfigInt(configEnv, configFile, "log_bulk_rate")
+	logBulkRate := int(utils.GetConfigInt(configEnv, configFile, "log_bulk_rate")/5)
+	if logBulkRate < 1 { logBulkRate = 1 }
 	logb.Instance().SetBulkRate(logBulkRate)
 
 	// Initializing joiner.

@@ -22,14 +22,14 @@ type DistinctHash struct {
 type Calculator struct {
 	data 			CalculatorData
 	mutex 			*sync.Mutex
-	bulkSize		int
+	minReviews		int
 }
 
-func NewCalculator(bulkSize int) *Calculator {
+func NewCalculator(minReviews int) *Calculator {
 	calculator := &Calculator {
 		data:			make(CalculatorData),
 		mutex:			&sync.Mutex{},
-		bulkSize:		bulkSize,
+		minReviews:		minReviews,
 	}
 
 	calculator.loadBackup()
@@ -102,6 +102,8 @@ func (calculator *Calculator) saveData(dataset int, rawData string) int {
 		if distinctHashes, found := datasetData[hashedData.UserId]; found {
 			if distinctHashes.Unique && hashedData.HashedText != distinctHashes.Hash {
 				datasetData[hashedData.UserId] = DistinctHash{ Hash: hashedData.HashedText, Unique: false, Reviews: distinctHashes.Reviews + 1 }
+			} else {
+				datasetData[hashedData.UserId] = DistinctHash{ Hash: hashedData.HashedText, Unique: distinctHashes.Unique, Reviews: distinctHashes.Reviews + 1 }
 			}
 		} else {
 			datasetData[hashedData.UserId] = DistinctHash{ Hash: hashedData.HashedText, Unique: true, Reviews: 1 }
@@ -114,39 +116,24 @@ func (calculator *Calculator) saveData(dataset int, rawData string) int {
 	return len(datasetData)
 }
 
-func (calculator *Calculator) AggregateData(dataset int) [][]comms.UserData {
+func (calculator *Calculator) AggregateData(dataset int) []comms.UserData {
 	calculator.mutex.Lock()
 
 	datasetData, found := calculator.data[dataset]
 	if !found {
 		log.Warnf("Aggregating data for a dataset not stored (#%d).", dataset)
-		return make([][]comms.UserData, 0)
+		return make([]comms.UserData, 0)
 	}
 
-	bulk := make([]comms.UserData, 0)
-	bulkedList := make([][]comms.UserData, 0)
-
-	actualBulk := 0
+	var list []comms.UserData
 	for userId, distinctHashes := range datasetData {
-		actualBulk++
-
-		if distinctHashes.Unique {
+		if distinctHashes.Unique && distinctHashes.Reviews >= calculator.minReviews {
 			aggregatedData := comms.UserData { UserId: userId, Reviews: distinctHashes.Reviews }
-			bulk = append(bulk, aggregatedData)
-
-			if actualBulk == calculator.bulkSize {
-				bulkedList = append(bulkedList, bulk)
-				bulk = make([]comms.UserData, 0)
-				actualBulk = 0
-			}
-		}
-		
-	}
-
-	if len(bulk) != 0 {
-		bulkedList = append(bulkedList, bulk)
+			list = append(list, aggregatedData)
+		}	
 	}
 
 	calculator.mutex.Unlock()
-	return bulkedList
+	log.Infof("Bot users detected: %d.", len(list))
+	return list
 }

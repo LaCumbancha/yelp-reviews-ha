@@ -136,6 +136,7 @@ func (calculator *Calculator) AggregateData(dataset int) [][]comms.UserData {
 		bulkedList = append(bulkedList, bulk)
 	}
 
+	log.Infof("Users with only 5-stars reviews: %d", len(datasetData))
 	calculator.mutex.Unlock()
 	return bulkedList
 }

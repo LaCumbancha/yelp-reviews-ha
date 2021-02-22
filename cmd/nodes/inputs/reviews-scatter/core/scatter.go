@@ -17,8 +17,6 @@ import (
     rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
 )
 
-const NODE_CODE = "I2"
-
 type ScatterConfig struct {
     Instance            string
     RabbitIp            string
@@ -181,7 +179,7 @@ func (scatter *Scatter) processFile(filePath string, dataset int) {
 }
 
 func (scatter *Scatter) sendBulk(dataset int, bulk int, bulkData string) {
-    err := scatter.outputFanout.PublishData([]byte(comms.SignMessage(NODE_CODE, dataset, scatter.instance, bulk, bulkData)))
+    err := scatter.outputFanout.PublishData([]byte(comms.SignMessage(props.InputI2_Name, dataset, scatter.instance, bulk, bulkData)))
 
     if err != nil {
         log.Errorf("Error sending bulk #%d to fanout-exchange %s. Err: '%s'", bulk, scatter.outputFanout.Exchange, err)
@@ -192,17 +190,17 @@ func (scatter *Scatter) sendBulk(dataset int, bulk int, bulkData string) {
 
 func (scatter *Scatter) startDataset(dataset int) {
     // Sending Start-Message to consumers.
-    rabbit.OutputFanoutStart(comms.StartMessageSigned(NODE_CODE, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
+    rabbit.OutputFanoutStart(comms.StartMessageSigned(props.InputI2_Name, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) finishDataset(dataset int) {
     // Sending Finish-Message to consumers.
-    rabbit.OutputFanoutFinish(comms.FinishMessageSigned(NODE_CODE, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
+    rabbit.OutputFanoutFinish(comms.FinishMessageSigned(props.InputI2_Name, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) closeConnection() {
     // Sending Close-Message to consumers.
-    rabbit.OutputFanoutClose(comms.CloseMessageSigned(NODE_CODE, scatter.instance), scatter.outputSignals, scatter.outputFanout)
+    rabbit.OutputFanoutClose(comms.CloseMessageSigned(props.InputI2_Name, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
 func (scatter *Scatter) Stop() {

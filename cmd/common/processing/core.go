@@ -4,86 +4,62 @@ import (
 	"sync"
 	"github.com/streadway/amqp"
 
+	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 )
 
 // Common processing for Mappers, Filters, Aggregators and Prettiers.
-func Transformation(
+func ProcessInputs(
+	messagesByInput map[string] <-chan amqp.Delivery,
 	workersPool int,
-	endSignals int,
-	inputs <- chan amqp.Delivery,
-	mainCallback func(string, int, string, int, string),
+	signalsNeededByInput  map[string]int,
+	savedInputs []string,
+	mainCallbackByInput map[string]func(string, int, string, int, string),
 	startCallback func(int),
 	finishCallback func(int),
 	closeCallback func(),
 ) {
-	mainChannel := make(chan amqp.Delivery)
-	startingChannel := make(chan amqp.Delivery)
-	finishingChannel := make(chan amqp.Delivery)
-	closingChannel := make(chan *FlowMessage)
+	dataChannelByInput := make(map[string]chan amqp.Delivery)
+	for input, _ := range messagesByInput {
+		dataChannelByInput[input] = make(chan amqp.Delivery)
+	}
 
-	var procWgs = make(map[int]*sync.WaitGroup)
-	var procWgsMutex = &sync.Mutex{}
-	var procMutex = &sync.Mutex{}
-	var finishWg sync.WaitGroup
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	neededInputs := 1
-	savedInputs := 0
-	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
-	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
-
-	go ReceiveInputs(DefaultFlow, inputs, mainChannel, startingChannel, finishingChannel, closingChannel, endSignals, procWgs, procWgsMutex)
-	go ProcessData(workersPool, mainChannel, mainCallback, receivedMsgs, procMutex, procWgs, procWgsMutex)
-	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
-	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
-
-	// Waiting for close procedure.
-	connWg.Wait()
-}
-
-// Common processing for Joiners.
-func Join(
-	flow1 string,
-	flow2 string,
-	neededInputs int,
-	savedInputs int,
-	workersPool int,
-	endSignals1 int,
-	endSignals2 int,
-	inputs1 <- chan amqp.Delivery,
-	inputs2 <- chan amqp.Delivery,
-	mainCallback1 func(string, int, string, int, string),
-	mainCallback2 func(string, int, string, int, string),
-	startCallback func(int),
-	finishCallback func(int),
-	closeCallback func(),
-) {
-	mainChannel1 := make(chan amqp.Delivery)
-	mainChannel2 := make(chan amqp.Delivery)
-	startingChannel := make(chan amqp.Delivery)
-	finishingChannel := make(chan amqp.Delivery)
-	closingChannel := make(chan *FlowMessage)
-	
-	var procWgs = make(map[int]*sync.WaitGroup)
-	var procWgsMutex = &sync.Mutex{}
-	var procMutex = &sync.Mutex{}
-	var finishWg sync.WaitGroup
-	var connWg sync.WaitGroup
+	procWgsByDataset := make(map[int]*sync.WaitGroup)
+	procWgsMutex := &sync.Mutex{}
+	receivedMutex := &sync.Mutex{}
+	finishWg := &sync.WaitGroup{}
+	connWg := &sync.WaitGroup{}
 	connWg.Add(1)
 
 	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
-	InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
-	
-	go ReceiveInputs(flow1, inputs1, mainChannel1, startingChannel, finishingChannel, closingChannel, endSignals1, procWgs, procWgsMutex)
-	go ReceiveInputs(flow2, inputs2, mainChannel2, startingChannel, finishingChannel, closingChannel, endSignals2, procWgs, procWgsMutex)
-	go ProcessData(int(workersPool/2), mainChannel1, mainCallback1, receivedMsgs, procMutex, procWgs, procWgsMutex)
-	go ProcessData(int(workersPool/2), mainChannel2, mainCallback2, receivedMsgs, procMutex, procWgs, procWgsMutex)
-	go ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, startCallback)
-	go ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, finishCallback, procWgs, procWgsMutex, &finishWg)
-	go ProcessClose(closeSignals, neededInputs, closingChannel, closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
+	InitializeProcessWaitGroups(startSignals, finishSignals, signalsNeededByInput, procWgsByDataset, procWgsMutex)
+
+	go ReceiveInputMessages(
+		messagesByInput,
+		dataChannelByInput,
+		startSignals,
+		finishSignals,
+		closeSignals,
+		signalsNeededByInput,
+		savedInputs,
+		startCallback,
+		finishCallback,
+		closeCallback,
+		connWg,
+		finishWg,
+		procWgsByDataset,
+		procWgsMutex,
+	)
+
+	for input, mainCallback := range mainCallbackByInput {
+		dataChannel, found := dataChannelByInput[input]
+
+		if !found {
+			log.Fatalf("Data channel not defined for input %d.", input)
+		}
+
+		go ProcessData(workersPool, dataChannel, mainCallback, receivedMsgs, receivedMutex, procWgsByDataset, procWgsMutex)
+	}
 
 	// Waiting for close procedure.
 	connWg.Wait()

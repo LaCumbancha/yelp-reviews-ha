@@ -6,7 +6,6 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
 	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
 	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
@@ -61,34 +60,39 @@ func NewSink(config SinkConfig) *Sink {
 
 func (sink *Sink) Run() {
 	log.Infof("Starting to listen for results.")
-	mainChannel := make(chan amqp.Delivery)
-	startingChannel := make(chan amqp.Delivery)
-	finishingChannel := make(chan amqp.Delivery)
-	closingChannel := make(chan *proc.FlowMessage)
-
-	var procWgs = make(map[int]*sync.WaitGroup)
-	var procWgsMutex = &sync.Mutex{}
-	var receivedMsgsMutex = &sync.Mutex{}
-	var finishWg sync.WaitGroup
-	var connWg sync.WaitGroup
-	connWg.Add(1)
-
-	neededInputs := 5
-	savedInputs := 0
-	startSignals, finishSignals, closeSignals, receivedMsgs := bkp.LoadSignalsBackup()
-	proc.InitializeProcessWaitGroups(procWgs, procWgsMutex, startSignals, finishSignals, neededInputs, savedInputs)
-
-	go proc.ReceiveInputs(TOPUSERS, sink.topUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
-	go proc.ReceiveInputs(BOTUSERS, sink.botUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
-	go proc.ReceiveInputs(BESTUSERS, sink.bestUsersQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
-	go proc.ReceiveInputs(FUNCIT, sink.funniestCitiesQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
-	go proc.ReceiveInputs(WEEKDAY, sink.weekdayHistogramQueue.ConsumeData(), mainChannel, startingChannel, finishingChannel, closingChannel, 1, procWgs, procWgsMutex)
-
-	go proc.ProcessData(1, mainChannel, sink.mainCallback, receivedMsgs, receivedMsgsMutex, procWgs, procWgsMutex)
-	go proc.ProcessStart(startSignals, neededInputs, savedInputs, startingChannel, sink.startCallback)
-	go proc.ProcessFinish(finishSignals, neededInputs, savedInputs, finishingChannel, sink.finishCallback, procWgs, procWgsMutex, &finishWg)
-	go proc.ProcessClose(closeSignals, neededInputs, closingChannel, sink.closeCallback, procWgs, procWgsMutex, &finishWg, &connWg)
-	connWg.Wait()
+	workersPool := 1
+	endSignalsNeeded := map[string]int{
+		props.PrettierP1_Name: 1,
+		props.PrettierP2_Name: 1,
+		props.PrettierP3_Name: 1,
+		props.PrettierP4_Name: 1,
+		props.PrettierP5_Name: 1,
+	}
+	dataByInput := map[string]<-chan amqp.Delivery{
+		props.PrettierP1_Name: sink.funniestCitiesQueue.ConsumeData(),
+		props.PrettierP2_Name: sink.weekdayHistogramQueue.ConsumeData(),
+		props.PrettierP3_Name: sink.botUsersQueue.ConsumeData(),
+		props.PrettierP4_Name: sink.topUsersQueue.ConsumeData(),
+		props.PrettierP5_Name: sink.bestUsersQueue.ConsumeData(),
+	}
+	mainCallbackByInput := map[string]func(string, int, string, int, string){
+		props.PrettierP1_Name: sink.mainCallback,
+		props.PrettierP2_Name: sink.mainCallback,
+		props.PrettierP3_Name: sink.mainCallback,
+		props.PrettierP4_Name: sink.mainCallback,
+		props.PrettierP5_Name: sink.mainCallback,
+	}
+	
+	proc.ProcessInputs(
+		dataByInput,
+		workersPool,
+		endSignalsNeeded,
+		[]string{},
+		mainCallbackByInput,
+		sink.startCallback,
+		sink.finishCallback,
+		sink.closeCallback,
+	)
 }
 
 func (sink *Sink) mainCallback(nodeCode string, dataset int, instance string, bulk int, message string) {

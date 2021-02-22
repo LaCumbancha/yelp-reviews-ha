@@ -27,7 +27,6 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("input", "topic")
 	configEnv.BindEnv("user", "mappers")
 	configEnv.BindEnv("user", "filters")
-	configEnv.BindEnv("botuser", "filters")
 	configEnv.BindEnv("log", "bulk", "rate")
 	configEnv.BindEnv("output", "bulk", "size")
 	configEnv.BindEnv("log", "level")
@@ -70,7 +69,6 @@ func main() {
 	inputTopic := utils.GetConfigString(configEnv, configFile, "input_topic")
 	userMappers := utils.GetConfigInt(configEnv, configFile, "user_mappers")
 	userFilters := utils.GetConfigInt(configEnv, configFile, "user_filters")
-	botUserFilters := utils.GetConfigInt(configEnv, configFile, "botuser_filters")
 	outputBulkSize := utils.GetConfigInt(configEnv, configFile, "output_bulk_size")
 
 	aggregatorConfig := core.AggregatorConfig {
@@ -81,7 +79,6 @@ func main() {
 		InputTopic: 			inputTopic,
 		UserMappers:			userMappers,
 		UserFilters:			userFilters,
-		BotUserFilters:			botUserFilters,
 		OutputBulkSize:			outputBulkSize,
 	}
 

@@ -156,7 +156,6 @@ func (scatter *Scatter) processFile(filePath string, dataset int) {
             bulk++
             bulkData := buffer.String()
             scatter.sendBulk(dataset, bulk, bulkData[:len(bulkData)-1])
-            //time.Sleep(5 * time.Second)
 
             buffer = bytes.NewBufferString("")
             chunk = 0

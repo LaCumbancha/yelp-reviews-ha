@@ -39,7 +39,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM5_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA7_Input, config.Instance))
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA7_Output, comms.EndSignals(config.UserFilters))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA7_Output, config.UserFilters)
 
 	endSignalsNeeded := map[string]int{props.MapperM5_Name: config.UserMappers}
 

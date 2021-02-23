@@ -41,7 +41,7 @@ func NewFilter(config FilterConfig) *Filter {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA7_Output)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.FilterF4_Output1, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.FilterF4_Output1, comms.Prettiers)
 	outputDirect := rabbit.NewRabbitOutputDirect(channel, props.FilterF4_Output2)
 
 	endSignalsNeeded := map[string]int{props.AggregatorA7_Name: config.UserAggregators}

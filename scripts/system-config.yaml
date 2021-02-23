@@ -30,8 +30,8 @@ bots_min_reviews: 5
 funniest_cities_top_size: 10
 
 # Funniest cities flow.
-citbiz_mappers: 1
-funbiz_mappers: 1
+citbiz_mappers: 3
+funbiz_mappers: 2
 funbiz_filters: 1
 funbiz_aggregators: 1
 funcit_joiners: 1
@@ -39,16 +39,16 @@ funcit_aggregators: 1
 funcit_tops: 1
 
 # Weekday histogram flow.
-weekday_mappers: 1
+weekday_mappers: 2
 weekday_aggregators: 1
 
 # Users w/+50 reviews.
-user_mappers: 1
+user_mappers: 2
 user_aggregators: 1
 user_filters: 1
 
 # Users w/+50 5-stars reviews.
-stars_mappers: 1
+stars_mappers: 2
 stars_filters: 1
 stars_aggregators: 1
 bestuser_joiners: 1

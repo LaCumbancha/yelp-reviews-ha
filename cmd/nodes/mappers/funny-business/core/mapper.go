@@ -37,7 +37,7 @@ func NewMapper(config MapperConfig) *Mapper {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputFanout := rabbit.NewRabbitInputFanout(channel, props.InputI2_Output, props.MapperM2_Input)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.MapperM2_Output, comms.EndSignals(config.FunbizFilters))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.MapperM2_Output, config.FunbizFilters)
 
 	endSignalsNeeded := map[string]int{props.InputI2_Name: config.ReviewsInputs}
 

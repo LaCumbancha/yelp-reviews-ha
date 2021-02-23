@@ -19,9 +19,9 @@ const DefaultPartition = "0"
 func ReceiveInputMessages(
 	messagesByInput map[string]<-chan amqp.Delivery,
 	dataChannelByInput map[string]chan amqp.Delivery,
-	startSignalsMap map[int]map[string]map[string]int,
-	finishSignalsMap map[int]map[string]map[string]int,
-	closeSignalsMap map[string]map[string]int,
+	startSignalsMap map[int]map[string]map[string]bool,
+	finishSignalsMap map[int]map[string]map[string]bool,
+	closeSignalsMap map[string]map[string]bool,
 	signalsNeeded  map[string]int,
 	savedInputs []string,
 	startCallback func(int),
@@ -76,7 +76,7 @@ func processStartSignal(
 	dataset int,
 	inputNode string,
 	instance string,
-	signalsMap map[int]map[string]map[string]int,
+	signalsMap map[int]map[string]map[string]bool,
 	signalsMutex *sync.Mutex,
 	signalsNeeded  map[string]int,
 	savedInputs []string,
@@ -85,15 +85,16 @@ func processStartSignal(
 	callback func(int),
 ) {
 	signalsMutex.Lock()
-	firstReceivedByInput, _, _, everyInputAllSignals := comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
+	firstInstanceSignaledByInput, newInstanceSignaledByInput, _, everyInputAllInstancesSignaled := 
+		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
 
-	if firstReceivedByInput {
+	if firstInstanceSignaledByInput {
 		log.Infof("First Start-Message from dataset #%d from the %s input received.", dataset, inputNode)
 		utils.DefineWaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Add(1)
 	}
 
-	if everyInputAllSignals {
+	if everyInputAllInstancesSignaled {
 		callback(dataset)
 	}
 
@@ -101,7 +102,12 @@ func processStartSignal(
 	bkp.StoreSignalsBackup(signalsMap, bkp.StartBkp)
 	signalsMutex.Unlock()
 
-	rabbit.AckMessage(message)
+	if newInstanceSignaledByInput {
+		rabbit.AckMessage(message)
+	} else {
+		rabbit.NackMessage(message)
+		log.Debugf("Repeated Start-Message from the %s input (instance #%s) received.", inputNode, instance)
+	}
 }
 
 func processFinishSignal(
@@ -109,7 +115,7 @@ func processFinishSignal(
 	dataset int,
 	inputNode string,
 	instance string,
-	signalsMap map[int]map[string]map[string]int,
+	signalsMap map[int]map[string]map[string]bool,
 	signalsMutex *sync.Mutex,
 	signalsNeeded  map[string]int,
 	savedInputs []string,
@@ -118,18 +124,17 @@ func processFinishSignal(
 	procWgsMutex *sync.Mutex,
 	callback func(int),
 ) {
-	counter := 0
 	signalsMutex.Lock()
-	counter++
-	_, _, allReceivedByInput, everyInputAllSignals := comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
+	_, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
 
-	if allReceivedByInput {
+	if allInstancesSignaledByInput {
 		log.Infof("All Finish-Messages from dataset #%d from the %s input received.", dataset, inputNode)
 		utils.WaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Done()
 	}
 
-	if everyInputAllSignals {
+	if everyInputAllInstancesSignaled {
 		log.Infof("Every Finish-Message needed were received.")
 		finishWg.Add(1)
 		utils.WaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Wait()
@@ -142,14 +147,19 @@ func processFinishSignal(
 	bkp.StoreSignalsBackup(signalsMap, bkp.FinishBkp)
 	signalsMutex.Unlock()
 
-	rabbit.AckMessage(message)
+	if newInstanceSignaledByInput {
+		rabbit.AckMessage(message)
+	} else {
+		rabbit.NackMessage(message)
+		log.Debugf("Repeated Finish-Message from the %s input (instance #%s) received.", inputNode, instance)
+	}
 }
 
 func processCloseSignal(
 	message amqp.Delivery,
 	inputNode string,
 	instance string,
-	signalsMap map[string]map[string]int,
+	signalsMap map[string]map[string]bool,
 	signalsMutex *sync.Mutex,
 	signalsNeeded  map[string]int,
 	connWg *sync.WaitGroup,
@@ -159,18 +169,19 @@ func processCloseSignal(
 	callback func(),
 ) {
 	signalsMutex.Lock()
-	_, newReceivedByInput, allReceivedByInput, everyInputAllSignals := comms.SingleDatasetSignalsControl(inputNode, instance, signalsMap, signalsNeeded)
+	_, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+		comms.SingleDatasetSignalsControl(inputNode, instance, signalsMap, signalsNeeded)
 	signalsMutex.Unlock()
 
-	if newReceivedByInput {
+	if newInstanceSignaledByInput {
 		log.Infof("Close-Message #%d from the %s input received.", len(signalsMap), inputNode)
 	}
 
-	if allReceivedByInput {
+	if allInstancesSignaledByInput {
 		log.Infof("All Close-Messages from the %s input received.", inputNode)
 	}
 
-	if everyInputAllSignals {
+	if everyInputAllInstancesSignaled {
 		log.Infof("Every Close-Message needed were received.")
 		for _, datasetWg := range utils.AllDatasetsWaitGroups(procWgsByDataset, procWgsMutex) {
 			datasetWg.Wait()
@@ -184,7 +195,12 @@ func processCloseSignal(
 	bkp.StoreSignalsBackup(signalsMap, bkp.CloseBkp)
 	signalsMutex.Unlock()
 
-	rabbit.AckMessage(message)
+	if newInstanceSignaledByInput {
+		rabbit.AckMessage(message)
+	} else {
+		rabbit.NackMessage(message)
+		log.Debugf("Repeated Close-Message from the %s input (instance #%s) received.", inputNode, instance)
+	}
 }
 
 func ProcessData(
@@ -235,8 +251,8 @@ func ProcessData(
 }
 
 func InitializeProcessWaitGroups(
-	startSignalsReceivedByDataset map[int]map[string]map[string]int,
-	finishSignalsReceivedByDataset map[int]map[string]map[string]int,
+	startSignalsReceivedByDataset map[int]map[string]map[string]bool,
+	finishSignalsReceivedByDataset map[int]map[string]map[string]bool,
 	signalsNeededByInput  map[string]int,
 	procWgsByDataset map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,

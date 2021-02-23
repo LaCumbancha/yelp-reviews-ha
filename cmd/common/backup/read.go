@@ -38,8 +38,8 @@ func LoadDataBackup() []DataBackup {
 	return data
 }
 
-func LoadSignalsBackup() (map[int]map[string]map[string]int, map[int]map[string]map[string]int, map[string]map[string]int, map[string]bool) {
-	startingSignals := make(map[int]map[string]map[string]int)
+func LoadSignalsBackup() (map[int]map[string]map[string]bool, map[int]map[string]map[string]bool, map[string]map[string]bool, map[string]bool) {
+	startingSignals := make(map[int]map[string]map[string]bool)
 	bkpStartSignals := loadCommonBackup(StartBkp)
 
 	if bkpStartSignals != nil {
@@ -47,7 +47,7 @@ func LoadSignalsBackup() (map[int]map[string]map[string]int, map[int]map[string]
 		log.Infof("Starting signals restored from backup file. Signals: %v", startingSignals)
 	}
 
-	finishingSignals := make(map[int]map[string]map[string]int)
+	finishingSignals := make(map[int]map[string]map[string]bool)
 	bkpFinishSignals := loadCommonBackup(FinishBkp)
 
 	if bkpFinishSignals != nil {
@@ -55,7 +55,7 @@ func LoadSignalsBackup() (map[int]map[string]map[string]int, map[int]map[string]
 		log.Infof("Finishing signals restored from backup file. Signals: %v", finishingSignals)
 	}
 
-	closingSignals := make(map[string]map[string]int)
+	closingSignals := make(map[string]map[string]bool)
 	bkpCloseSignals := loadCommonBackup(CloseBkp)
 
 	if bkpCloseSignals != nil {

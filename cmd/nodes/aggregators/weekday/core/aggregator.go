@@ -36,7 +36,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM3_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA4_Input, config.Instance))
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA4_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA4_Output, comms.Prettiers)
 
 	endSignalsNeeded := map[string]int{props.MapperM3_Name: config.WeekdayMappers}
 

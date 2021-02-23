@@ -38,7 +38,7 @@ func NewJoiner(config JoinerConfig) *Joiner {
 
 	inputDirect1 := rabbit.NewRabbitInputDirect(channel, props.FilterF4_Output2, config.InputTopic, rabbit.InnerQueueName(props.JoinerJ3_Input1, config.Instance))
 	inputDirect2 := rabbit.NewRabbitInputDirect(channel, props.AggregatorA8_Output, config.InputTopic, rabbit.InnerQueueName(props.JoinerJ3_Input2, config.Instance))
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.JoinerJ3_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.JoinerJ3_Output, comms.Prettiers)
 
 	endSignalsNeeded := map[string]int{
 		props.FilterF4_Name: 		config.UserFilters, 

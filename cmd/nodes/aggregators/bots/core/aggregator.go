@@ -36,7 +36,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.MapperM4_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA5_Input, config.Instance))
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA5_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA5_Output, comms.Prettiers)
 
 	endSignalsNeeded := map[string]int{props.MapperM4_Name: config.HashMappers}
 

@@ -31,7 +31,7 @@ func NewPrettier(config PrettierConfig) *Prettier {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA4_Output)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP2_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP2_Output, comms.Outputs)
 
 	endSignalsNeeded := map[string]int{props.AggregatorA4_Name: config.WeekdayAggregators}
 

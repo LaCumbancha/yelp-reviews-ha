@@ -1,36 +1,26 @@
 package core
 
-import (
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
-)
-
 func GenerateOutputSignals(funbizSigs int, weekdaysSigs int, hashesSigs int, usersSigs int, starsSigs int) int {
 	maxSignals := 0
 
-	funbizSignals := comms.EndSignals(funbizSigs)
-	weekdaySignals := comms.EndSignals(weekdaysSigs)
-	hashesSignals := comms.EndSignals(hashesSigs)
-	usersSignals := comms.EndSignals(usersSigs)
-	starsSignals := comms.EndSignals(starsSigs)
-
-	if funbizSignals > maxSignals {
-		maxSignals = funbizSignals
+	if funbizSigs > maxSignals {
+		maxSignals = funbizSigs
 	}
 
-	if weekdaySignals > maxSignals {
-		maxSignals = weekdaySignals
+	if weekdaysSigs > maxSignals {
+		maxSignals = weekdaysSigs
 	}
 
-	if hashesSignals > maxSignals {
-		maxSignals = hashesSignals
+	if hashesSigs > maxSignals {
+		maxSignals = hashesSigs
 	}
 
-	if usersSignals > maxSignals {
-		maxSignals = usersSignals
+	if usersSigs > maxSignals {
+		maxSignals = usersSigs
 	}
 
-	if starsSignals > maxSignals {
-		maxSignals = starsSignals
+	if starsSigs > maxSignals {
+		maxSignals = starsSigs
 	}
 
 	return maxSignals

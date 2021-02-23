@@ -4,19 +4,14 @@ import (
 	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
 )
 
+// Special nodes quantity
+const Prettiers = 1
+const Outputs = 1
 
 // Protocol special messages.
 const endMessage = "FINISH-MESSAGE"
 const startMessage = "START-MESSAGE"
 const closeMessage = "CLOSE-MESSAGE"
-
-// Retries finish attemps.
-const retries = 25
-
-// Defining custom Retries
-func EndSignals(outputs int) int {
-	return retries * outputs
-}
 
 // Defining custom Start-Message
 func StartMessageSigned(nodeCode string, dataset int, instance string) []byte {
@@ -52,47 +47,50 @@ func IsCloseMessage(message string) bool {
 func signalsControl(
 	signaledInput string, 
 	signaledInstance string, 
-	signalsReceivedByInput map[string]map[string]int, 
+	signalsReceivedByInput map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
 	savedInputs []string,
 ) (bool, bool, bool, bool) {
 	totalInputs := len(signalsNeededByInput)
+	inputSignalsNeeded := signalsNeededByInput[signaledInput]
 
 	if _, found := signalsReceivedByInput[signaledInput]; !found {
-		signalsReceivedByInput[signaledInput] = make(map[string]int)
+		signalsReceivedByInput[signaledInput] = make(map[string]bool)
 	}
 	inputStoredSignals := signalsReceivedByInput[signaledInput]
-	inputSignalsNeeded := signalsNeededByInput[signaledInput]
+	inputFirstSignalReceived := len(inputStoredSignals) == 0
 	
-	inputFirstSignal := len(inputStoredSignals) == 0
-	inputStoredSignals[signaledInstance]++
-	inputDistinctSignals := len(inputStoredSignals)
+	inputNewInstanceSignaled := false
+	if _, found := inputStoredSignals[signaledInstance]; !found {
+		inputStoredSignals[signaledInstance] = true
+		inputNewInstanceSignaled = true
+	}
 
-	inputNewSignal := inputStoredSignals[signaledInstance] == 1
-	inputAllSignals := (inputDistinctSignals == inputSignalsNeeded) && inputNewSignal
+	inputDistinctInstanceSignals := len(inputStoredSignals)
+	inputAllInstancesSignaled := (inputDistinctInstanceSignals == inputSignalsNeeded) && inputNewInstanceSignaled
 
-	everyInputAllSignals := true
-	if inputNewSignal {
+	everyInputAllSignalsReceived := true
+	if inputNewInstanceSignaled {
 		if len(signalsReceivedByInput) + len(savedInputs) >= totalInputs {
 			for inputCode, signalsNeeded := range signalsNeededByInput {
 				if !utils.StringInSlice(inputCode, savedInputs) {
 					if signalsReceivedByInstance, found := signalsReceivedByInput[inputCode]; found {
 						if signalsNeeded != len(signalsReceivedByInstance) {
-							everyInputAllSignals = false
+							everyInputAllSignalsReceived = false
 						}
 					} else {
-						everyInputAllSignals = false
+						everyInputAllSignalsReceived = false
 					}
 				}
 			}
 		} else {
-			everyInputAllSignals = false
+			everyInputAllSignalsReceived = false
 		}
 	} else {
-		everyInputAllSignals = false
+		everyInputAllSignalsReceived = false
 	}
 
-	return inputFirstSignal, inputNewSignal, inputAllSignals, everyInputAllSignals
+	return inputFirstSignalReceived, inputNewInstanceSignaled, inputAllInstancesSignaled, everyInputAllSignalsReceived
 }
 
 // Signals control for multiple datasets.
@@ -100,12 +98,12 @@ func MultiDatasetSignalsControl(
 	signaledDataset int, 
 	signaledInput string, 
 	signaledInstance string, 
-	signalsByDataset map[int]map[string]map[string]int, 
+	signalsByDataset map[int]map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
 	savedInputs []string,
 ) (bool, bool, bool, bool) {
 	if _, found := signalsByDataset[signaledDataset]; !found {
-		signalsByDataset[signaledDataset] = make(map[string]map[string]int)
+		signalsByDataset[signaledDataset] = make(map[string]map[string]bool)
 	}
 
 	if signaledDataset > 0 {
@@ -119,7 +117,7 @@ func MultiDatasetSignalsControl(
 func SingleDatasetSignalsControl(
 	signaledInput string, 
 	signaledInstance string, 
-	signalsByInput map[string]map[string]int, 
+	signalsByInput map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
 ) (bool, bool, bool, bool) {
 	return signalsControl(signaledInput, signaledInstance, signalsByInput, signalsNeededByInput, make([]string, 0))

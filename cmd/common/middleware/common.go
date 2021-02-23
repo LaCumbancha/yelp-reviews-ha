@@ -31,6 +31,12 @@ func AckMessage(message amqp.Delivery) {
 	}
 }
 
+func NackMessage(message amqp.Delivery) {
+	if err := message.Nack(false, true); err != nil {
+		log.Errorf("Error sending message ACK from message '%s'. Err: '%s'", message.MessageId, err)
+	}
+}
+
 func InnerQueueName(input string, instance string) string {
 	idx1 := strings.Index(input, "-from-")
 	

@@ -32,7 +32,7 @@ func NewPrettier(config PrettierConfig) *Prettier {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputQueue := rabbit.NewRabbitInputQueue(channel, props.AggregatorA2_Output)
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP1_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.PrettierP1_Output, comms.Outputs)
 
 	endSignalsNeeded := map[string]int{props.AggregatorA2_Name: config.FuncitTops}
 

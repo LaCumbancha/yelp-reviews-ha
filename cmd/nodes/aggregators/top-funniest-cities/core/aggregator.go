@@ -36,7 +36,7 @@ func NewAggregator(config AggregatorConfig) *Aggregator {
 	connection, channel := rabbit.EstablishConnection(config.RabbitIp, config.RabbitPort)
 
 	inputDirect := rabbit.NewRabbitInputDirect(channel, props.JoinerJ1_Output, config.InputTopic, rabbit.InnerQueueName(props.AggregatorA2_Input, config.Instance))
-	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA2_Output, comms.EndSignals(1))
+	outputQueue := rabbit.NewRabbitOutputQueue(channel, props.AggregatorA2_Output, comms.Prettiers)
 
 	endSignalsNeeded := map[string]int{props.JoinerJ1_Name: config.FuncitJoiners}
 

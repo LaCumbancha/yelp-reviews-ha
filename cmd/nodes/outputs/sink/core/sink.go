@@ -83,7 +83,7 @@ func (sink *Sink) Run() {
 		props.PrettierP5_Name: sink.mainCallback,
 	}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatelessly(
 		dataByInput,
 		workersPool,
 		endSignalsNeeded,

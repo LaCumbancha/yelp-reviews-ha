@@ -31,6 +31,7 @@ func ReceiveInputMessages(
 	finishWg *sync.WaitGroup,
 	procWgsByDataset map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,
+	receivedBkpMutex *sync.Mutex,
 ) {
 	startSignalsMutex := &sync.Mutex{}
 	finishSignalsMutex := &sync.Mutex{}
@@ -48,9 +49,9 @@ func ReceiveInputMessages(
 					inputNode, dataset, instance, bulk, mainMessage := comms.UnsignMessage(messageBody)
 
 					if comms.IsStartMessage(mainMessage) {
-						processStartSignal(message, dataset, inputNode, instance, startSignalsMap, startSignalsMutex, signalsNeeded, savedInputs, procWgsByDataset, procWgsMutex, startCallback)
+						processStartSignal(message, dataset, inputNode, instance, startSignalsMap, startSignalsMutex, signalsNeeded, savedInputs, procWgsByDataset, procWgsMutex, receivedBkpMutex, startCallback)
 					} else if comms.IsFinishMessage(mainMessage) {
-						processFinishSignal(message, dataset, inputNode, instance, finishSignalsMap, finishSignalsMutex, signalsNeeded, savedInputs, finishWg, procWgsByDataset, procWgsMutex, finishCallback)
+						processFinishSignal(message, dataset, inputNode, instance, finishSignalsMap, finishSignalsMutex, signalsNeeded, savedInputs, finishWg, procWgsByDataset, procWgsMutex, receivedBkpMutex, finishCallback)
 					} else if comms.IsCloseMessage(mainMessage) {
 						processCloseSignal(message, inputNode, instance, closeSignalsMap, closeSignalsMutex, signalsNeeded, connWg, finishWg, procWgsByDataset, procWgsMutex, closeCallback)
 					} else {
@@ -82,20 +83,25 @@ func processStartSignal(
 	savedInputs []string,
 	procWgsByDataset map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,
+	receivedBkpMutex *sync.Mutex,
 	callback func(int),
 ) {
 	signalsMutex.Lock()
-	firstInstanceSignaledByInput, newInstanceSignaledByInput, _, everyInputAllInstancesSignaled := 
+	firstInstanceSignaledByDataset, firstInstanceSignaledByInput, newInstanceSignaledByInput, _, _ := 
 		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
+
+	if firstInstanceSignaledByDataset {
+		callback(dataset)
+
+		receivedBkpMutex.Lock()
+		bkp.InitializeDatasetBackup(dataset)
+		receivedBkpMutex.Unlock()
+	}
 
 	if firstInstanceSignaledByInput {
 		log.Infof("First Start-Message from dataset #%d from the %s input received.", dataset, inputNode)
 		utils.DefineWaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Add(1)
-	}
-
-	if everyInputAllInstancesSignaled {
-		callback(dataset)
 	}
 
 	signalsMutex.Lock()
@@ -122,10 +128,11 @@ func processFinishSignal(
 	finishWg *sync.WaitGroup,
 	procWgsByDataset map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,
+	receivedBkpMutex *sync.Mutex,
 	callback func(int),
 ) {
 	signalsMutex.Lock()
-	_, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+	_, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
 		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
 
@@ -135,12 +142,16 @@ func processFinishSignal(
 	}
 
 	if everyInputAllInstancesSignaled {
-		log.Infof("Every Finish-Message needed were received.")
+		log.Infof("Every Finish-Message from dataset %d needed were received.", dataset)
 		finishWg.Add(1)
 		utils.WaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Wait()
 		utils.DeleteWaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex)
 		callback(dataset)
 		finishWg.Done()
+
+		receivedBkpMutex.Lock()
+		bkp.RemoveDatasetBackup(dataset)
+		receivedBkpMutex.Unlock()
 	}
 
 	signalsMutex.Lock()
@@ -169,7 +180,7 @@ func processCloseSignal(
 	callback func(),
 ) {
 	signalsMutex.Lock()
-	_, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+	_, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
 		comms.SingleDatasetSignalsControl(inputNode, instance, signalsMap, signalsNeeded)
 	signalsMutex.Unlock()
 
@@ -207,8 +218,9 @@ func ProcessData(
 	workersPool int,
 	mainChannel chan amqp.Delivery,
 	callback func(string, int, string, int, string),
-	receivedMsgs map[string]bool,
-	receivedMutex *sync.Mutex,
+	receivedMap map[string]bool,
+	receivedBkpMode bkp.BackupMode,
+	receivedBkpMutex *sync.Mutex,
 	procWgsByDataset map[int]*sync.WaitGroup,
 	procWgsMutex *sync.Mutex,
 ) {
@@ -223,20 +235,22 @@ func ProcessData(
 
 				if data != "" {
 					messageId := MessageSavingId(inputNode, dataset, bulk)
-					logb.Instance().Infof(fmt.Sprintf("Message #%s.%s.%d.%d received.", inputNode, instance, dataset, bulk), bulk)
+					signature := comms.MessageSignature(inputNode, dataset, instance, bulk)
+					logb.Instance().Infof(fmt.Sprintf("Message #%s received.", signature), bulk)
 
-					receivedMutex.Lock()
-					if _, found := receivedMsgs[messageId]; found {
-						receivedMutex.Unlock()
-						log.Warnf("Message #%s was already received and processed.", messageId)
-					} else {
-						receivedMsgs[messageId] = true
-						receivedMutex.Unlock()
+					receivedBkpMutex.Lock()
+					_, found := receivedMap[messageId]
+					receivedBkpMutex.Unlock()
+
+					if !found {
 						callback(inputNode, dataset, instance, bulk, data)
 
-						receivedMutex.Lock()
-						bkp.StoreSignalsBackup(receivedMsgs, bkp.ReceivedBkp)
-						receivedMutex.Unlock()
+						receivedBkpMutex.Lock()
+						receivedMap[messageId] = true
+						bkp.StoreDataBackup(dataset, signature, data, receivedBkpMode)
+						receivedBkpMutex.Unlock()
+					} else {
+						log.Warnf("Message #%s was already received and processed.", messageId)
 					}
 
 					rabbit.AckMessage(message)
@@ -250,7 +264,7 @@ func ProcessData(
 	}
 }
 
-func InitializeProcessWaitGroups(
+func initializeProcessWaitGroups(
 	startSignalsReceivedByDataset map[int]map[string]map[string]bool,
 	finishSignalsReceivedByDataset map[int]map[string]map[string]bool,
 	signalsNeededByInput  map[string]int,
@@ -282,4 +296,51 @@ func InitializeProcessWaitGroups(
 			utils.DeleteWaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex)
 		}
 	}
+}
+
+func initializeDataBackup(
+	rawBackups []bkp.DataBackup,
+	receivedBkpMode bkp.BackupMode,
+	callbackByInput map[string]func(int, []string),
+) map[string]bool {
+
+	receivedMsgs := make(map[string]bool)
+	if receivedBkpMode == bkp.IdBackup {
+
+		for _, rawBackup := range rawBackups {
+			input, dataset, _, bulk := comms.SignatureData(rawBackup.Signature)
+			messageId := MessageSavingId(input, dataset, bulk)
+			receivedMsgs[messageId] = true
+		}
+
+	} else {
+
+		backupsByDataset := make(map[int]map[string][]string)
+		for _, rawBackup := range rawBackups {
+			input, dataset, _, bulk := comms.SignatureData(rawBackup.Signature)
+			messageId := MessageSavingId(input, dataset, bulk)
+			receivedMsgs[messageId] = true
+
+			if _, found := backupsByDataset[dataset]; !found {
+				backupsByDataset[dataset] = make(map[string][]string)
+				backupsByDataset[dataset][input] = []string{rawBackup.Data}
+			} else if _, found = backupsByDataset[dataset][input]; !found {
+				backupsByDataset[dataset][input] = []string{rawBackup.Data}
+			} else {
+				backupsByDataset[dataset][input] = append(backupsByDataset[dataset][input], rawBackup.Data)
+			}
+		}
+
+		for dataset, backupsByInput := range backupsByDataset {
+			for input, backups := range backupsByInput {
+				if callback, found := callbackByInput[input]; found {
+					callback(dataset, backups)
+				} else {
+					log.Errorf("Backup data restored from an input node with no callback assigned: '%s'", input)
+				}
+			}
+		}
+	}
+
+	return receivedMsgs
 }

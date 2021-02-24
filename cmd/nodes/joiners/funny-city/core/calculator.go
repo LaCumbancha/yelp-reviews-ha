@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
@@ -31,30 +30,30 @@ func NewCalculator(bulkSize int) *Calculator {
 		maxBulkSize:	bulkSize,
 	}
 
-	calculator.loadBackup()
-
 	return calculator
 }
 
 // This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
-func (calculator *Calculator) loadBackup() {
-	for _, backupData := range bkp.LoadDataBackup() {
-		switch backupData.Flow {
-		case 1:
-			calculator.mutex1.Lock()
-			calculator.saveFunnyBusiness(backupData.Dataset, backupData.Data)
-			calculator.mutex1.Unlock()
-		case 2:
-			calculator.mutex2.Lock()
-			calculator.saveCityBusiness(backupData.Data)
-			calculator.mutex2.Unlock()
-		}
+func (calculator *Calculator) LoadFunbizBackup(dataset int, backups []string) {
+	if _, found := calculator.data1[dataset]; !found {
+		calculator.data1[dataset] = make(map[string]int)
 	}
 
+	for _, backup := range backups {
+		calculator.saveFunnyBusiness(dataset, backup)
+	}
+	
 	for dataset1, datasetData1 := range calculator.data1 {
 		log.Infof("Dataset #%d retrieved from backup, with %d funny businesses.", dataset1, len(datasetData1))
 	}
+}
 
+// This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
+func (calculator *Calculator) LoadCitbizBackup(dataset int, backups []string) {
+	for _, backup := range backups {
+		calculator.saveCityBusiness(backup)
+	}
+	
 	log.Infof("Retrieving %d city businesses from backup.", len(calculator.data2))
 }
 
@@ -69,7 +68,6 @@ func (calculator *Calculator) Clear(dataset int) {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage #1 but it wasn't registered.", dataset)
 	}
 
-	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex1.Unlock()
 }
 
@@ -83,7 +81,6 @@ func (calculator *Calculator) RegisterDataset(dataset int) {
 		log.Warnf("Dataset %d was already initialized in Calculator storage #1.", dataset)
 	}
 
-	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex1.Unlock()
 }
 
@@ -113,9 +110,6 @@ func (calculator *Calculator) saveFunnyBusiness(dataset int, rawData string) int
 		datasetData[funbizData.BusinessId] = funbizData.Funny
 	}
 
-	// Updating backup
-	bkp.StoreMultiFlowDataBackup(dataset, 1, rawData)
-
 	return len(datasetData)
 }
 
@@ -136,9 +130,6 @@ func (calculator *Calculator) saveCityBusiness(rawData string) int {
 	for _, citbizData := range citbizDataList {
 		calculator.data2[citbizData.BusinessId] = citbizData.City
 	}
-
-	// Updating backup
-	bkp.StoreMultiFlowDataBackup(0, 2, rawData)
 
 	return len(calculator.data2)
 }

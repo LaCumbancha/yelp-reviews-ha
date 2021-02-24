@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
@@ -27,17 +26,19 @@ func NewCalculator(topSize int) *Calculator {
 		topSize:		topSize,
 	}
 
-	calculator.loadBackup()
-
 	return calculator
 }
 
 // This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
-func (calculator *Calculator) loadBackup() {
-	for _, backupData := range bkp.LoadDataBackup() {
-		calculator.saveData(backupData.Dataset, backupData.Data)
+func (calculator *Calculator) LoadBackup(dataset int, backups []string) {
+	if _, found := calculator.data[dataset]; !found {
+		calculator.data[dataset] = make(map[string]int)
 	}
 
+	for _, backup := range backups {
+		calculator.saveData(dataset, backup)
+	}
+	
 	for dataset, datasetData := range calculator.data {
 		log.Infof("Dataset #%d retrieved from backup, with %d cities.", dataset, len(datasetData))
 	}
@@ -53,7 +54,6 @@ func (calculator *Calculator) Clear(dataset int) {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage but it wasn't registered.", dataset)
 	}
 	
-	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex.Unlock()
 }
 
@@ -67,7 +67,6 @@ func (calculator *Calculator) RegisterDataset(dataset int) {
 		log.Warnf("Dataset %d was already initialized in Calculator.", dataset)
 	}
 
-	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex.Unlock()
 }
 
@@ -101,9 +100,6 @@ func (calculator *Calculator) saveData(dataset int, rawData string) int {
 			datasetData[funcitData.City] = funcitData.Funny
 		}
 	}
-
-	// Updating backup
-	bkp.StoreSingleFlowDataBackup(dataset, rawData)
 
 	return len(datasetData)
 }

@@ -379,7 +379,7 @@ for idx in range(0, stars_mappers):
 # Bot Users flow.
 service = 'bot_users_prettier'
 services += [service]
-BOTUSERJOIN_DEPS += [service]
+BOTAGG_DEPS += [service]
 file['services'][service] = {
 	'container_name': 'bot_users_prettier',
 	'image': 'bot_users_prettier:latest',

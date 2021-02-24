@@ -61,7 +61,7 @@ func (filter *Filter) Run() {
 	dataByInput := map[string]<-chan amqp.Delivery{props.MapperM6_Name: filter.inputQueue.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.MapperM6_Name: filter.mainCallback}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatelessly(
 		dataByInput,
 		filter.workersPool,
 		filter.endSignalsNeeded,
@@ -130,7 +130,7 @@ func (filter *Filter) sendFilteredData(dataset int, bulk int, filteredData []com
 		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
-			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
+			log.Errorf("Error generating Json from (%v). Err: '%s'", userDataListPartitioned, err)
 		} else {
 			data := comms.SignMessage(props.FilterF5_Name, dataset, filter.instance, bulk, string(bytes))
 			err := filter.outputDirect.PublishData([]byte(data), partition)

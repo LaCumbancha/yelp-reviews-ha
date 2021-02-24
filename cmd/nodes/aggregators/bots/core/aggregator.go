@@ -58,13 +58,15 @@ func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for distinct hashed-texts.")
 	dataByInput := map[string]<-chan amqp.Delivery{props.MapperM4_Name: aggregator.inputDirect.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.MapperM4_Name: aggregator.mainCallback}
+	backupCallbackByInput := map[string]func(int, []string){props.MapperM4_Name: aggregator.calculator.LoadBackup}
 
-	proc.ProcessInputs(
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		aggregator.workersPool,
 		aggregator.endSignalsNeeded,
 		[]string{},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,

@@ -58,13 +58,15 @@ func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for funny-city data.")
 	dataByInput := map[string]<-chan amqp.Delivery{props.JoinerJ1_Name: aggregator.inputDirect.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.JoinerJ1_Name: aggregator.mainCallback}
+	backupCallbackByInput := map[string]func(int, []string){props.JoinerJ1_Name: aggregator.calculator.LoadBackup}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		aggregator.workersPool,
 		aggregator.endSignalsNeeded,
 		[]string{},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,

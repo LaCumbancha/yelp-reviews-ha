@@ -53,13 +53,15 @@ func (prettier *Prettier) Run() {
 	log.Infof("Starting to listen for users with +50 reviews, only 5-stars.")
 	dataByInput := map[string]<-chan amqp.Delivery{props.JoinerJ3_Name: prettier.inputQueue.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.JoinerJ3_Name: prettier.mainCallback}
+	backupCallbackByInput := map[string]func(int, []string){props.JoinerJ3_Name: prettier.builder.LoadBackup}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		prettier.workersPool,
 		prettier.endSignalsNeeded,
 		[]string{},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		prettier.startCallback,
 		prettier.finishCallback,
 		prettier.closeCallback,

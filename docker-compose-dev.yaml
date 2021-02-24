@@ -89,7 +89,8 @@ services:
     restart: on-failure
   bots_aggregator0:
     container_name: bots_aggregator0
-    depends_on: []
+    depends_on:
+    - bot_users_prettier
     entrypoint: /aggregator
     environment:
     - BOTAGG_WORKERS_POOL=16

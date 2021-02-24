@@ -70,13 +70,18 @@ func (joiner *Joiner) Run() {
 		props.FilterF4_Name: 		joiner.mainCallback1, 
 		props.AggregatorA8_Name: 	joiner.mainCallback2,
 	}
+	backupCallbackByInput := map[string]func(int, []string){
+		props.FilterF4_Name: 		joiner.calculator.LoadUserBackup, 
+		props.AggregatorA8_Name: 	joiner.calculator.LoadBestUserBackup,
+	}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		joiner.workersPool,
 		joiner.endSignalsNeeded,
 		[]string{},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		joiner.startCallback,
 		joiner.finishCallback,
 		joiner.closeCallback,

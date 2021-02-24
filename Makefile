@@ -114,3 +114,11 @@ system-down:
 system-logs:
 	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) logs -f
 .PHONY: system-logs
+
+system-connect:
+	docker container exec -it $(service) /bin/sh
+.PHONY: system-connect
+
+system-test:
+	$(SHELL) ./scripts/system-test
+.PHONE: system-test

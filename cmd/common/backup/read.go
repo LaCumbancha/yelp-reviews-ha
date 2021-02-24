@@ -10,26 +10,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type InnerDataBackup struct {
-	Dataset		int
-	Data		[]byte
-}
-
 func LoadDataBackup() []DataBackup {
 	data := make([]DataBackup, 0)
-	backups := loadMultiBackup(DataBkp)
+	backups := loadDatasetBackup()
 
 	for _, backup := range backups {
-		backupRawData := string(backup.Data)
+		backupRawData := string(backup)
 		backupDataList := strings.Split(backupRawData, "\n")
 		for _, backupData := range backupDataList {
 			if backupData != "" {
-				backupDataUnpackaged := unpackBackupMessage(backupData)
-				if backupDataUnpackaged.Flow != -1 {
-					backupDataUnpackaged.Dataset = backup.Dataset
+				backupDataUnpackaged := unpackBackup(backupData)
+				if backupDataUnpackaged.Signature != "" {
 					data = append(data, backupDataUnpackaged)
 				} else {
-					log.Warnf("Error parsing backup information. Data: '%s'", string(backupDataUnpackaged.Data))
+					log.Warnf("Error parsing backup information. Data: '%s'", string(backupData))
 				}
 			}
 		}
@@ -38,9 +32,9 @@ func LoadDataBackup() []DataBackup {
 	return data
 }
 
-func LoadSignalsBackup() (map[int]map[string]map[string]bool, map[int]map[string]map[string]bool, map[string]map[string]bool, map[string]bool) {
+func LoadSignalsBackup() (map[int]map[string]map[string]bool, map[int]map[string]map[string]bool, map[string]map[string]bool) {
 	startingSignals := make(map[int]map[string]map[string]bool)
-	bkpStartSignals := loadCommonBackup(StartBkp)
+	bkpStartSignals := loadSimpleBackup(StartBkp)
 
 	if bkpStartSignals != nil {
 		json.Unmarshal([]byte(bkpStartSignals), &startingSignals)
@@ -48,7 +42,7 @@ func LoadSignalsBackup() (map[int]map[string]map[string]bool, map[int]map[string
 	}
 
 	finishingSignals := make(map[int]map[string]map[string]bool)
-	bkpFinishSignals := loadCommonBackup(FinishBkp)
+	bkpFinishSignals := loadSimpleBackup(FinishBkp)
 
 	if bkpFinishSignals != nil {
 		json.Unmarshal([]byte(bkpFinishSignals), &finishingSignals)
@@ -56,33 +50,25 @@ func LoadSignalsBackup() (map[int]map[string]map[string]bool, map[int]map[string
 	}
 
 	closingSignals := make(map[string]map[string]bool)
-	bkpCloseSignals := loadCommonBackup(CloseBkp)
+	bkpCloseSignals := loadSimpleBackup(CloseBkp)
 
 	if bkpCloseSignals != nil {
 		json.Unmarshal([]byte(bkpCloseSignals), &closingSignals)
 		log.Infof("Closing signals restored from backup file. Signals: %v", closingSignals)
 	}
 
-	receivedMessages := make(map[string]bool)
-	bkpReceivedMessages := loadCommonBackup(ReceivedBkp)
-
-	if bkpReceivedMessages != nil {
-		json.Unmarshal([]byte(bkpReceivedMessages), &receivedMessages)
-		log.Infof("Received messages restored from backup file. Messages: %d", len(receivedMessages))
-	}
-
-	return startingSignals, finishingSignals, closingSignals, receivedMessages
+	return startingSignals, finishingSignals, closingSignals
 }
 
-func loadCommonBackup(bkpType BackupType) []byte {
+func loadSimpleBackup(bkpType BackupType) []byte {
 	path := calculateBackupPath(bkpType)
 	return loadBackup(path)
 }
 
-func loadMultiBackup(bkpType BackupType) []InnerDataBackup {
-	mainPath := calculateBackupPath(bkpType)
+func loadDatasetBackup() [][]byte {
+	mainPath := calculateBackupPath(DataBkp)
 
-	backups := make([]InnerDataBackup, 0)
+	backups := make([][]byte, 0)
 	backupFolders, err := ioutil.ReadDir(mainPath)
 	if err != nil {
 		log.Errorf("Couldn't open data backup folder. Err: %s", err)
@@ -94,7 +80,7 @@ func loadMultiBackup(bkpType BackupType) []InnerDataBackup {
 			dataset := datasetFromBackupDirectory(backupFolderName)
 			if dataset != -1 {
 				backupPath := fmt.Sprintf("%s/%s", mainPath, backupFolderName)
-				backups = append(backups, InnerDataBackup{ Dataset: dataset, Data: loadBackup(backupPath) })
+				backups = append(backups, loadBackup(backupPath))
 			} else {
 				log.Warnf("Error parsing backup folder dataset. Directory: '%s'", backupFolderName)
 			}

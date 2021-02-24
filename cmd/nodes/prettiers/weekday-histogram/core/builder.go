@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
@@ -23,17 +22,19 @@ func NewBuilder() *Builder {
 		mutex:			&sync.Mutex{},
 	}
 
-	builder.loadBackup()
-
 	return builder
 }
 
 // This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
-func (builder *Builder) loadBackup() {
-	for _, backupData := range bkp.LoadDataBackup() {
-		builder.storeNewWeekdayData(backupData.Dataset, backupData.Data)
+func (builder *Builder) LoadBackup(dataset int, backups []string) {
+	if _, found := builder.data[dataset]; !found {
+		builder.data[dataset] = make(map[string]int)
 	}
-
+	
+	for _, backup := range backups {
+		builder.storeNewWeekdayData(dataset, backup)
+	}
+	
 	for dataset, _ := range builder.data {
 		log.Infof("Dataset #%d retrieved from backup.", dataset)
 	}
@@ -49,7 +50,6 @@ func (builder *Builder) Clear(dataset int) {
 		log.Infof("Attempting to remove dataset #%d from Builder storage but it wasn't registered.", dataset)
 	}
 	
-	bkp.RemoveDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 
@@ -63,7 +63,6 @@ func (builder *Builder) RegisterDataset(dataset int) {
 		log.Warnf("Dataset %d was already initialized in Builder.", dataset)
 	}
 	
-	bkp.InitializeDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 
@@ -89,9 +88,6 @@ func (builder *Builder) storeNewWeekdayData(dataset int, rawData string) {
 	// Storing data
 	datasetData[weekdayData.Weekday] = weekdayData.Reviews
 	log.Infof("Saved %s reviews at %d.", weekdayData.Weekday, weekdayData.Reviews)
-
-	// Updating backup
-	bkp.StoreSingleFlowDataBackup(dataset, rawData)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

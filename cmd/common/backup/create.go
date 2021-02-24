@@ -41,14 +41,6 @@ func InitializeBackupStructure() {
 			initializeBackupFiles(path)
 		}
 	
-		path = fmt.Sprintf("%s/%s", BkpMainPath, ReceivedPath)
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			log.Fatalf("Error creating received messages backup folder. Err: '%s'", err)
-		} else {
-			initializeBackupFiles(path)
-		}
-	
 		path = fmt.Sprintf("%s/%s", BkpMainPath, DataPath)
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {

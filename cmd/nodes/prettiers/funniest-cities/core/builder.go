@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
 
@@ -26,17 +25,19 @@ func NewBuilder(topSize int) *Builder {
 		topSize:		topSize,
 	}
 
-	builder.loadBackup()
-
 	return builder
 }
 
 // This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
-func (builder *Builder) loadBackup() {
-	for _, backupData := range bkp.LoadDataBackup() {
-		builder.storeNewCityData(backupData.Dataset, backupData.Data)
+func (builder *Builder) LoadBackup(dataset int, backups []string) {
+	if _, found := builder.data[dataset]; !found {
+		builder.data[dataset] = make([]comms.FunnyCityData, 0)
 	}
-
+	
+	for _, backup := range backups {
+		builder.storeNewCityData(dataset, backup)
+	}
+	
 	for dataset, datasetData := range builder.data {
 		log.Infof("Dataset #%d retrieved from backup, with %d cities.", dataset, len(datasetData))
 	}
@@ -52,7 +53,6 @@ func (builder *Builder) Clear(dataset int) {
 		log.Infof("Attempting to remove dataset #%d from Builder storage but it wasn't registered.", dataset)
 	}
 	
-	bkp.RemoveDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 
@@ -66,7 +66,6 @@ func (builder *Builder) RegisterDataset(dataset int) {
 		log.Warnf("Dataset %d was already initialized in Builder.", dataset)
 	}
 
-	bkp.InitializeDatasetBackup(dataset)
 	builder.mutex.Unlock()
 }
 
@@ -89,10 +88,7 @@ func (builder *Builder) storeNewCityData(dataset int, rawData string) {
 
 	// Storing data
 	builder.data[dataset] = append(builder.data[dataset], funnyCity)
-	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)	
-
-	// Updating backup
-	bkp.StoreSingleFlowDataBackup(dataset, rawData)
+	log.Infof("City %s stored with funniness at %d.", funnyCity.City, funnyCity.Funny)
 }
 
 func (builder *Builder) BuildData(dataset int) string {

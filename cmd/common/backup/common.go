@@ -9,18 +9,19 @@ import (
 )
 
 type BackupType string
-
 const StartBkp = "Starting-Signals"
 const FinishBkp = "Finishing-Signals"
 const CloseBkp = "Closing-Signals"
-const ReceivedBkp = "Received-Messages"
 const DataBkp = "Data"
+
+type BackupMode string
+const IdBackup = "ID"
+const FullBackup = "FULL"
 
 const BkpMainPath = "/bkps"
 const StartPath = "starting"
 const FinishPath = "finishing"
 const ClosePath = "closing"
-const ReceivedPath = "received"
 const DataPath = "data"
 
 const FileKey1 = "1"
@@ -36,8 +37,6 @@ func calculateBackupPath(bkpType BackupType) string {
 		path = BkpMainPath + "/" + FinishPath
 	case CloseBkp:
 		path = BkpMainPath + "/" + ClosePath
-	case ReceivedBkp:
-		path = BkpMainPath + "/" + ReceivedPath
 	case DataBkp:
 		path = BkpMainPath + "/" + DataPath
 	default:
@@ -48,27 +47,21 @@ func calculateBackupPath(bkpType BackupType) string {
 }
 
 type DataBackup struct {
-	Dataset		int
-	Flow		int
+	Signature	string
 	Data		string
 }
 
-func packBackupMessage(toBackup DataBackup) string {
-	return fmt.Sprintf("%d|%s", toBackup.Flow, toBackup.Data)
+func packBackup(messageId string, data string) string {
+	return fmt.Sprintf("%s|%s", messageId, data)
 }
 
-func unpackBackupMessage(backup string) DataBackup {
+func unpackBackup(backup string) DataBackup {
 	idx1 := strings.Index(backup, "|")
 	if idx1 < 0 {
-		return DataBackup { Flow: -1, Data: "" }
+		return DataBackup { Signature: "", Data: "" }
 	}
 
-	flow, err := strconv.Atoi(backup[:idx1])
-	if err != nil {
-		return DataBackup { Flow: -1, Data: "" }
-	}
-
-	return DataBackup { Flow: flow, Data: backup[idx1+1:] }
+	return DataBackup { Signature: backup[:idx1], Data: backup[idx1+1:] }
 }
 
 func datasetFromBackupDirectory(directoryName string) int {

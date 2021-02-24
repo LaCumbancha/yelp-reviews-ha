@@ -63,7 +63,7 @@ func (mapper *Mapper) Run() {
 	dataByInput := map[string]<-chan amqp.Delivery{props.InputI2_Name: mapper.inputFanout.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.InputI2_Name: mapper.mainCallback}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatelessly(
 		dataByInput,
 		mapper.workersPool,
 		mapper.endSignalsNeeded,
@@ -147,7 +147,7 @@ func (mapper *Mapper) sendMappedData(dataset int, bulk int, mappedData []comms.W
 		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
-			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
+			log.Errorf("Error generating Json from (%v). Err: '%s'", userDataListPartitioned, err)
 		} else {
 			outputData := comms.SignMessage(props.MapperM3_Name, dataset, mapper.instance, bulk, string(bytes))
 			err := mapper.outputDirect.PublishData([]byte(outputData), partition)

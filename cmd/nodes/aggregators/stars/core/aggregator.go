@@ -64,13 +64,15 @@ func (aggregator *Aggregator) Run() {
 	log.Infof("Starting to listen for user stars data.")
 	dataByInput := map[string]<-chan amqp.Delivery{props.FilterF5_Name: aggregator.inputDirect.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.FilterF5_Name: aggregator.mainCallback}
+	backupCallbackByInput := map[string]func(int, []string){props.FilterF5_Name: aggregator.calculator.LoadBackup}
 
-	proc.ProcessInputs(
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		aggregator.workersPool,
 		aggregator.endSignalsNeeded,
 		[]string{},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		aggregator.startCallback,
 		aggregator.finishCallback,
 		aggregator.closeCallback,
@@ -133,7 +135,7 @@ func (aggregator *Aggregator) sendAggregatedData(dataset int, bulk int, aggregat
 		bytes, err := json.Marshal(funbizDataListPartitioned)
 
 		if err != nil {
-			log.Errorf("Error generating Json from (%s). Err: '%s'", funbizDataListPartitioned, err)
+			log.Errorf("Error generating Json from (%v). Err: '%s'", funbizDataListPartitioned, err)
 		} else {
 			data := comms.SignMessage(props.AggregatorA8_Name, dataset, aggregator.instance, bulk, string(bytes))
 			err := aggregator.outputDirect.PublishData([]byte(data), partition)

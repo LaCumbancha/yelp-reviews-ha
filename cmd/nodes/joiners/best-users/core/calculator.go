@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
 	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
 )
@@ -29,32 +28,36 @@ func NewCalculator() *Calculator {
 		mutex2:			&sync.Mutex{},
 	}
 
-	calculator.loadBackup()
-
 	return calculator
 }
 
 // This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
-func (calculator *Calculator) loadBackup() {
-	for _, backupData := range bkp.LoadDataBackup() {
-		switch backupData.Flow {
-		case 1:
-			calculator.mutex1.Lock()
-			calculator.saveBestUser(backupData.Dataset, backupData.Data)
-			calculator.mutex1.Unlock()
-		case 2:
-			calculator.mutex2.Lock()
-			calculator.saveUser(backupData.Dataset, backupData.Data)
-			calculator.mutex2.Unlock()
-		}
+func (calculator *Calculator) LoadUserBackup(dataset int, backups []string) {
+	if _, found := calculator.data2[dataset]; !found {
+		calculator.data2[dataset] = make(map[string]int)
 	}
 
-	for dataset1, datasetData1 := range calculator.data1 {
-		log.Infof("Dataset #%d retrieved from backup, with %d best users.", dataset1, len(datasetData1))
+	for _, backup := range backups {
+		calculator.saveUser(dataset, backup)
 	}
-
+	
 	for dataset2, datasetData2 := range calculator.data2 {
 		log.Infof("Dataset #%d retrieved from backup, with %d common users.", dataset2, len(datasetData2))
+	}
+}
+
+// This function doesn't need concurrency control because it will be runned just once at the beggining of the execution, when there's just one goroutine.
+func (calculator *Calculator) LoadBestUserBackup(dataset int, backups []string) {
+	if _, found := calculator.data1[dataset]; !found {
+		calculator.data1[dataset] = make(map[string]int)
+	}
+
+	for _, backup := range backups {
+		calculator.saveBestUser(dataset, backup)
+	}
+	
+	for dataset1, datasetData1 := range calculator.data1 {
+		log.Infof("Dataset #%d retrieved from backup, with %d best users.", dataset1, len(datasetData1))
 	}
 }
 
@@ -76,7 +79,6 @@ func (calculator *Calculator) Clear(dataset int) {
 		log.Infof("Attempting to remove dataset #%d from Calculator storage #2 but it wasn't registered.", dataset)
 	}
 
-	bkp.RemoveDatasetBackup(dataset)
 	calculator.mutex2.Unlock()
 	calculator.mutex1.Unlock()
 }
@@ -99,7 +101,6 @@ func (calculator *Calculator) RegisterDataset(dataset int) {
 		log.Warnf("Dataset %d was already initialized in Calculator storage #2.", dataset)
 	}
 
-	bkp.InitializeDatasetBackup(dataset)
 	calculator.mutex2.Unlock()
 	calculator.mutex1.Unlock()
 }
@@ -130,9 +131,6 @@ func (calculator *Calculator) saveBestUser(dataset int, rawData string) int {
 		datasetData[bestUserData.UserId] = bestUserData.Reviews
 	}
 
-	// Updating backup
-	bkp.StoreMultiFlowDataBackup(dataset, 1, rawData)
-
 	return len(datasetData)
 }
 
@@ -161,9 +159,6 @@ func (calculator *Calculator) saveUser(dataset int, rawData string) int {
 	for _, userData := range userDataList {
 		datasetData[userData.UserId] = userData.Reviews
 	}
-
-	// Updating backup
-	bkp.StoreMultiFlowDataBackup(dataset, 2, rawData)
 
 	return len(datasetData)
 }

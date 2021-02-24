@@ -59,7 +59,7 @@ func (mapper *Mapper) Run() {
 	dataByInput := map[string]<-chan amqp.Delivery{props.InputI2_Name: mapper.inputFanout.ConsumeData()}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){props.InputI2_Name: mapper.mainCallback}
 	
-	proc.ProcessInputs(
+	proc.ProcessInputsStatelessly(
 		dataByInput,
 		mapper.workersPool,
 		mapper.endSignalsNeeded,

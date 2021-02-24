@@ -70,20 +70,25 @@ func NewJoiner(config JoinerConfig) *Joiner {
 func (joiner *Joiner) Run() {
 	log.Infof("Starting to listen for funny-business and city-business data.")
 	dataByInput := map[string]<-chan amqp.Delivery{
-		props.MapperM1_Name: 			joiner.inputDirect1.ConsumeData(),
-		props.AggregatorA1_Name: 		joiner.inputDirect2.ConsumeData(),
+		props.MapperM1_Name: 		joiner.inputDirect1.ConsumeData(),
+		props.AggregatorA1_Name: 	joiner.inputDirect2.ConsumeData(),
 	}
 	mainCallbackByInput := map[string]func(string, int, string, int, string){
-		props.MapperM1_Name: 			joiner.mainCallback1, 
-		props.AggregatorA1_Name:		joiner.mainCallback2,
+		props.MapperM1_Name: 		joiner.mainCallback1, 
+		props.AggregatorA1_Name:	joiner.mainCallback2,
 	}
-	
-	proc.ProcessInputs(
+	backupCallbackByInput := map[string]func(int, []string){
+		props.MapperM1_Name: 		joiner.calculator.LoadCitbizBackup, 
+		props.AggregatorA1_Name: 	joiner.calculator.LoadFunbizBackup,
+	}
+
+	proc.ProcessInputsStatefully(
 		dataByInput,
 		joiner.workersPool,
 		joiner.endSignalsNeeded,
 		[]string{props.MapperM1_Name},
 		mainCallbackByInput,
+		backupCallbackByInput,
 		joiner.startCallback,
 		joiner.finishCallback,
 		joiner.closeCallback,
@@ -156,7 +161,7 @@ func (joiner *Joiner) sendJoinedData(dataset int, bulk int, joinedData []comms.F
 		bytes, err := json.Marshal(userDataListPartitioned)
 
 		if err != nil {
-			log.Errorf("Error generating Json from (%s). Err: '%s'", userDataListPartitioned, err)
+			log.Errorf("Error generating Json from (%v). Err: '%s'", userDataListPartitioned, err)
 		} else {
 			data := comms.SignMessage(props.JoinerJ1_Name, dataset, joiner.instance, bulk, string(bytes))
 			err := joiner.outputDirect.PublishData([]byte(data), partition)

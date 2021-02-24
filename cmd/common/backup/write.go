@@ -8,15 +8,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func StoreSingleFlowDataBackup(dataset int, data string) {
-	StoreMultiFlowDataBackup(dataset, 1, data)
-}
+func StoreDataBackup(dataset int, signature string, data string, bkpMode BackupMode) {
+	var backupData string
+	if bkpMode == FullBackup {
+		backupData = packBackup(signature, data)
+	} else {
+		backupData = packBackup(signature, "")
+	}
 
-func StoreMultiFlowDataBackup(dataset int, flow int, data string) {
-	multiFlowData := packBackupMessage(DataBackup { Flow: flow, Data: data })
 	path := calculateBackupPath(DataBkp)
-	storeDataBackup(dataset, FileKey1, path, multiFlowData)
-	storeDataBackup(dataset, FileKey2, path, multiFlowData)
+	storeDatasetBackup(dataset, FileKey1, path, backupData)
+	storeDatasetBackup(dataset, FileKey2, path, backupData)
 }
 
 func StoreSignalsBackup(data interface{}, bkpType BackupType) {
@@ -25,24 +27,24 @@ func StoreSignalsBackup(data interface{}, bkpType BackupType) {
 		log.Errorf("Error serializing %s to backup. Err: %s", bkpType, err)
 	} else {
 		path := calculateBackupPath(bkpType)
-		storeSpecialBackup(FileKey1, path, bytes)
-		storeSpecialBackup(FileKey2, path, bytes)
+		storeSimpleBackup(FileKey1, path, bytes)
+		storeSimpleBackup(FileKey2, path, bytes)
 	}
 }
 
-func storeDataBackup(dataset int, fileKey string, path string, data string) {
+func storeSimpleBackup(fileKey string, path string, data []byte) {
+	removeOk(fileKey, path)
+	writeBackup(fileKey, path, data)
+	writeOk(fileKey, path)
+}
+
+func storeDatasetBackup(dataset int, fileKey string, path string, data string) {
 	datasetBackupPath := fmt.Sprintf("%s/dataset.%d", path, dataset)
 	if checkDatasetBackupFolder(datasetBackupPath) {
 		removeOk(fileKey, datasetBackupPath)
 		appendBackup(fileKey, datasetBackupPath, data)
 		writeOk(fileKey, datasetBackupPath)
 	}
-}
-
-func storeSpecialBackup(fileKey string, path string, data []byte) {
-	removeOk(fileKey, path)
-	writeBackup(fileKey, path, data)
-	writeOk(fileKey, path)
 }
 
 func removeOk(okFileKey string, path string) {

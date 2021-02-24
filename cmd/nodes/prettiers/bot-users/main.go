@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
+	health "github.com/LaCumbancha/reviews-analysis/cmd/common/healthcheck"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -74,6 +75,8 @@ func main() {
 
 	// Custom logger initialization.
 	logb.Instance().SetBulkRate(1)
+
+	go health.InitializeHealthcheckServer()
 
 	prettier := core.NewPrettier(prettierConfig)
 	prettier.Run()

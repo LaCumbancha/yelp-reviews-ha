@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
+	health "github.com/LaCumbancha/reviews-analysis/cmd/common/healthcheck"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -61,6 +62,8 @@ func main() {
 		RabbitIp:						rabbitIp,
 		RabbitPort:						rabbitPort,
 	}
+
+	go health.InitializeHealthcheckServer()
 
 	sink := core.NewSink(sinkConfig)
 	sink.Run()

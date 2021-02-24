@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Aggregators
+subl cmd/nodes/aggregators/bots/main.go
+subl cmd/nodes/aggregators/funny-business/main.go
+subl cmd/nodes/aggregators/stars/main.go
+subl cmd/nodes/aggregators/top-funniest-cities/main.go
+subl cmd/nodes/aggregators/user/main.go
+subl cmd/nodes/aggregators/weekday/main.go
+
+# Filters
+subl cmd/nodes/filters/funny-business/main.go
+subl cmd/nodes/filters/stars/main.go
+subl cmd/nodes/filters/user/main.go
+
+# Inputs
+subl cmd/nodes/inputs/business-scatter/main.go
+subl cmd/nodes/inputs/reviews-scatter/main.go
+
+# Joiners
+subl cmd/nodes/joiners/best-users/main.go
+subl cmd/nodes/joiners/funny-city/main.go
+
+# Mappers
+subl cmd/nodes/mappers/city-business/main.go
+subl cmd/nodes/mappers/funny-business/main.go
+subl cmd/nodes/mappers/hash-text/main.go
+subl cmd/nodes/mappers/stars/main.go
+subl cmd/nodes/mappers/user/main.go
+subl cmd/nodes/mappers/weekday/main.go
+
+# Prettiers
+subl cmd/nodes/prettiers/best-users/main.go
+subl cmd/nodes/prettiers/bot-users/main.go
+subl cmd/nodes/prettiers/funniest-cities/main.go
+subl cmd/nodes/prettiers/top-users/main.go
+subl cmd/nodes/prettiers/weekday-histogram/main.go
+
+# Outputs
+subl cmd/nodes/outputs/sink/main.go

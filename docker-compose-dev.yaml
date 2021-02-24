@@ -383,6 +383,8 @@ services:
     - rabbitmq
     networks:
     - testing_net
+    ports:
+    - 8080:8080
     restart: on-failure
   stars_aggregator0:
     container_name: stars_aggregator0

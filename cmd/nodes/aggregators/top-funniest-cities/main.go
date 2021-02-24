@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
 	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
+	health "github.com/LaCumbancha/reviews-analysis/cmd/common/healthcheck"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -82,6 +83,8 @@ func main() {
 	// Initializing custom logger.
 	logBulkRate := utils.GetConfigInt(configEnv, configFile, "log_bulk_rate")
 	logb.Instance().SetBulkRate(logBulkRate)
+
+	go health.InitializeHealthcheckServer()
 
 	// Initializing aggregator.
 	aggregator := core.NewAggregator(aggregatorConfig)

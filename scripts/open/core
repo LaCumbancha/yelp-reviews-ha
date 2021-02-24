@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Aggregators
+subl cmd/nodes/aggregators/bots/core/aggregator.go
+subl cmd/nodes/aggregators/funny-business/core/aggregator.go
+subl cmd/nodes/aggregators/stars/core/aggregator.go
+subl cmd/nodes/aggregators/top-funniest-cities/core/aggregator.go
+subl cmd/nodes/aggregators/user/core/aggregator.go
+subl cmd/nodes/aggregators/weekday/core/aggregator.go
+
+# Filters
+subl cmd/nodes/filters/funny-business/core/filter.go
+subl cmd/nodes/filters/stars/core/filter.go
+subl cmd/nodes/filters/user/core/filter.go
+
+# Inputs
+subl cmd/nodes/inputs/business-scatter/core/scatter.go
+subl cmd/nodes/inputs/reviews-scatter/core/scatter.go
+
+# Joiners
+subl cmd/nodes/joiners/best-users/core/joiner.go
+subl cmd/nodes/joiners/funny-city/core/joiner.go
+
+# Mappers
+subl cmd/nodes/mappers/city-business/core/mapper.go
+subl cmd/nodes/mappers/funny-business/core/mapper.go
+subl cmd/nodes/mappers/hash-text/core/mapper.go
+subl cmd/nodes/mappers/stars/core/mapper.go
+subl cmd/nodes/mappers/user/core/mapper.go
+subl cmd/nodes/mappers/weekday/core/mapper.go
+
+# Prettiers
+subl cmd/nodes/prettiers/best-users/core/prettier.go
+subl cmd/nodes/prettiers/bot-users/core/prettier.go
+subl cmd/nodes/prettiers/funniest-cities/core/prettier.go
+subl cmd/nodes/prettiers/top-users/core/prettier.go
+subl cmd/nodes/prettiers/weekday-histogram/core/prettier.go
+
+# Outputs
+subl cmd/nodes/outputs/sink/core/sink.go

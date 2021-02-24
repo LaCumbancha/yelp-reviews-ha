@@ -19,5 +19,7 @@ func InitializeHealthcheckServer() {
 
 	if err := http.ListenAndServe(":" + HealthCheckPort, nil); err != nil {
 		log.Fatalf("Error listeing to health-check port. Err: %s", err)
+	} else {
+		log.Debugf("Health-Check server initialized")
 	}
 }

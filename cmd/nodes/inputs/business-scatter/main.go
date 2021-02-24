@@ -5,11 +5,11 @@ import (
 	"time"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
-	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/inputs/business-scatter/core"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/nodes/inputs/business-scatter/core"
 
 	log "github.com/sirupsen/logrus"
-	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
+	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {

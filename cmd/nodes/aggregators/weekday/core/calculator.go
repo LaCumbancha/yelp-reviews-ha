@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
-	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
+	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
 )
 
 type CalculatorData map[int]map[string]int

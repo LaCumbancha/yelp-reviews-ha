@@ -5,7 +5,7 @@ WORKDIR /build/
 COPY . .
 
 # CGO_ENABLED must be disabled to run Go binary in Alpine
-RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -o bin/joiner github.com/LaCumbancha/reviews-analysis/cmd/nodes/joiners/best-users
+RUN CGO_ENABLED=0 GOOS=linux go build -mod vendor -o bin/joiner github.com/LaCumbancha/yelp-review-ha/cmd/nodes/joiners/best-users
 
 FROM busybox:latest
 COPY --from=0 /build/bin/joiner /joiner

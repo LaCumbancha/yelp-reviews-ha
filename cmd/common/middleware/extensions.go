@@ -2,7 +2,7 @@ package middleware
 
 import (
 	log "github.com/sirupsen/logrus"
-	utils "github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
+	utils "github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 )
 
 func sendOutputQueueMessage(messageType string, message []byte, outputQueue *RabbitOutputQueue) {

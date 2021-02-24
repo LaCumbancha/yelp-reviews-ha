@@ -1,4 +1,4 @@
-module github.com/LaCumbancha/reviews-analysis
+module github.com/LaCumbancha/yelp-review-ha
 
 go 1.13
 

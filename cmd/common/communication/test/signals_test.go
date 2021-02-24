@@ -2,7 +2,7 @@ package test
 
 import (
 	"testing"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
 )
 
 func TestSignalsControl(test *testing.T) {

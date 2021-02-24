@@ -6,10 +6,10 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
-	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
-	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
+	proc "github.com/LaCumbancha/yelp-review-ha/cmd/common/processing"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
+	rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
 )
 
 type AggregatorConfig struct {

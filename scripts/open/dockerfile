@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Aggregators
+subl cmd/nodes/aggregators/bots/Dockerfile
+subl cmd/nodes/aggregators/funny-business/Dockerfile
+subl cmd/nodes/aggregators/stars/Dockerfile
+subl cmd/nodes/aggregators/top-funniest-cities/Dockerfile
+subl cmd/nodes/aggregators/user/Dockerfile
+subl cmd/nodes/aggregators/weekday/Dockerfile
+
+# Filters
+subl cmd/nodes/filters/funny-business/Dockerfile
+subl cmd/nodes/filters/stars/Dockerfile
+subl cmd/nodes/filters/user/Dockerfile
+
+# Inputs
+subl cmd/nodes/inputs/business-scatter/Dockerfile
+subl cmd/nodes/inputs/reviews-scatter/Dockerfile
+
+# Joiners
+subl cmd/nodes/joiners/best-users/Dockerfile
+subl cmd/nodes/joiners/funny-city/Dockerfile
+
+# Mappers
+subl cmd/nodes/mappers/city-business/Dockerfile
+subl cmd/nodes/mappers/funny-business/Dockerfile
+subl cmd/nodes/mappers/hash-text/Dockerfile
+subl cmd/nodes/mappers/stars/Dockerfile
+subl cmd/nodes/mappers/user/Dockerfile
+subl cmd/nodes/mappers/weekday/Dockerfile
+
+# Prettiers
+subl cmd/nodes/prettiers/best-users/Dockerfile
+subl cmd/nodes/prettiers/bot-users/Dockerfile
+subl cmd/nodes/prettiers/funniest-cities/Dockerfile
+subl cmd/nodes/prettiers/top-users/Dockerfile
+subl cmd/nodes/prettiers/weekday-histogram/Dockerfile
+
+# Outputs
+subl cmd/nodes/outputs/sink/Dockerfile

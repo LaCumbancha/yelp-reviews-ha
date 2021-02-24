@@ -8,13 +8,13 @@ import (
     "bytes"
     "strconv"
     "github.com/streadway/amqp"
-    "github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
+    "github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 
     log "github.com/sirupsen/logrus"
-    logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-    props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
-    comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
-    rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
+    logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+    props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
+    comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
+    rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
 )
 
 type ScatterConfig struct {

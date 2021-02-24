@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	
 	log "github.com/sirupsen/logrus"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
 )
 
 type BuilderData map[int][]comms.FunnyCityData

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"sync"
 	"github.com/streadway/amqp"
-	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
-	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
-	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
+	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
+	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
+	rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
 )
 
 const DefaultDataset = 0

@@ -6,9 +6,9 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
-	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
-	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
+	proc "github.com/LaCumbancha/yelp-review-ha/cmd/common/processing"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
+	rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
 )
 
 const FUNCIT = "Funniest Cities"

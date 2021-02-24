@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 PWD := $(shell pwd)
 PYTHON := /usr/bin/python3.8
-GIT_REMOTE = github.com/LaCumbancha/review-analysis
+GIT_REMOTE = github.com/LaCumbancha/yelp-review-ha
 
 PROJECT_NAME = tp2
 

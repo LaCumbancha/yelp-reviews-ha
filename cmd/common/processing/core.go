@@ -5,7 +5,7 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
+	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
 )
 
 func ProcessInputsStatefully(

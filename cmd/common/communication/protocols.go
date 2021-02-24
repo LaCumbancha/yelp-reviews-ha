@@ -1,7 +1,7 @@
 package communication
 
 import (
-	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 )
 
 // Special nodes quantity

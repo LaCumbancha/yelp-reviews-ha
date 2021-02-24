@@ -6,12 +6,12 @@ import (
 	"github.com/streadway/amqp"
 
 	log "github.com/sirupsen/logrus"
-	logb "github.com/LaCumbancha/reviews-analysis/cmd/common/logger"
-	utils "github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
-	proc "github.com/LaCumbancha/reviews-analysis/cmd/common/processing"
-	props "github.com/LaCumbancha/reviews-analysis/cmd/common/properties"
-	comms "github.com/LaCumbancha/reviews-analysis/cmd/common/communication"
-	rabbit "github.com/LaCumbancha/reviews-analysis/cmd/common/middleware"
+	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	utils "github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
+	proc "github.com/LaCumbancha/yelp-review-ha/cmd/common/processing"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
+	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
+	rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
 )
 
 type FilterConfig struct {

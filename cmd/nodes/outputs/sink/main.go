@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
-	"github.com/LaCumbancha/reviews-analysis/cmd/common/utils"
-	"github.com/LaCumbancha/reviews-analysis/cmd/nodes/outputs/sink/core"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
+	"github.com/LaCumbancha/yelp-review-ha/cmd/nodes/outputs/sink/core"
 
 	log "github.com/sirupsen/logrus"
-	bkp "github.com/LaCumbancha/reviews-analysis/cmd/common/backup"
-	health "github.com/LaCumbancha/reviews-analysis/cmd/common/healthcheck"
+	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
+	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {

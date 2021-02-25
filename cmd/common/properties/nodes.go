@@ -39,3 +39,6 @@ const PrettierP2_Name = "P2"
 const PrettierP3_Name = "P3"
 const PrettierP4_Name = "P4"
 const PrettierP5_Name = "P5"
+
+// Outputs
+const OutputO1_Name = "O1"

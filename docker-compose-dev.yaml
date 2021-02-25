@@ -5,40 +5,40 @@ networks:
       - subnet: 172.25.125.0/24
       driver: default
 services:
-  best_users_prettier:
-    container_name: best_users_prettier
+  best_joiner0:
+    container_name: best_joiner0
     depends_on:
-    - sink
-    entrypoint: /prettier
+    - best_prettier
+    entrypoint: /joiner
     environment:
-    - BESTUSERPRE_WORKERS_POOL=16
-    - BESTUSERPRE_RABBITMQ_IP=rabbitmq
-    - BESTUSERPRE_RABBITMQ_PORT=5672
-    - BESTUSERPRE_MIN_REVIEWS=50
-    - BESTUSERPRE_BESTUSER_JOINERS=1
-    - BESTUSERPRE_LOG_LEVEL=INFO
-    image: best_users_prettier:latest
+    - J3_WORKERS_POOL=16
+    - J3_LOG_BULK_RATE=25
+    - J3_INSTANCE=0
+    - J3_RABBITMQ_IP=rabbitmq
+    - J3_RABBITMQ_PORT=5672
+    - J3_INPUT_TOPIC=0
+    - J3_STARS_AGGREGATORS=1
+    - J3_USER_FILTERS=1
+    - J3_LOG_LEVEL=INFO
+    image: best_joiner:latest
     links:
     - rabbitmq
     networks:
     - testing_net
     restart: on-failure
-  bestuser_joiner0:
-    container_name: bestuser_joiner0
+  best_prettier:
+    container_name: best_prettier
     depends_on:
-    - best_users_prettier
-    entrypoint: /joiner
+    - sink
+    entrypoint: /prettier
     environment:
-    - BESTUSERJOIN_WORKERS_POOL=16
-    - BESTUSERJOIN_LOG_BULK_RATE=25
-    - BESTUSERJOIN_INSTANCE=0
-    - BESTUSERJOIN_RABBITMQ_IP=rabbitmq
-    - BESTUSERJOIN_RABBITMQ_PORT=5672
-    - BESTUSERJOIN_INPUT_TOPIC=0
-    - BESTUSERJOIN_STARS_AGGREGATORS=1
-    - BESTUSERJOIN_USER_FILTERS=1
-    - BESTUSERJOIN_LOG_LEVEL=INFO
-    image: bestuser_joiner:latest
+    - P5_WORKERS_POOL=16
+    - P5_RABBITMQ_IP=rabbitmq
+    - P5_RABBITMQ_PORT=5672
+    - P5_MIN_REVIEWS=50
+    - P5_BESTUSER_JOINERS=1
+    - P5_LOG_LEVEL=INFO
+    image: best_prettier:latest
     links:
     - rabbitmq
     networks:
@@ -52,15 +52,15 @@ services:
     - citbiz_mapper2
     entrypoint: /scatter
     environment:
-    - BIZSCA_WORKERS_POOL=16
-    - BIZSCA_LOG_BULK_RATE=25
-    - BIZSCA_INSTANCE=0
-    - BIZSCA_BUSINESS_DATA=/data/business.json
-    - BIZSCA_RABBITMQ_IP=rabbitmq
-    - BIZSCA_RABBITMQ_PORT=5672
-    - BIZSCA_BULK_SIZE=10000
-    - BIZSCA_CITBIZ_MAPPERS=3
-    - BIZSCA_LOG_LEVEL=INFO
+    - I1_WORKERS_POOL=16
+    - I1_LOG_BULK_RATE=25
+    - I1_INSTANCE=0
+    - I1_BUSINESS_DATA=/data/business.json
+    - I1_RABBITMQ_IP=rabbitmq
+    - I1_RABBITMQ_PORT=5672
+    - I1_BULK_SIZE=10000
+    - I1_CITBIZ_MAPPERS=3
+    - I1_LOG_LEVEL=INFO
     image: biz_scatter:latest
     links:
     - rabbitmq
@@ -69,40 +69,40 @@ services:
     restart: on-failure
     volumes:
     - business_dataset:/data
-  bot_users_prettier:
-    container_name: bot_users_prettier
+  bots_aggregator0:
+    container_name: bots_aggregator0
     depends_on:
-    - sink
-    entrypoint: /prettier
+    - bots_prettier
+    entrypoint: /aggregator
     environment:
-    - BOTUSERPRE_WORKERS_POOL=16
-    - BOTUSERPRE_RABBITMQ_IP=rabbitmq
-    - BOTUSERPRE_RABBITMQ_PORT=5672
-    - BOTUSERPRE_MIN_REVIEWS=5
-    - BOTUSERPRE_BOTS_AGGREGATORS=1
-    - BOTUSERPRE_LOG_LEVEL=INFO
-    image: bot_users_prettier:latest
+    - A5_WORKERS_POOL=16
+    - A5_LOG_BULK_RATE=25
+    - A5_INSTANCE=0
+    - A5_RABBITMQ_IP=rabbitmq
+    - A5_RABBITMQ_PORT=5672
+    - A5_INPUT_TOPIC=0
+    - A5_HASH_MAPPERS=3
+    - A5_MIN_REVIEWS=5
+    - A5_LOG_LEVEL=INFO
+    image: bots_aggregator:latest
     links:
     - rabbitmq
     networks:
     - testing_net
     restart: on-failure
-  bots_aggregator0:
-    container_name: bots_aggregator0
+  bots_prettier:
+    container_name: bots_prettier
     depends_on:
-    - bot_users_prettier
-    entrypoint: /aggregator
+    - sink
+    entrypoint: /prettier
     environment:
-    - BOTAGG_WORKERS_POOL=16
-    - BOTAGG_LOG_BULK_RATE=25
-    - BOTAGG_INSTANCE=0
-    - BOTAGG_RABBITMQ_IP=rabbitmq
-    - BOTAGG_RABBITMQ_PORT=5672
-    - BOTAGG_INPUT_TOPIC=0
-    - BOTAGG_HASH_MAPPERS=3
-    - BOTAGG_MIN_REVIEWS=5
-    - BOTAGG_LOG_LEVEL=INFO
-    image: bots_aggregator:latest
+    - P3_WORKERS_POOL=16
+    - P3_RABBITMQ_IP=rabbitmq
+    - P3_RABBITMQ_PORT=5672
+    - P3_MIN_REVIEWS=5
+    - P3_BOTS_AGGREGATORS=1
+    - P3_LOG_LEVEL=INFO
+    image: bots_prettier:latest
     links:
     - rabbitmq
     networks:
@@ -114,14 +114,14 @@ services:
     - funcit_joiner0
     entrypoint: /mapper
     environment:
-    - CITBIZMAP_WORKERS_POOL=16
-    - CITBIZMAP_LOG_BULK_RATE=25
-    - CITBIZMAP_INSTANCE=0
-    - CITBIZMAP_RABBITMQ_IP=rabbitmq
-    - CITBIZMAP_RABBITMQ_PORT=5672
-    - CITBIZMAP_BUSINESSES_INPUTS=1
-    - CITBIZMAP_FUNCIT_JOINERS=1
-    - CITBIZMAP_LOG_LEVEL=INFO
+    - M1_WORKERS_POOL=16
+    - M1_LOG_BULK_RATE=25
+    - M1_INSTANCE=0
+    - M1_RABBITMQ_IP=rabbitmq
+    - M1_RABBITMQ_PORT=5672
+    - M1_BUSINESSES_INPUTS=1
+    - M1_FUNCIT_JOINERS=1
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
@@ -134,14 +134,14 @@ services:
     - funcit_joiner0
     entrypoint: /mapper
     environment:
-    - CITBIZMAP_WORKERS_POOL=16
-    - CITBIZMAP_LOG_BULK_RATE=25
-    - CITBIZMAP_INSTANCE=1
-    - CITBIZMAP_RABBITMQ_IP=rabbitmq
-    - CITBIZMAP_RABBITMQ_PORT=5672
-    - CITBIZMAP_BUSINESSES_INPUTS=1
-    - CITBIZMAP_FUNCIT_JOINERS=1
-    - CITBIZMAP_LOG_LEVEL=INFO
+    - M1_WORKERS_POOL=16
+    - M1_LOG_BULK_RATE=25
+    - M1_INSTANCE=1
+    - M1_RABBITMQ_IP=rabbitmq
+    - M1_RABBITMQ_PORT=5672
+    - M1_BUSINESSES_INPUTS=1
+    - M1_FUNCIT_JOINERS=1
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
@@ -154,14 +154,14 @@ services:
     - funcit_joiner0
     entrypoint: /mapper
     environment:
-    - CITBIZMAP_WORKERS_POOL=16
-    - CITBIZMAP_LOG_BULK_RATE=25
-    - CITBIZMAP_INSTANCE=2
-    - CITBIZMAP_RABBITMQ_IP=rabbitmq
-    - CITBIZMAP_RABBITMQ_PORT=5672
-    - CITBIZMAP_BUSINESSES_INPUTS=1
-    - CITBIZMAP_FUNCIT_JOINERS=1
-    - CITBIZMAP_LOG_LEVEL=INFO
+    - M1_WORKERS_POOL=16
+    - M1_LOG_BULK_RATE=25
+    - M1_INSTANCE=2
+    - M1_RABBITMQ_IP=rabbitmq
+    - M1_RABBITMQ_PORT=5672
+    - M1_BUSINESSES_INPUTS=1
+    - M1_FUNCIT_JOINERS=1
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
@@ -174,16 +174,16 @@ services:
     - funcit_joiner0
     entrypoint: /aggregator
     environment:
-    - FUNBIZAGG_WORKERS_POOL=16
-    - FUNBIZAGG_LOG_BULK_RATE=25
-    - FUNBIZAGG_INSTANCE=0
-    - FUNBIZAGG_RABBITMQ_IP=rabbitmq
-    - FUNBIZAGG_RABBITMQ_PORT=5672
-    - FUNBIZAGG_FUNBIZ_FILTERS=1
-    - FUNBIZAGG_FUNCIT_JOINERS=1
-    - FUNBIZAGG_INPUT_TOPIC=0
-    - FUNBIZAGG_OUTPUT_BULK_SIZE=10000
-    - FUNBIZAGG_LOG_LEVEL=INFO
+    - A1_WORKERS_POOL=16
+    - A1_LOG_BULK_RATE=25
+    - A1_INSTANCE=0
+    - A1_RABBITMQ_IP=rabbitmq
+    - A1_RABBITMQ_PORT=5672
+    - A1_FUNBIZ_FILTERS=3
+    - A1_FUNCIT_JOINERS=1
+    - A1_INPUT_TOPIC=0
+    - A1_OUTPUT_BULK_SIZE=10000
+    - A1_LOG_LEVEL=INFO
     image: funbiz_aggregator:latest
     links:
     - rabbitmq
@@ -196,14 +196,54 @@ services:
     - funbiz_aggregator0
     entrypoint: /filter
     environment:
-    - FUNBIZFIL_WORKERS_POOL=16
-    - FUNBIZFIL_LOG_BULK_RATE=25
-    - FUNBIZFIL_INSTANCE=0
-    - FUNBIZFIL_RABBITMQ_IP=rabbitmq
-    - FUNBIZFIL_RABBITMQ_PORT=5672
-    - FUNBIZFIL_FUNBIZ_MAPPERS=2
-    - FUNBIZFIL_FUNBIZ_AGGREGATORS=1
-    - FUNBIZFIL_LOG_LEVEL=INFO
+    - F1_WORKERS_POOL=16
+    - F1_LOG_BULK_RATE=25
+    - F1_INSTANCE=0
+    - F1_RABBITMQ_IP=rabbitmq
+    - F1_RABBITMQ_PORT=5672
+    - F1_FUNBIZ_MAPPERS=2
+    - F1_FUNBIZ_AGGREGATORS=1
+    - F1_LOG_LEVEL=INFO
+    image: funbiz_filter:latest
+    links:
+    - rabbitmq
+    networks:
+    - testing_net
+    restart: on-failure
+  funbiz_filter1:
+    container_name: funbiz_filter1
+    depends_on:
+    - funbiz_aggregator0
+    entrypoint: /filter
+    environment:
+    - F1_WORKERS_POOL=16
+    - F1_LOG_BULK_RATE=25
+    - F1_INSTANCE=1
+    - F1_RABBITMQ_IP=rabbitmq
+    - F1_RABBITMQ_PORT=5672
+    - F1_FUNBIZ_MAPPERS=2
+    - F1_FUNBIZ_AGGREGATORS=1
+    - F1_LOG_LEVEL=INFO
+    image: funbiz_filter:latest
+    links:
+    - rabbitmq
+    networks:
+    - testing_net
+    restart: on-failure
+  funbiz_filter2:
+    container_name: funbiz_filter2
+    depends_on:
+    - funbiz_aggregator0
+    entrypoint: /filter
+    environment:
+    - F1_WORKERS_POOL=16
+    - F1_LOG_BULK_RATE=25
+    - F1_INSTANCE=2
+    - F1_RABBITMQ_IP=rabbitmq
+    - F1_RABBITMQ_PORT=5672
+    - F1_FUNBIZ_MAPPERS=2
+    - F1_FUNBIZ_AGGREGATORS=1
+    - F1_LOG_LEVEL=INFO
     image: funbiz_filter:latest
     links:
     - rabbitmq
@@ -214,16 +254,18 @@ services:
     container_name: funbiz_mapper0
     depends_on:
     - funbiz_filter0
+    - funbiz_filter1
+    - funbiz_filter2
     entrypoint: /mapper
     environment:
-    - FUNBIZMAP_WORKERS_POOL=16
-    - FUNBIZMAP_LOG_BULK_RATE=25
-    - FUNBIZMAP_INSTANCE=0
-    - FUNBIZMAP_RABBITMQ_IP=rabbitmq
-    - FUNBIZMAP_RABBITMQ_PORT=5672
-    - FUNBIZMAP_REVIEWS_INPUTS=1
-    - FUNBIZMAP_FUNBIZ_FILTERS=1
-    - FUNBIZMAP_LOG_LEVEL=INFO
+    - M2_WORKERS_POOL=16
+    - M2_LOG_BULK_RATE=25
+    - M2_INSTANCE=0
+    - M2_RABBITMQ_IP=rabbitmq
+    - M2_RABBITMQ_PORT=5672
+    - M2_REVIEWS_INPUTS=1
+    - M2_FUNBIZ_FILTERS=3
+    - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
     links:
     - rabbitmq
@@ -234,16 +276,18 @@ services:
     container_name: funbiz_mapper1
     depends_on:
     - funbiz_filter0
+    - funbiz_filter1
+    - funbiz_filter2
     entrypoint: /mapper
     environment:
-    - FUNBIZMAP_WORKERS_POOL=16
-    - FUNBIZMAP_LOG_BULK_RATE=25
-    - FUNBIZMAP_INSTANCE=1
-    - FUNBIZMAP_RABBITMQ_IP=rabbitmq
-    - FUNBIZMAP_RABBITMQ_PORT=5672
-    - FUNBIZMAP_REVIEWS_INPUTS=1
-    - FUNBIZMAP_FUNBIZ_FILTERS=1
-    - FUNBIZMAP_LOG_LEVEL=INFO
+    - M2_WORKERS_POOL=16
+    - M2_LOG_BULK_RATE=25
+    - M2_INSTANCE=1
+    - M2_RABBITMQ_IP=rabbitmq
+    - M2_RABBITMQ_PORT=5672
+    - M2_REVIEWS_INPUTS=1
+    - M2_FUNBIZ_FILTERS=3
+    - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
     links:
     - rabbitmq
@@ -256,18 +300,36 @@ services:
     - funcit_top0
     entrypoint: /joiner
     environment:
-    - FUNCITJOIN_WORKERS_POOL=16
-    - FUNCITJOIN_LOG_BULK_RATE=25
-    - FUNCITJOIN_INSTANCE=0
-    - FUNCITJOIN_RABBITMQ_IP=rabbitmq
-    - FUNCITJOIN_RABBITMQ_PORT=5672
-    - FUNCITJOIN_FUNBIZ_AGGREGATORS=1
-    - FUNCITJOIN_CITBIZ_MAPPERS=3
-    - FUNCITJOIN_FUNCIT_TOPS=1
-    - FUNCITJOIN_INPUT_TOPIC=0
-    - FUNCITJOIN_OUTPUT_BULK_SIZE=10000
-    - FUNCITJOIN_LOG_LEVEL=INFO
+    - J1_WORKERS_POOL=16
+    - J1_LOG_BULK_RATE=25
+    - J1_INSTANCE=0
+    - J1_RABBITMQ_IP=rabbitmq
+    - J1_RABBITMQ_PORT=5672
+    - J1_FUNBIZ_AGGREGATORS=1
+    - J1_CITBIZ_MAPPERS=3
+    - J1_FUNCIT_TOPS=1
+    - J1_INPUT_TOPIC=0
+    - J1_OUTPUT_BULK_SIZE=10000
+    - J1_LOG_LEVEL=INFO
     image: funcit_joiner:latest
+    links:
+    - rabbitmq
+    networks:
+    - testing_net
+    restart: on-failure
+  funcit_prettier:
+    container_name: funcit_prettier
+    depends_on:
+    - sink
+    entrypoint: /prettier
+    environment:
+    - P1_WORKERS_POOL=16
+    - P1_RABBITMQ_IP=rabbitmq
+    - P1_RABBITMQ_PORT=5672
+    - P1_TOP_SIZE=10
+    - P1_FUNCIT_TOPS=1
+    - P1_LOG_LEVEL=INFO
+    image: funcit_prettier:latest
     links:
     - rabbitmq
     networks:
@@ -276,18 +338,18 @@ services:
   funcit_top0:
     container_name: funcit_top0
     depends_on:
-    - top_funniest_cities_prettier
+    - funcit_prettier
     entrypoint: /aggregator
     environment:
-    - FUNCITTOP_WORKERS_POOL=16
-    - FUNCITTOP_LOG_BULK_RATE=25
-    - FUNCITTOP_INSTANCE=0
-    - FUNCITTOP_RABBITMQ_IP=rabbitmq
-    - FUNCITTOP_RABBITMQ_PORT=5672
-    - FUNCITTOP_TOP_SIZE=10
-    - FUNCITTOP_FUNCIT_JOINERS=1
-    - FUNCITTOP_LOG_LEVEL=INFO
-    - FUNCITTOP_INPUT_TOPIC=0
+    - A2_WORKERS_POOL=16
+    - A2_LOG_BULK_RATE=25
+    - A2_INSTANCE=0
+    - A2_RABBITMQ_IP=rabbitmq
+    - A2_RABBITMQ_PORT=5672
+    - A2_TOP_SIZE=10
+    - A2_FUNCIT_JOINERS=1
+    - A2_LOG_LEVEL=INFO
+    - A2_INPUT_TOPIC=0
     image: funcit_top:latest
     links:
     - rabbitmq
@@ -300,14 +362,14 @@ services:
     - bots_aggregator0
     entrypoint: /mapper
     environment:
-    - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=25
-    - HASHMAP_INSTANCE=0
-    - HASHMAP_RABBITMQ_IP=rabbitmq
-    - HASHMAP_RABBITMQ_PORT=5672
-    - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_BOTS_AGGREGATORS=1
-    - HASHMAP_LOG_LEVEL=INFO
+    - M4_WORKERS_POOL=16
+    - M4_LOG_BULK_RATE=25
+    - M4_INSTANCE=0
+    - M4_RABBITMQ_IP=rabbitmq
+    - M4_RABBITMQ_PORT=5672
+    - M4_REVIEWS_INPUTS=1
+    - M4_BOTS_AGGREGATORS=1
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -320,14 +382,14 @@ services:
     - bots_aggregator0
     entrypoint: /mapper
     environment:
-    - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=25
-    - HASHMAP_INSTANCE=1
-    - HASHMAP_RABBITMQ_IP=rabbitmq
-    - HASHMAP_RABBITMQ_PORT=5672
-    - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_BOTS_AGGREGATORS=1
-    - HASHMAP_LOG_LEVEL=INFO
+    - M4_WORKERS_POOL=16
+    - M4_LOG_BULK_RATE=25
+    - M4_INSTANCE=1
+    - M4_RABBITMQ_IP=rabbitmq
+    - M4_RABBITMQ_PORT=5672
+    - M4_REVIEWS_INPUTS=1
+    - M4_BOTS_AGGREGATORS=1
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -340,14 +402,14 @@ services:
     - bots_aggregator0
     entrypoint: /mapper
     environment:
-    - HASHMAP_WORKERS_POOL=16
-    - HASHMAP_LOG_BULK_RATE=25
-    - HASHMAP_INSTANCE=2
-    - HASHMAP_RABBITMQ_IP=rabbitmq
-    - HASHMAP_RABBITMQ_PORT=5672
-    - HASHMAP_REVIEWS_INPUTS=1
-    - HASHMAP_BOTS_AGGREGATORS=1
-    - HASHMAP_LOG_LEVEL=INFO
+    - M4_WORKERS_POOL=16
+    - M4_LOG_BULK_RATE=25
+    - M4_INSTANCE=2
+    - M4_RABBITMQ_IP=rabbitmq
+    - M4_RABBITMQ_PORT=5672
+    - M4_REVIEWS_INPUTS=1
+    - M4_BOTS_AGGREGATORS=1
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
@@ -375,9 +437,9 @@ services:
     - rabbitmq
     entrypoint: /sink
     environment:
-    - SINK_RABBITMQ_IP=rabbitmq
-    - SINK_RABBITMQ_PORT=5672
-    - SINK_LOG_LEVEL=INFO
+    - O1_RABBITMQ_IP=rabbitmq
+    - O1_RABBITMQ_PORT=5672
+    - O1_LOG_LEVEL=INFO
     image: sink:latest
     links:
     - rabbitmq
@@ -387,19 +449,19 @@ services:
   stars_aggregator0:
     container_name: stars_aggregator0
     depends_on:
-    - bestuser_joiner0
+    - best_joiner0
     entrypoint: /aggregator
     environment:
-    - STARSAGG_WORKERS_POOL=16
-    - STARSAGG_LOG_BULK_RATE=25
-    - STARSAGG_INSTANCE=0
-    - STARSAGG_RABBITMQ_IP=rabbitmq
-    - STARSAGG_RABBITMQ_PORT=5672
-    - STARSAGG_INPUT_TOPIC=0
-    - STARSAGG_STARS_FILTERS=1
-    - STARSAGG_STARS_JOINERS=1
-    - STARSAGG_OUTPUT_BULK_SIZE=10000
-    - STARSAGG_LOG_LEVEL=INFO
+    - A8_WORKERS_POOL=16
+    - A8_LOG_BULK_RATE=25
+    - A8_INSTANCE=0
+    - A8_RABBITMQ_IP=rabbitmq
+    - A8_RABBITMQ_PORT=5672
+    - A8_INPUT_TOPIC=0
+    - A8_STARS_FILTERS=2
+    - A8_STARS_JOINERS=1
+    - A8_OUTPUT_BULK_SIZE=10000
+    - A8_LOG_LEVEL=INFO
     image: stars_aggregator:latest
     links:
     - rabbitmq
@@ -412,14 +474,34 @@ services:
     - stars_aggregator0
     entrypoint: /filter
     environment:
-    - STARSFIL_WORKERS_POOL=16
-    - STARSFIL_LOG_BULK_RATE=25
-    - STARSFIL_INSTANCE=0
-    - STARSFIL_RABBITMQ_IP=rabbitmq
-    - STARSFIL_RABBITMQ_PORT=5672
-    - STARSFIL_STARS_MAPPERS=2
-    - STARSFIL_STARS_AGGREGATORS=1
-    - STARSFIL_LOG_LEVEL=INFO
+    - F5_WORKERS_POOL=16
+    - F5_LOG_BULK_RATE=25
+    - F5_INSTANCE=0
+    - F5_RABBITMQ_IP=rabbitmq
+    - F5_RABBITMQ_PORT=5672
+    - F5_STARS_MAPPERS=2
+    - F5_STARS_AGGREGATORS=1
+    - F5_LOG_LEVEL=INFO
+    image: stars_filter:latest
+    links:
+    - rabbitmq
+    networks:
+    - testing_net
+    restart: on-failure
+  stars_filter1:
+    container_name: stars_filter1
+    depends_on:
+    - stars_aggregator0
+    entrypoint: /filter
+    environment:
+    - F5_WORKERS_POOL=16
+    - F5_LOG_BULK_RATE=25
+    - F5_INSTANCE=1
+    - F5_RABBITMQ_IP=rabbitmq
+    - F5_RABBITMQ_PORT=5672
+    - F5_STARS_MAPPERS=2
+    - F5_STARS_AGGREGATORS=1
+    - F5_LOG_LEVEL=INFO
     image: stars_filter:latest
     links:
     - rabbitmq
@@ -430,16 +512,17 @@ services:
     container_name: stars_mapper0
     depends_on:
     - stars_filter0
+    - stars_filter1
     entrypoint: /mapper
     environment:
-    - STARSMAP_WORKERS_POOL=16
-    - STARSMAP_LOG_BULK_RATE=25
-    - STARSMAP_INSTANCE=0
-    - STARSMAP_RABBITMQ_IP=rabbitmq
-    - STARSMAP_RABBITMQ_PORT=5672
-    - STARSMAP_REVIEWS_INPUTS=1
-    - STARSMAP_STARS_FILTERS=1
-    - STARSMAP_LOG_LEVEL=INFO
+    - M6_WORKERS_POOL=16
+    - M6_LOG_BULK_RATE=25
+    - M6_INSTANCE=0
+    - M6_RABBITMQ_IP=rabbitmq
+    - M6_RABBITMQ_PORT=5672
+    - M6_REVIEWS_INPUTS=1
+    - M6_STARS_FILTERS=2
+    - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
     links:
     - rabbitmq
@@ -450,54 +533,37 @@ services:
     container_name: stars_mapper1
     depends_on:
     - stars_filter0
+    - stars_filter1
     entrypoint: /mapper
     environment:
-    - STARSMAP_WORKERS_POOL=16
-    - STARSMAP_LOG_BULK_RATE=25
-    - STARSMAP_INSTANCE=1
-    - STARSMAP_RABBITMQ_IP=rabbitmq
-    - STARSMAP_RABBITMQ_PORT=5672
-    - STARSMAP_REVIEWS_INPUTS=1
-    - STARSMAP_STARS_FILTERS=1
-    - STARSMAP_LOG_LEVEL=INFO
+    - M6_WORKERS_POOL=16
+    - M6_LOG_BULK_RATE=25
+    - M6_INSTANCE=1
+    - M6_RABBITMQ_IP=rabbitmq
+    - M6_RABBITMQ_PORT=5672
+    - M6_REVIEWS_INPUTS=1
+    - M6_STARS_FILTERS=2
+    - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
     links:
     - rabbitmq
     networks:
     - testing_net
     restart: on-failure
-  top_funniest_cities_prettier:
-    container_name: top_funniest_cities_prettier
+  top_prettier:
+    container_name: top_prettier
     depends_on:
     - sink
     entrypoint: /prettier
     environment:
-    - FUNCITPRE_WORKERS_POOL=16
-    - FUNCITPRE_RABBITMQ_IP=rabbitmq
-    - FUNCITPRE_RABBITMQ_PORT=5672
-    - FUNCITPRE_TOP_SIZE=10
-    - FUNCITPRE_FUNCIT_TOPS=1
-    - FUNCITPRE_LOG_LEVEL=INFO
-    image: top_funniest_cities_prettier:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-  top_users_prettier:
-    container_name: top_users_prettier
-    depends_on:
-    - sink
-    entrypoint: /prettier
-    environment:
-    - TOPUSERPRE_WORKERS_POOL=16
-    - TOPUSERPRE_LOG_BULK_RATE=25
-    - TOPUSERPRE_RABBITMQ_IP=rabbitmq
-    - TOPUSERPRE_RABBITMQ_PORT=5672
-    - TOPUSERPRE_MIN_REVIEWS=50
-    - TOPUSERPRE_USER_FILTERS=1
-    - TOPUSERPRE_LOG_LEVEL=INFO
-    image: top_users_prettier:latest
+    - P4_WORKERS_POOL=16
+    - P4_LOG_BULK_RATE=25
+    - P4_RABBITMQ_IP=rabbitmq
+    - P4_RABBITMQ_PORT=5672
+    - P4_MIN_REVIEWS=50
+    - P4_USER_FILTERS=1
+    - P4_LOG_LEVEL=INFO
+    image: top_prettier:latest
     links:
     - rabbitmq
     networks:
@@ -509,16 +575,16 @@ services:
     - user_filter0
     entrypoint: /aggregator
     environment:
-    - USERAGG_WORKERS_POOL=16
-    - USERAGG_LOG_BULK_RATE=25
-    - USERAGG_INSTANCE=0
-    - USERAGG_RABBITMQ_IP=rabbitmq
-    - USERAGG_RABBITMQ_PORT=5672
-    - USERAGG_INPUT_TOPIC=0
-    - USERAGG_USER_MAPPERS=2
-    - USERAGG_USER_FILTERS=1
-    - USERAGG_OUTPUT_BULK_SIZE=10000
-    - USERAGG_LOG_LEVEL=INFO
+    - A7_WORKERS_POOL=16
+    - A7_LOG_BULK_RATE=25
+    - A7_INSTANCE=0
+    - A7_RABBITMQ_IP=rabbitmq
+    - A7_RABBITMQ_PORT=5672
+    - A7_INPUT_TOPIC=0
+    - A7_USER_MAPPERS=2
+    - A7_USER_FILTERS=1
+    - A7_OUTPUT_BULK_SIZE=10000
+    - A7_LOG_LEVEL=INFO
     image: user_aggregator:latest
     links:
     - rabbitmq
@@ -528,19 +594,19 @@ services:
   user_filter0:
     container_name: user_filter0
     depends_on:
-    - bestuser_joiner0
-    - top_users_prettier
+    - best_joiner0
+    - top_prettier
     entrypoint: /filter
     environment:
-    - USERFIL_WORKERS_POOL=16
-    - USERFIL_LOG_BULK_RATE=25
-    - USERFIL_INSTANCE=0
-    - USERFIL_RABBITMQ_IP=rabbitmq
-    - USERFIL_RABBITMQ_PORT=5672
-    - USERFIL_MIN_REVIEWS=50
-    - USERFIL_USER_AGGREGATORS=1
-    - USERFIL_STARS_JOINERS=1
-    - USERFIL_LOG_LEVEL=INFO
+    - F4_WORKERS_POOL=16
+    - F4_LOG_BULK_RATE=25
+    - F4_INSTANCE=0
+    - F4_RABBITMQ_IP=rabbitmq
+    - F4_RABBITMQ_PORT=5672
+    - F4_MIN_REVIEWS=50
+    - F4_USER_AGGREGATORS=1
+    - F4_STARS_JOINERS=1
+    - F4_LOG_LEVEL=INFO
     image: user_filter:latest
     links:
     - rabbitmq
@@ -553,14 +619,14 @@ services:
     - user_aggregator0
     entrypoint: /mapper
     environment:
-    - USERMAP_WORKERS_POOL=16
-    - USERMAP_LOG_BULK_RATE=25
-    - USERMAP_INSTANCE=0
-    - USERMAP_RABBITMQ_IP=rabbitmq
-    - USERMAP_RABBITMQ_PORT=5672
-    - USERMAP_REVIEWS_INPUTS=1
-    - USERMAP_USER_AGGREGATORS=1
-    - USERMAP_LOG_LEVEL=INFO
+    - M5_WORKERS_POOL=16
+    - M5_LOG_BULK_RATE=25
+    - M5_INSTANCE=0
+    - M5_RABBITMQ_IP=rabbitmq
+    - M5_RABBITMQ_PORT=5672
+    - M5_REVIEWS_INPUTS=1
+    - M5_USER_AGGREGATORS=1
+    - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
     links:
     - rabbitmq
@@ -573,14 +639,14 @@ services:
     - user_aggregator0
     entrypoint: /mapper
     environment:
-    - USERMAP_WORKERS_POOL=16
-    - USERMAP_LOG_BULK_RATE=25
-    - USERMAP_INSTANCE=1
-    - USERMAP_RABBITMQ_IP=rabbitmq
-    - USERMAP_RABBITMQ_PORT=5672
-    - USERMAP_REVIEWS_INPUTS=1
-    - USERMAP_USER_AGGREGATORS=1
-    - USERMAP_LOG_LEVEL=INFO
+    - M5_WORKERS_POOL=16
+    - M5_LOG_BULK_RATE=25
+    - M5_INSTANCE=1
+    - M5_RABBITMQ_IP=rabbitmq
+    - M5_RABBITMQ_PORT=5672
+    - M5_REVIEWS_INPUTS=1
+    - M5_USER_AGGREGATORS=1
+    - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
     links:
     - rabbitmq
@@ -590,36 +656,18 @@ services:
   weekday_aggregator0:
     container_name: weekday_aggregator0
     depends_on:
-    - weekday_histogram_prettier
+    - weekday_prettier
     entrypoint: /aggregator
     environment:
-    - WEEKDAYAGG_WORKERS_POOL=16
-    - WEEKDAYAGG_LOG_BULK_RATE=25
-    - WEEKDAYAGG_INSTANCE=0
-    - WEEKDAYAGG_RABBITMQ_IP=rabbitmq
-    - WEEKDAYAGG_RABBITMQ_PORT=5672
-    - WEEKDAYAGG_INPUT_TOPIC=0
-    - WEEKDAYAGG_WEEKDAY_MAPPERS=2
-    - WEEKDAYAGG_LOG_LEVEL=INFO
+    - A4_WORKERS_POOL=16
+    - A4_LOG_BULK_RATE=25
+    - A4_INSTANCE=0
+    - A4_RABBITMQ_IP=rabbitmq
+    - A4_RABBITMQ_PORT=5672
+    - A4_INPUT_TOPIC=0
+    - A4_WEEKDAY_MAPPERS=2
+    - A4_LOG_LEVEL=INFO
     image: weekday_aggregator:latest
-    links:
-    - rabbitmq
-    networks:
-    - testing_net
-    restart: on-failure
-  weekday_histogram_prettier:
-    container_name: weekday_histogram_prettier
-    depends_on:
-    - sink
-    entrypoint: /prettier
-    environment:
-    - HISTOPRE_WORKERS_POOL=16
-    - HISTOPRE_INSTANCE=0
-    - HISTOPRE_RABBITMQ_IP=rabbitmq
-    - HISTOPRE_RABBITMQ_PORT=5672
-    - HISTOPRE_WEEKDAY_AGGREGATORS=1
-    - HISTOPRE_LOG_LEVEL=INFO
-    image: weekday_histogram_prettier:latest
     links:
     - rabbitmq
     networks:
@@ -631,14 +679,14 @@ services:
     - weekday_aggregator0
     entrypoint: /mapper
     environment:
-    - WEEKDAYMAP_WORKERS_POOL=16
-    - WEEKDAYMAP_LOG_BULK_RATE=25
-    - WEEKDAYMAP_INSTANCE=0
-    - WEEKDAYMAP_RABBITMQ_IP=rabbitmq
-    - WEEKDAYMAP_RABBITMQ_PORT=5672
-    - WEEKDAYMAP_REVIEWS_INPUTS=1
-    - WEEKDAYMAP_WEEKDAY_AGGREGATORS=1
-    - WEEKDAYMAP_LOG_LEVEL=INFO
+    - M3_WORKERS_POOL=16
+    - M3_LOG_BULK_RATE=25
+    - M3_INSTANCE=0
+    - M3_RABBITMQ_IP=rabbitmq
+    - M3_RABBITMQ_PORT=5672
+    - M3_REVIEWS_INPUTS=1
+    - M3_WEEKDAY_AGGREGATORS=1
+    - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest
     links:
     - rabbitmq
@@ -651,15 +699,33 @@ services:
     - weekday_aggregator0
     entrypoint: /mapper
     environment:
-    - WEEKDAYMAP_WORKERS_POOL=16
-    - WEEKDAYMAP_LOG_BULK_RATE=25
-    - WEEKDAYMAP_INSTANCE=1
-    - WEEKDAYMAP_RABBITMQ_IP=rabbitmq
-    - WEEKDAYMAP_RABBITMQ_PORT=5672
-    - WEEKDAYMAP_REVIEWS_INPUTS=1
-    - WEEKDAYMAP_WEEKDAY_AGGREGATORS=1
-    - WEEKDAYMAP_LOG_LEVEL=INFO
+    - M3_WORKERS_POOL=16
+    - M3_LOG_BULK_RATE=25
+    - M3_INSTANCE=1
+    - M3_RABBITMQ_IP=rabbitmq
+    - M3_RABBITMQ_PORT=5672
+    - M3_REVIEWS_INPUTS=1
+    - M3_WEEKDAY_AGGREGATORS=1
+    - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest
+    links:
+    - rabbitmq
+    networks:
+    - testing_net
+    restart: on-failure
+  weekday_prettier:
+    container_name: weekday_prettier
+    depends_on:
+    - sink
+    entrypoint: /prettier
+    environment:
+    - P2_WORKERS_POOL=16
+    - P2_INSTANCE=0
+    - P2_RABBITMQ_IP=rabbitmq
+    - P2_RABBITMQ_PORT=5672
+    - P2_WEEKDAY_AGGREGATORS=1
+    - P2_LOG_LEVEL=INFO
+    image: weekday_prettier:latest
     links:
     - rabbitmq
     networks:

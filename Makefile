@@ -3,7 +3,7 @@ PWD := $(shell pwd)
 PYTHON := /usr/bin/python3.8
 GIT_REMOTE = github.com/LaCumbancha/yelp-review-ha
 
-PROJECT_NAME = tp2
+PROJECT_NAME = tp4
 
 default: build
 
@@ -83,14 +83,14 @@ system-build:
 
 	# Joiners
 	docker build -f ./cmd/nodes/joiners/funny-city/Dockerfile -t "funcit_joiner:latest" .
-	docker build -f ./cmd/nodes/joiners/best-users/Dockerfile -t "bestuser_joiner:latest" .
+	docker build -f ./cmd/nodes/joiners/best-users/Dockerfile -t "best_joiner:latest" .
 
 	# Prettiers
-	docker build -f ./cmd/nodes/prettiers/funniest-cities/Dockerfile -t "top_funniest_cities_prettier:latest" .
-	docker build -f ./cmd/nodes/prettiers/weekday-histogram/Dockerfile -t "weekday_histogram_prettier:latest" .
-	docker build -f ./cmd/nodes/prettiers/top-users/Dockerfile -t "top_users_prettier:latest" .
-	docker build -f ./cmd/nodes/prettiers/best-users/Dockerfile -t "best_users_prettier:latest" .
-	docker build -f ./cmd/nodes/prettiers/bot-users/Dockerfile -t "bot_users_prettier:latest" .
+	docker build -f ./cmd/nodes/prettiers/funniest-cities/Dockerfile -t "funcit_prettier:latest" .
+	docker build -f ./cmd/nodes/prettiers/weekday-histogram/Dockerfile -t "weekday_prettier:latest" .
+	docker build -f ./cmd/nodes/prettiers/top-users/Dockerfile -t "top_prettier:latest" .
+	docker build -f ./cmd/nodes/prettiers/best-users/Dockerfile -t "best_prettier:latest" .
+	docker build -f ./cmd/nodes/prettiers/bot-users/Dockerfile -t "bots_prettier:latest" .
 
 	# Outputs
 	docker build -f ./cmd/nodes/outputs/sink/Dockerfile -t "sink:latest" .

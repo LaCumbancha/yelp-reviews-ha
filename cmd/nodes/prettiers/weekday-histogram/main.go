@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
 	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
 	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
 )
 
@@ -18,7 +19,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the HISTOPRE prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("histopre")
+	configEnv.SetEnvPrefix(props.PrettierP2_Name)
 
 	// Add env variables supported
 	configEnv.BindEnv("rabbitmq", "ip")

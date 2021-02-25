@@ -18,7 +18,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the DISHASHAGG prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("botagg")
+	configEnv.SetEnvPrefix("A5")
 
 	// Add env variables supported
 	configEnv.BindEnv("instance")

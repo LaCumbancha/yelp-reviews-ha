@@ -13,40 +13,47 @@ input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
 #### CONFIG VARIABLES
 log_level = input_yaml['log_level']
 log_bulk_rate = input_yaml['log_bulk_rate']
-reviews_streaming = input_yaml['reviews_streaming']
 common_pool_size = input_yaml['common_pool_size']
-reviews_bulk_size = input_yaml['reviews_bulk_size']
-business_bulk_size = input_yaml['business_bulk_size']
-funbizagg_bulk_size = input_yaml['funbizagg_bulk_size']
-funcitjoin_bulk_size = input_yaml['funcitjoin_bulk_size']
-funcitagg_bulk_size = input_yaml['funcitagg_bulk_size']
-useragg_bulk_size = input_yaml['useragg_bulk_size']
-starsagg_bulk_size = input_yaml['starsagg_bulk_size']
-funniest_cities_logging = input_yaml['funniest_cities_logging']
-weekday_histogram_logging = input_yaml['weekday_histogram_logging']
-best_users_logging = input_yaml['best_users_logging']
-bot_users_logging = input_yaml['bot_users_logging']
-top_users_logging = input_yaml['top_users_logging']
-users_min_reviews = input_yaml['users_min_reviews']
-bots_min_reviews = input_yaml['bots_min_reviews']
-funniest_cities_top_size = input_yaml['funniest_cities_top_size']
-citbiz_mappers = input_yaml['citbiz_mappers']
-funbiz_mappers = input_yaml['funbiz_mappers']
-funbiz_filters = input_yaml['funbiz_filters']
-funbiz_aggregators = input_yaml['funbiz_aggregators']
-funcit_joiners = input_yaml['funcit_joiners']
-funcit_tops = input_yaml['funcit_tops']
-weekday_mappers = input_yaml['weekday_mappers']
-weekday_aggregators = input_yaml['weekday_aggregators']
-user_mappers = input_yaml['user_mappers']
-user_aggregators = input_yaml['user_aggregators']
-user_filters = input_yaml['user_filters']
-stars_mappers = input_yaml['stars_mappers']
-stars_filters = input_yaml['stars_filters']
-stars_aggregators = input_yaml['stars_aggregators']
-bestuser_joiners = input_yaml['bestuser_joiners']
-hash_mappers = input_yaml['hash_mappers']
-bots_aggregators = input_yaml['bots_aggregators']
+reviews_streaming = input_yaml['reviews_streaming']
+
+## BULKS
+input1_bulk_size = input_yaml['input1_bulk_size']
+joiner1_bulk_size = input_yaml['joiner1_bulk_size']
+aggregator1_bulk_size = input_yaml['aggregator1_bulk_size']
+aggregator7_bulk_size = input_yaml['aggregator7_bulk_size']
+aggregator8_bulk_size = input_yaml['aggregator8_bulk_size']
+
+## LOGGING
+top_logging = input_yaml['top_logging']
+bots_logging = input_yaml['bots_logging']
+best_logging = input_yaml['best_logging']
+funbiz_logging = input_yaml['funbiz_logging']
+weekday_logging = input_yaml['weekday_logging']
+
+## SYSTEM
+users_reviews_threshold = input_yaml['users_reviews_threshold']
+bots_reviews_threshold = input_yaml['bots_reviews_threshold']
+funbiz_top_size = input_yaml['funbiz_top_size']
+
+## NODES
+joiner1_instances = 1
+joiner3_instances = 1
+aggregator1_instances = 1
+aggregator2_instances = 1
+aggregator4_instances = 1
+aggregator5_instances = 1
+aggregator7_instances = 1
+aggregator8_instances = 1
+mapper1_instances = input_yaml['mapper1_instances']
+mapper2_instances = input_yaml['mapper2_instances']
+mapper3_instances = input_yaml['mapper3_instances']
+mapper4_instances = input_yaml['mapper4_instances']
+mapper5_instances = input_yaml['mapper5_instances']
+mapper6_instances = input_yaml['mapper6_instances']
+filter1_instances = input_yaml['filter1_instances']
+filter4_instances = input_yaml['filter4_instances']
+filter5_instances = input_yaml['filter5_instances']
+monitor_instances = input_yaml['monitor_instances']
 
 business_data = '/data/business.json'	
 reviews_inputs = 2 if reviews_streaming else 1
@@ -58,37 +65,34 @@ file['version'] = '3'
 
 #### SERVICES
 file['services'] = {}
-services = []
+containers = []
 
 # Services dependencies
-SINK_DEPS = ['rabbitmq']
-HISTOPRE_DEPS = ['sink']
-TOPUSERPRE_DEPS = ['sink']
-FUNCITPRE_DEPS = ['sink']
-BESTUSERPRE_DEPS = ['sink']
-BOTUSERPRE_DEPS = ['sink']
-FUNCITJOIN_DEPS = []
-BESTUSERJOIN_DEPS = []
-BOTUSERJOIN_DEPS = []
-FUNBIZAGG_DEPS = []
-USERAGG_DEPS = []
-BOTAGG_DEPS = []
-WEEKDAYAGG_DEPS = []
-STARSAGG_DEPS = []
-FUNBIZFIL_DEPS = []
-FUNCITTOP_DEPS = []
-USERFIL_DEPS = []
-STARSFIL_DEPS = []
-DISHASHFIL_DEPS = []
-BOTUSERFIL_DEPS = []
-USERMAP_DEPS = []
-STARSMAP_DEPS = []
-HASHMAP_DEPS = []
-FUNBIZMAP_DEPS = []
-CITBIZMAP_DEPS = []
-WEEKDAYMAP_DEPS = []
-BIZSCA_DEPS = []
-RVWSCA_DEPS = []
+O1_DEPS = ['rabbitmq']
+P1_DEPS = ['sink']
+P2_DEPS = ['sink']
+P3_DEPS = ['sink']
+P4_DEPS = ['sink']
+P5_DEPS = ['sink']
+J1_DEPS = []
+J3_DEPS = []
+A1_DEPS = []
+A2_DEPS = []
+A4_DEPS = []
+A5_DEPS = []
+A7_DEPS = []
+A8_DEPS = []
+F1_DEPS = []
+F4_DEPS = []
+F5_DEPS = []
+M1_DEPS = []
+M2_DEPS = []
+M3_DEPS = []
+M4_DEPS = []
+M5_DEPS = []
+M6_DEPS = []
+I1_DEPS = []
+MON_DEPS = []
 
 ## RabbitMQ
 file['services']['rabbitmq'] = {
@@ -107,386 +111,421 @@ file['services']['rabbitmq'] = {
 
 ## Sink
 service = 'sink'
-services += [service]
+containers += [service]
 file['services'][service] = {
-	'container_name': 'sink',
-	'image': 'sink:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/sink',
 	'restart': 'on-failure',
-	'environment': ['SINK_RABBITMQ_IP=rabbitmq', 'SINK_RABBITMQ_PORT=5672', f'SINK_LOG_LEVEL={log_level}'],
+	'environment': ['O1_RABBITMQ_IP=rabbitmq', 'O1_RABBITMQ_PORT=5672', f'O1_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(SINK_DEPS),
+	'depends_on': list(O1_DEPS),
 	'networks': ['testing_net'],
 }
 
 ## Funniest Cities flow
-service = 'top_funniest_cities_prettier'
-services += [service]
-FUNCITTOP_DEPS += [service]
+service = 'funcit_prettier'
+containers += [service]
+A2_DEPS += [service]
 file['services'][service] = {
-	'container_name': 'top_funniest_cities_prettier',
-	'image': 'top_funniest_cities_prettier:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'FUNCITPRE_WORKERS_POOL={common_pool_size}', 'FUNCITPRE_RABBITMQ_IP=rabbitmq', 'FUNCITPRE_RABBITMQ_PORT=5672', f'FUNCITPRE_TOP_SIZE={funniest_cities_top_size}', f'FUNCITPRE_FUNCIT_TOPS={funcit_tops}', f'FUNCITPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'P1_WORKERS_POOL={common_pool_size}', 'P1_RABBITMQ_IP=rabbitmq', 'P1_RABBITMQ_PORT=5672', f'P1_TOP_SIZE={funbiz_top_size}', f'P1_FUNCIT_TOPS={aggregator2_instances}', f'P1_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(FUNCITPRE_DEPS),
+	'depends_on': list(P1_DEPS),
 	'networks': ['testing_net'],
 }
-config_logs('funniest_cities_logging', service=file['services']['top_funniest_cities_prettier'])
+config_logs('funbiz_logging', service=file['services'][service])
 
-for idx in range(0, funcit_tops):
-	container_name = f'funcit_top{idx}'
-	services += [container_name]
-	FUNCITJOIN_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funcit_top:latest',
+service = 'funcit_top'
+for idx in range(0, aggregator2_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	J1_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITTOP_WORKERS_POOL={common_pool_size}', f'FUNCITTOP_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITTOP_INSTANCE={idx}', 'FUNCITTOP_RABBITMQ_IP=rabbitmq', 'FUNCITTOP_RABBITMQ_PORT=5672', f'FUNCITTOP_TOP_SIZE={funniest_cities_top_size}', f'FUNCITTOP_FUNCIT_JOINERS={funcit_joiners}', f'FUNCITTOP_LOG_LEVEL={log_level}', f'FUNCITTOP_INPUT_TOPIC={idx}'],
+		'environment': [f'A2_WORKERS_POOL={common_pool_size}', f'A2_LOG_BULK_RATE={log_bulk_rate}', f'A2_INSTANCE={idx}', 'A2_RABBITMQ_IP=rabbitmq', 'A2_RABBITMQ_PORT=5672', f'A2_TOP_SIZE={funbiz_top_size}', f'A2_FUNCIT_JOINERS={joiner1_instances}', f'A2_LOG_LEVEL={log_level}', f'A2_INPUT_TOPIC={idx}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(FUNCITTOP_DEPS),
+		'depends_on': list(A2_DEPS),
 		'networks': ['testing_net'],
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
-for idx in range(0, funcit_joiners):
-	container_name = f'funcit_joiner{idx}'
-	services += [container_name]
-	CITBIZMAP_DEPS += [container_name]
-	FUNBIZAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funcit_joiner:latest',
+service = 'funcit_joiner'
+for idx in range(0, joiner1_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M1_DEPS += [container]
+	A1_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'FUNCITJOIN_WORKERS_POOL={common_pool_size}', f'FUNCITJOIN_LOG_BULK_RATE={log_bulk_rate}', f'FUNCITJOIN_INSTANCE={idx}', 'FUNCITJOIN_RABBITMQ_IP=rabbitmq', 'FUNCITJOIN_RABBITMQ_PORT=5672', f'FUNCITJOIN_FUNBIZ_AGGREGATORS={funbiz_aggregators}', f'FUNCITJOIN_CITBIZ_MAPPERS={citbiz_mappers}', f'FUNCITJOIN_FUNCIT_TOPS={funcit_tops}', f'FUNCITJOIN_INPUT_TOPIC={idx}', f'FUNCITJOIN_OUTPUT_BULK_SIZE={funcitjoin_bulk_size}', f'FUNCITJOIN_LOG_LEVEL={log_level}'],
+		'environment': [f'J1_WORKERS_POOL={common_pool_size}', f'J1_LOG_BULK_RATE={log_bulk_rate}', f'J1_INSTANCE={idx}', 'J1_RABBITMQ_IP=rabbitmq', 'J1_RABBITMQ_PORT=5672', f'J1_FUNBIZ_AGGREGATORS={aggregator1_instances}', f'J1_CITBIZ_MAPPERS={mapper1_instances}', f'J1_FUNCIT_TOPS={aggregator2_instances}', f'J1_INPUT_TOPIC={idx}', f'J1_OUTPUT_BULK_SIZE={joiner1_bulk_size}', f'J1_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(FUNCITJOIN_DEPS),
+		'depends_on': list(J1_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
-for idx in range(0, citbiz_mappers):
-	container_name = f'citbiz_mapper{idx}'
-	services += [container_name]
-	BIZSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'citbiz_mapper:latest',
+service = 'citbiz_mapper'
+for idx in range(0, mapper1_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	I1_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'CITBIZMAP_WORKERS_POOL={common_pool_size}', f'CITBIZMAP_LOG_BULK_RATE={log_bulk_rate}', f'CITBIZMAP_INSTANCE={idx}', 'CITBIZMAP_RABBITMQ_IP=rabbitmq', 'CITBIZMAP_RABBITMQ_PORT=5672', 'CITBIZMAP_BUSINESSES_INPUTS=1', f'CITBIZMAP_FUNCIT_JOINERS={funcit_joiners}', f'CITBIZMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M1_WORKERS_POOL={common_pool_size}', f'M1_LOG_BULK_RATE={log_bulk_rate}', f'M1_INSTANCE={idx}', 'M1_RABBITMQ_IP=rabbitmq', 'M1_RABBITMQ_PORT=5672', 'M1_BUSINESSES_INPUTS=1', f'M1_FUNCIT_JOINERS={joiner1_instances}', f'M1_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(CITBIZMAP_DEPS),
+		'depends_on': list(M1_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
 service = 'biz_scatter'
-services += [service]
+containers += [service]
 file['services'][service] = {
-	'container_name': 'biz_scatter',
-	'image': 'biz_scatter:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/scatter',
 	'restart': 'on-failure',
-	'environment': [f'BIZSCA_WORKERS_POOL={common_pool_size}', f'BIZSCA_LOG_BULK_RATE={log_bulk_rate}', 'BIZSCA_INSTANCE=0', f'BIZSCA_BUSINESS_DATA={business_data}', 'BIZSCA_RABBITMQ_IP=rabbitmq', 'BIZSCA_RABBITMQ_PORT=5672', f'BIZSCA_BULK_SIZE={business_bulk_size}', f'BIZSCA_CITBIZ_MAPPERS={citbiz_mappers}', f'BIZSCA_LOG_LEVEL={log_level}'],
+	'environment': [f'I1_WORKERS_POOL={common_pool_size}', f'I1_LOG_BULK_RATE={log_bulk_rate}', 'I1_INSTANCE=0', f'I1_BUSINESS_DATA={business_data}', 'I1_RABBITMQ_IP=rabbitmq', 'I1_RABBITMQ_PORT=5672', f'I1_BULK_SIZE={input1_bulk_size}', f'I1_CITBIZ_MAPPERS={mapper1_instances}', f'I1_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(BIZSCA_DEPS),
+	'depends_on': list(I1_DEPS),
 	'networks': ['testing_net'],
 	'volumes': ['business_dataset:/data']
 }
-config_logs('funniest_cities_logging', service=file['services']['biz_scatter'])
+config_logs('funbiz_logging', service=file['services'][service])
 
-for idx in range(0, funbiz_aggregators):
-	container_name = f'funbiz_aggregator{idx}'
-	services += [container_name]
-	FUNBIZFIL_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funbiz_aggregator:latest',
+service = 'funbiz_aggregator'
+for idx in range(0, aggregator1_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	F1_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZAGG_WORKERS_POOL={common_pool_size}', f'FUNBIZAGG_LOG_BULK_RATE={log_bulk_rate}', f'FUNBIZAGG_INSTANCE={idx}', 'FUNBIZAGG_RABBITMQ_IP=rabbitmq', 'FUNBIZAGG_RABBITMQ_PORT=5672', f'FUNBIZAGG_FUNBIZ_FILTERS={funbiz_filters}', f'FUNBIZAGG_FUNCIT_JOINERS={funcit_joiners}', f'FUNBIZAGG_INPUT_TOPIC={idx}', f'FUNBIZAGG_OUTPUT_BULK_SIZE={funbizagg_bulk_size}', f'FUNBIZAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'A1_WORKERS_POOL={common_pool_size}', f'A1_LOG_BULK_RATE={log_bulk_rate}', f'A1_INSTANCE={idx}', 'A1_RABBITMQ_IP=rabbitmq', 'A1_RABBITMQ_PORT=5672', f'A1_FUNBIZ_FILTERS={filter1_instances}', f'A1_FUNCIT_JOINERS={joiner1_instances}', f'A1_INPUT_TOPIC={idx}', f'A1_OUTPUT_BULK_SIZE={aggregator1_bulk_size}', f'A1_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(FUNBIZAGG_DEPS),
+		'depends_on': list(A1_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
-for idx in range(0, funbiz_filters):
-	container_name = f'funbiz_filter{idx}'
-	services += [container_name]
-	FUNBIZMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funbiz_filter:latest',
+service = 'funbiz_filter'
+for idx in range(0, filter1_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M2_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZFIL_WORKERS_POOL={common_pool_size}', f'FUNBIZFIL_LOG_BULK_RATE={log_bulk_rate}', f'FUNBIZFIL_INSTANCE={idx}', 'FUNBIZFIL_RABBITMQ_IP=rabbitmq', 'FUNBIZFIL_RABBITMQ_PORT=5672', f'FUNBIZFIL_FUNBIZ_MAPPERS={funbiz_mappers}', f'FUNBIZFIL_FUNBIZ_AGGREGATORS={funbiz_aggregators}', f'FUNBIZFIL_LOG_LEVEL={log_level}'],
+		'environment': [f'F1_WORKERS_POOL={common_pool_size}', f'F1_LOG_BULK_RATE={log_bulk_rate}', f'F1_INSTANCE={idx}', 'F1_RABBITMQ_IP=rabbitmq', 'F1_RABBITMQ_PORT=5672', f'F1_FUNBIZ_MAPPERS={mapper2_instances}', f'F1_FUNBIZ_AGGREGATORS={aggregator1_instances}', f'F1_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(FUNBIZFIL_DEPS),
+		'depends_on': list(F1_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
-for idx in range(0, funbiz_mappers):
-	container_name = f'funbiz_mapper{idx}'
-	services += [container_name]
-	RVWSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'funbiz_mapper:latest',
+service = 'funbiz_mapper'
+for idx in range(0, mapper2_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	MON_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'FUNBIZMAP_WORKERS_POOL={common_pool_size}', f'FUNBIZMAP_LOG_BULK_RATE={log_bulk_rate}', f'FUNBIZMAP_INSTANCE={idx}', 'FUNBIZMAP_RABBITMQ_IP=rabbitmq', 'FUNBIZMAP_RABBITMQ_PORT=5672', f'FUNBIZMAP_REVIEWS_INPUTS={reviews_inputs}', f'FUNBIZMAP_FUNBIZ_FILTERS={funbiz_filters}', f'FUNBIZMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M2_WORKERS_POOL={common_pool_size}', f'M2_LOG_BULK_RATE={log_bulk_rate}', f'M2_INSTANCE={idx}', 'M2_RABBITMQ_IP=rabbitmq', 'M2_RABBITMQ_PORT=5672', f'M2_REVIEWS_INPUTS={reviews_inputs}', f'M2_FUNBIZ_FILTERS={filter1_instances}', f'M2_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(FUNBIZMAP_DEPS),
+		'depends_on': list(M2_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('funniest_cities_logging', service=file['services'][container_name])
+	config_logs('funbiz_logging', service=file['services'][container])
 
 ## Weekday Histogram flow.
-service = 'weekday_histogram_prettier'
-services += [service]
-WEEKDAYAGG_DEPS += [service]
+service = 'weekday_prettier'
+containers += [service]
+A4_DEPS += [service]
 file['services'][service] = {
-	'container_name': 'weekday_histogram_prettier',
-	'image': 'weekday_histogram_prettier:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'HISTOPRE_WORKERS_POOL={common_pool_size}', 'HISTOPRE_INSTANCE=0', 'HISTOPRE_RABBITMQ_IP=rabbitmq', 'HISTOPRE_RABBITMQ_PORT=5672', f'HISTOPRE_WEEKDAY_AGGREGATORS={weekday_aggregators}', f'HISTOPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'P2_WORKERS_POOL={common_pool_size}', 'P2_INSTANCE=0', 'P2_RABBITMQ_IP=rabbitmq', 'P2_RABBITMQ_PORT=5672', f'P2_WEEKDAY_AGGREGATORS={aggregator4_instances}', f'P2_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(HISTOPRE_DEPS),
+	'depends_on': list(P2_DEPS),
 	'networks': ['testing_net']
 }
-config_logs('weekday_histogram_logging', service=file['services']['weekday_histogram_prettier'])
+config_logs('weekday_logging', service=file['services'][service])
 
-for idx in range(0, weekday_aggregators):
-	container_name = f'weekday_aggregator{idx}'
-	services += [container_name]
-	WEEKDAYMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'weekday_aggregator:latest',
+service = 'weekday_aggregator'
+for idx in range(0, aggregator4_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M3_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'WEEKDAYAGG_WORKERS_POOL={common_pool_size}', f'WEEKDAYAGG_LOG_BULK_RATE={log_bulk_rate}', f'WEEKDAYAGG_INSTANCE={idx}', 'WEEKDAYAGG_RABBITMQ_IP=rabbitmq', 'WEEKDAYAGG_RABBITMQ_PORT=5672', f'WEEKDAYAGG_INPUT_TOPIC={idx}', f'WEEKDAYAGG_WEEKDAY_MAPPERS={weekday_mappers}', f'WEEKDAYAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'A4_WORKERS_POOL={common_pool_size}', f'A4_LOG_BULK_RATE={log_bulk_rate}', f'A4_INSTANCE={idx}', 'A4_RABBITMQ_IP=rabbitmq', 'A4_RABBITMQ_PORT=5672', f'A4_INPUT_TOPIC={idx}', f'A4_WEEKDAY_MAPPERS={mapper3_instances}', f'A4_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(WEEKDAYAGG_DEPS),
+		'depends_on': list(A4_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('weekday_histogram_logging', service=file['services'][container_name])
+	config_logs('weekday_logging', service=file['services'][container])
 
-for idx in range(0, weekday_mappers):
-	container_name = f'weekday_mapper{idx}'
-	services += [container_name]
-	RVWSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'weekday_mapper:latest',
+service = 'weekday_mapper'
+for idx in range(0, mapper3_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	MON_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'WEEKDAYMAP_WORKERS_POOL={common_pool_size}', f'WEEKDAYMAP_LOG_BULK_RATE={log_bulk_rate}', f'WEEKDAYMAP_INSTANCE={idx}', 'WEEKDAYMAP_RABBITMQ_IP=rabbitmq', 'WEEKDAYMAP_RABBITMQ_PORT=5672', f'WEEKDAYMAP_REVIEWS_INPUTS={reviews_inputs}', f'WEEKDAYMAP_WEEKDAY_AGGREGATORS={weekday_aggregators}', f'WEEKDAYMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M3_WORKERS_POOL={common_pool_size}', f'M3_LOG_BULK_RATE={log_bulk_rate}', f'M3_INSTANCE={idx}', 'M3_RABBITMQ_IP=rabbitmq', 'M3_RABBITMQ_PORT=5672', f'M3_REVIEWS_INPUTS={reviews_inputs}', f'M3_WEEKDAY_AGGREGATORS={aggregator4_instances}', f'M3_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(WEEKDAYMAP_DEPS),
+		'depends_on': list(M3_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('weekday_histogram_logging', service=file['services'][container_name])
+	config_logs('weekday_logging', service=file['services'][container])
 
 ## Best Users flow.
-service = 'best_users_prettier'
-services += [service]
-BESTUSERJOIN_DEPS += [service]
+service = 'best_prettier'
+containers += [service]
+J3_DEPS += [service]
 file['services'][service] = {
-	'container_name': 'best_users_prettier',
-	'image': 'best_users_prettier:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'BESTUSERPRE_WORKERS_POOL={common_pool_size}', 'BESTUSERPRE_RABBITMQ_IP=rabbitmq', 'BESTUSERPRE_RABBITMQ_PORT=5672', f'BESTUSERPRE_MIN_REVIEWS={users_min_reviews}', f'BESTUSERPRE_BESTUSER_JOINERS={bestuser_joiners}', f'BESTUSERPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'P5_WORKERS_POOL={common_pool_size}', 'P5_RABBITMQ_IP=rabbitmq', 'P5_RABBITMQ_PORT=5672', f'P5_MIN_REVIEWS={users_reviews_threshold}', f'P5_BESTUSER_JOINERS={joiner3_instances}', f'P5_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(BESTUSERPRE_DEPS),
+	'depends_on': list(P5_DEPS),
 	'networks': ['testing_net']
 }
-config_logs('best_users_logging', service=file['services']['best_users_prettier'])
+config_logs('best_logging', service=file['services'][service])
 
-for idx in range(0, bestuser_joiners):
-	container_name = f'bestuser_joiner{idx}'
-	services += [container_name]
-	USERFIL_DEPS += [container_name]
-	STARSAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'bestuser_joiner:latest',
+service = 'best_joiner'
+for idx in range(0, joiner3_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	F4_DEPS += [container]
+	A8_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/joiner',
 		'restart': 'on-failure',
-		'environment': [f'BESTUSERJOIN_WORKERS_POOL={common_pool_size}', f'BESTUSERJOIN_LOG_BULK_RATE={log_bulk_rate}', f'BESTUSERJOIN_INSTANCE={idx}', 'BESTUSERJOIN_RABBITMQ_IP=rabbitmq', 'BESTUSERJOIN_RABBITMQ_PORT=5672', f'BESTUSERJOIN_INPUT_TOPIC={idx}', f'BESTUSERJOIN_STARS_AGGREGATORS={stars_aggregators}', f'BESTUSERJOIN_USER_FILTERS={user_filters}', f'BESTUSERJOIN_LOG_LEVEL={log_level}'],
+		'environment': [f'J3_WORKERS_POOL={common_pool_size}', f'J3_LOG_BULK_RATE={log_bulk_rate}', f'J3_INSTANCE={idx}', 'J3_RABBITMQ_IP=rabbitmq', 'J3_RABBITMQ_PORT=5672', f'J3_INPUT_TOPIC={idx}', f'J3_STARS_AGGREGATORS={aggregator8_instances}', f'J3_USER_FILTERS={filter4_instances}', f'J3_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(BESTUSERJOIN_DEPS),
+		'depends_on': list(J3_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('best_users_logging', service=file['services'][container_name])
+	config_logs('best_logging', service=file['services'][container])
 
-for idx in range(0, stars_aggregators):
-	container_name = f'stars_aggregator{idx}'
-	services += [container_name]
-	STARSFIL_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'stars_aggregator:latest',
+service = 'stars_aggregator'
+for idx in range(0, aggregator8_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	F5_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'STARSAGG_WORKERS_POOL={common_pool_size}', f'STARSAGG_LOG_BULK_RATE={log_bulk_rate}', f'STARSAGG_INSTANCE={idx}', 'STARSAGG_RABBITMQ_IP=rabbitmq', 'STARSAGG_RABBITMQ_PORT=5672', f'STARSAGG_INPUT_TOPIC={idx}', f'STARSAGG_STARS_FILTERS={stars_filters}', f'STARSAGG_STARS_JOINERS={bestuser_joiners}', f'STARSAGG_OUTPUT_BULK_SIZE={starsagg_bulk_size}', f'STARSAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'A8_WORKERS_POOL={common_pool_size}', f'A8_LOG_BULK_RATE={log_bulk_rate}', f'A8_INSTANCE={idx}', 'A8_RABBITMQ_IP=rabbitmq', 'A8_RABBITMQ_PORT=5672', f'A8_INPUT_TOPIC={idx}', f'A8_STARS_FILTERS={filter5_instances}', f'A8_STARS_JOINERS={joiner3_instances}', f'A8_OUTPUT_BULK_SIZE={aggregator8_bulk_size}', f'A8_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(STARSAGG_DEPS),
+		'depends_on': list(A8_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('best_users_logging', service=file['services'][container_name])
+	config_logs('best_logging', service=file['services'][container])
 
-for idx in range(0, stars_filters):
-	container_name = f'stars_filter{idx}'
-	services += [container_name]
-	STARSMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'stars_filter:latest',
+service = 'stars_filter'
+for idx in range(0, filter5_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M6_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'STARSFIL_WORKERS_POOL={common_pool_size}', f'STARSFIL_LOG_BULK_RATE={log_bulk_rate}', f'STARSFIL_INSTANCE={idx}', 'STARSFIL_RABBITMQ_IP=rabbitmq', 'STARSFIL_RABBITMQ_PORT=5672', f'STARSFIL_STARS_MAPPERS={stars_mappers}', f'STARSFIL_STARS_AGGREGATORS={stars_aggregators}', f'STARSFIL_LOG_LEVEL={log_level}'],
+		'environment': [f'F5_WORKERS_POOL={common_pool_size}', f'F5_LOG_BULK_RATE={log_bulk_rate}', f'F5_INSTANCE={idx}', 'F5_RABBITMQ_IP=rabbitmq', 'F5_RABBITMQ_PORT=5672', f'F5_STARS_MAPPERS={mapper6_instances}', f'F5_STARS_AGGREGATORS={aggregator8_instances}', f'F5_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(STARSFIL_DEPS),
+		'depends_on': list(F5_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('best_users_logging', service=file['services'][container_name])
+	config_logs('best_logging', service=file['services'][container])
 
-for idx in range(0, stars_mappers):
-	container_name = f'stars_mapper{idx}'
-	services += [container_name]
-	RVWSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'stars_mapper:latest',
+service = 'stars_mapper'
+for idx in range(0, mapper6_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	MON_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'STARSMAP_WORKERS_POOL={common_pool_size}', f'STARSMAP_LOG_BULK_RATE={log_bulk_rate}', f'STARSMAP_INSTANCE={idx}', 'STARSMAP_RABBITMQ_IP=rabbitmq', 'STARSMAP_RABBITMQ_PORT=5672', f'STARSMAP_REVIEWS_INPUTS={reviews_inputs}', f'STARSMAP_STARS_FILTERS={stars_filters}', f'STARSMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M6_WORKERS_POOL={common_pool_size}', f'M6_LOG_BULK_RATE={log_bulk_rate}', f'M6_INSTANCE={idx}', 'M6_RABBITMQ_IP=rabbitmq', 'M6_RABBITMQ_PORT=5672', f'M6_REVIEWS_INPUTS={reviews_inputs}', f'M6_STARS_FILTERS={filter5_instances}', f'M6_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(STARSMAP_DEPS),
+		'depends_on': list(M6_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('best_users_logging', service=file['services'][container_name])
+	config_logs('best_logging', service=file['services'][container])
 
 # Bot Users flow.
-service = 'bot_users_prettier'
-services += [service]
-BOTAGG_DEPS += [service]
+service = 'bots_prettier'
+containers += [service]
+A5_DEPS += [service]
 file['services'][service] = {
-	'container_name': 'bot_users_prettier',
-	'image': 'bot_users_prettier:latest',
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'BOTUSERPRE_WORKERS_POOL={common_pool_size}', 'BOTUSERPRE_RABBITMQ_IP=rabbitmq', 'BOTUSERPRE_RABBITMQ_PORT=5672', f'BOTUSERPRE_MIN_REVIEWS={bots_min_reviews}', f'BOTUSERPRE_BOTS_AGGREGATORS={bots_aggregators}', f'BOTUSERPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'P3_WORKERS_POOL={common_pool_size}', 'P3_RABBITMQ_IP=rabbitmq', 'P3_RABBITMQ_PORT=5672', f'P3_MIN_REVIEWS={bots_reviews_threshold}', f'P3_BOTS_AGGREGATORS={aggregator5_instances}', f'P3_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(BOTUSERPRE_DEPS),
+	'depends_on': list(P3_DEPS),
 	'networks': ['testing_net']
 }
-config_logs('bot_users_logging', service=file['services']['bot_users_prettier'])
+config_logs('bots_logging', service=file['services'][service])
 
-for idx in range(0, bots_aggregators):
-	container_name = f'bots_aggregator{idx}'
-	services += [container_name]
-	HASHMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'bots_aggregator:latest',
+service = 'bots_aggregator'
+for idx in range(0, aggregator5_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M4_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'BOTAGG_WORKERS_POOL={common_pool_size}', f'BOTAGG_LOG_BULK_RATE={log_bulk_rate}', f'BOTAGG_INSTANCE={idx}', 'BOTAGG_RABBITMQ_IP=rabbitmq', 'BOTAGG_RABBITMQ_PORT=5672', f'BOTAGG_INPUT_TOPIC={idx}', f'BOTAGG_HASH_MAPPERS={hash_mappers}', f'BOTAGG_MIN_REVIEWS={bots_min_reviews}', f'BOTAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'A5_WORKERS_POOL={common_pool_size}', f'A5_LOG_BULK_RATE={log_bulk_rate}', f'A5_INSTANCE={idx}', 'A5_RABBITMQ_IP=rabbitmq', 'A5_RABBITMQ_PORT=5672', f'A5_INPUT_TOPIC={idx}', f'A5_HASH_MAPPERS={mapper4_instances}', f'A5_MIN_REVIEWS={bots_reviews_threshold}', f'A5_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(BOTAGG_DEPS),
+		'depends_on': list(A5_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
+	config_logs('bots_logging', service=file['services'][container])
 
-for idx in range(0, hash_mappers):
-	container_name = f'hash_mapper{idx}'
-	services += [container_name]
-	RVWSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'hash_mapper:latest',
+service = 'hash_mapper'
+for idx in range(0, mapper4_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	MON_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'HASHMAP_WORKERS_POOL={common_pool_size}', f'HASHMAP_LOG_BULK_RATE={log_bulk_rate}', f'HASHMAP_INSTANCE={idx}', 'HASHMAP_RABBITMQ_IP=rabbitmq', 'HASHMAP_RABBITMQ_PORT=5672', f'HASHMAP_REVIEWS_INPUTS={reviews_inputs}', f'HASHMAP_BOTS_AGGREGATORS={bots_aggregators}', f'HASHMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M4_WORKERS_POOL={common_pool_size}', f'M4_LOG_BULK_RATE={log_bulk_rate}', f'M4_INSTANCE={idx}', 'M4_RABBITMQ_IP=rabbitmq', 'M4_RABBITMQ_PORT=5672', f'M4_REVIEWS_INPUTS={reviews_inputs}', f'M4_BOTS_AGGREGATORS={aggregator5_instances}', f'M4_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(HASHMAP_DEPS),
+		'depends_on': list(M4_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('bot_users_logging', service=file['services'][container_name])
+	config_logs('bots_logging', service=file['services'][container])
 
 ## Top Users flow.
-service = 'top_users_prettier'
-services += [service]
-USERFIL_DEPS += [service]
-file['services']['top_users_prettier'] = {
-	'container_name': 'top_users_prettier',
-	'image': 'top_users_prettier:latest',
+service = 'top_prettier'
+containers += [service]
+F4_DEPS += [service]
+file['services'][service] = {
+	'container_name': service,
+	'image': f'{service}:latest',
 	'entrypoint': '/prettier',
 	'restart': 'on-failure',
-	'environment': [f'TOPUSERPRE_WORKERS_POOL={common_pool_size}', f'TOPUSERPRE_LOG_BULK_RATE={log_bulk_rate}', 'TOPUSERPRE_RABBITMQ_IP=rabbitmq', 'TOPUSERPRE_RABBITMQ_PORT=5672', f'TOPUSERPRE_MIN_REVIEWS={users_min_reviews}', f'TOPUSERPRE_USER_FILTERS={user_filters}', f'TOPUSERPRE_LOG_LEVEL={log_level}'],
+	'environment': [f'P4_WORKERS_POOL={common_pool_size}', f'P4_LOG_BULK_RATE={log_bulk_rate}', 'P4_RABBITMQ_IP=rabbitmq', 'P4_RABBITMQ_PORT=5672', f'P4_MIN_REVIEWS={users_reviews_threshold}', f'P4_USER_FILTERS={filter4_instances}', f'P4_LOG_LEVEL={log_level}'],
 	'links': ['rabbitmq'],
-	'depends_on': list(TOPUSERPRE_DEPS),
+	'depends_on': list(P4_DEPS),
 	'networks': ['testing_net']
 }
-config_logs('top_users_logging', service=file['services']['top_users_prettier'])
+config_logs('top_logging', service=file['services'][service])
 
-for idx in range(0, user_filters):
-	container_name = f'user_filter{idx}'
-	services += [container_name]
-	USERAGG_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'user_filter:latest',
+service = 'user_filter'
+for idx in range(0, filter4_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	A7_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/filter',
 		'restart': 'on-failure',
-		'environment': [f'USERFIL_WORKERS_POOL={common_pool_size}', f'USERFIL_LOG_BULK_RATE={log_bulk_rate}', f'USERFIL_INSTANCE={idx}', 'USERFIL_RABBITMQ_IP=rabbitmq', 'USERFIL_RABBITMQ_PORT=5672', f'USERFIL_MIN_REVIEWS={users_min_reviews}', f'USERFIL_USER_AGGREGATORS={user_aggregators}', f'USERFIL_STARS_JOINERS={bestuser_joiners}', f'USERFIL_LOG_LEVEL={log_level}'],
+		'environment': [f'F4_WORKERS_POOL={common_pool_size}', f'F4_LOG_BULK_RATE={log_bulk_rate}', f'F4_INSTANCE={idx}', 'F4_RABBITMQ_IP=rabbitmq', 'F4_RABBITMQ_PORT=5672', f'F4_MIN_REVIEWS={users_reviews_threshold}', f'F4_USER_AGGREGATORS={aggregator7_instances}', f'F4_STARS_JOINERS={joiner3_instances}', f'F4_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(USERFIL_DEPS),
+		'depends_on': list(F4_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('top_users_logging', 'best_users_logging', service=file['services'][container_name])
+	config_logs('top_logging', 'best_logging', service=file['services'][container])
 
-for idx in range(0, user_aggregators):
-	container_name = f'user_aggregator{idx}'
-	services += [container_name]
-	USERMAP_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'user_aggregator:latest',
+service = 'user_aggregator'
+for idx in range(0, aggregator7_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	M5_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/aggregator',
 		'restart': 'on-failure',
-		'environment': [f'USERAGG_WORKERS_POOL={common_pool_size}', f'USERAGG_LOG_BULK_RATE={log_bulk_rate}', f'USERAGG_INSTANCE={idx}', 'USERAGG_RABBITMQ_IP=rabbitmq', 'USERAGG_RABBITMQ_PORT=5672', f'USERAGG_INPUT_TOPIC={idx}', f'USERAGG_USER_MAPPERS={user_mappers}', f'USERAGG_USER_FILTERS={user_filters}', f'USERAGG_OUTPUT_BULK_SIZE={useragg_bulk_size}', f'USERAGG_LOG_LEVEL={log_level}'],
+		'environment': [f'A7_WORKERS_POOL={common_pool_size}', f'A7_LOG_BULK_RATE={log_bulk_rate}', f'A7_INSTANCE={idx}', 'A7_RABBITMQ_IP=rabbitmq', 'A7_RABBITMQ_PORT=5672', f'A7_INPUT_TOPIC={idx}', f'A7_USER_MAPPERS={mapper5_instances}', f'A7_USER_FILTERS={filter4_instances}', f'A7_OUTPUT_BULK_SIZE={aggregator7_bulk_size}', f'A7_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(USERAGG_DEPS),
+		'depends_on': list(A7_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('top_users_logging', 'best_users_logging', 'bot_users_logging', service=file['services'][container_name])
+	config_logs('top_logging', 'best_logging', 'bots_logging', service=file['services'][container])
 
-for idx in range(0, user_mappers):
-	container_name = f'user_mapper{idx}'
-	services += [container_name]
-	RVWSCA_DEPS += [container_name]
-	file['services'][container_name] = {
-		'container_name': container_name,
-		'image': 'user_mapper:latest',
+service = 'user_mapper'
+for idx in range(0, mapper5_instances):
+	container = f'{service}{idx}'
+	containers += [container]
+	MON_DEPS += [container]
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
 		'entrypoint': '/mapper',
 		'restart': 'on-failure',
-		'environment': [f'USERMAP_WORKERS_POOL={common_pool_size}', f'USERMAP_LOG_BULK_RATE={log_bulk_rate}', f'USERMAP_INSTANCE={idx}', 'USERMAP_RABBITMQ_IP=rabbitmq', 'USERMAP_RABBITMQ_PORT=5672', f'USERMAP_REVIEWS_INPUTS={reviews_inputs}', f'USERMAP_USER_AGGREGATORS={user_aggregators}', f'USERMAP_LOG_LEVEL={log_level}'],
+		'environment': [f'M5_WORKERS_POOL={common_pool_size}', f'M5_LOG_BULK_RATE={log_bulk_rate}', f'M5_INSTANCE={idx}', 'M5_RABBITMQ_IP=rabbitmq', 'M5_RABBITMQ_PORT=5672', f'M5_REVIEWS_INPUTS={reviews_inputs}', f'M5_USER_AGGREGATORS={aggregator7_instances}', f'M5_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
-		'depends_on': list(USERMAP_DEPS),
+		'depends_on': list(M5_DEPS),
 		'networks': ['testing_net']
 	}
-	config_logs('top_users_logging', 'best_users_logging', 'bot_users_logging', service=file['services'][container_name])
+	config_logs('top_logging', 'best_logging', 'bots_logging', service=file['services'][container])
+
+# service = 'monitor'
+# monitors = list(map(lambda idx: f'{service}{idx}', list(range(0, monitor_instances))))
+# for idx in range(0, monitor_instances):
+# 	container = f'{service}{idx}'
+# 	nodes = ",".join(containers)
+# 	other_monitors = monitors
+# 	other_monitors.remove(container)
+# 	file['services'][container] = {
+# 		'container_name': container,
+# 		'image': f'{service}:latest',
+# 		'entrypoint': '/monitor',
+# 		'restart': 'on-failure',
+# 		'environment': [f'MON_INSTANCE={idx}', f'MON_NODES={nodes}', f'MON_LOG_LEVEL={log_level}'],
+# 		'links': ['rabbitmq'],
+# 		'depends_on': list(MON_DEPS),
+# 		'networks': ['testing_net']
+# 	}
 
 #### VOLUMES
 file['volumes'] = {

@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
 )
 
 func InitConfig() (*viper.Viper, *viper.Viper, error) {
@@ -17,7 +18,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the RVWSCA_ prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("bizsca")
+	configEnv.SetEnvPrefix(props.InputI1_Name)
 
 	// Add env variables supported
 	configEnv.BindEnv("business", "data")

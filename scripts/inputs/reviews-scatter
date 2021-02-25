@@ -3,18 +3,18 @@
 # Importing variables from system-config.yaml
 SYSTEM_CONFIG_FILE="./scripts/system-config.yaml"
 
-export RVWSCA_INSTANCE=0
-export RVWSCA_RABBITMQ_IP=localhost
-export RVWSCA_RABBITMQ_PORT=5672
-export RVWSCA_WORKERS_POOL=$(cat $SYSTEM_CONFIG_FILE | grep common_pool_size | cut -d ":" -f 2 | xargs)
-export RVWSCA_LOG_BULK_RATE=$(cat $SYSTEM_CONFIG_FILE | grep log_bulk_rate | cut -d ":" -f 2 | xargs)
-export RVWSCA_BULK_SIZE=$(cat $SYSTEM_CONFIG_FILE | grep reviews_bulk_size | cut -d ":" -f 2 | xargs)
-export RVWSCA_FUNBIZ_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep funbiz_mappers | cut -d ":" -f 2 | xargs)
-export RVWSCA_WEEKDAYS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep weekday_mappers | cut -d ":" -f 2 | xargs)
-export RVWSCA_USERS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep user_mappers | cut -d ":" -f 2 | xargs)
-export RVWSCA_STARS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep stars_mappers | cut -d ":" -f 2 | xargs)
-export RVWSCA_HASHES_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep hash_mappers | cut -d ":" -f 2 | xargs)
-export RVWSCA_LOG_LEVEL=$(cat $SYSTEM_CONFIG_FILE | grep log_level | cut -d ":" -f 2 | xargs)
+export I2_INSTANCE=0
+export I2_RABBITMQ_IP=localhost
+export I2_RABBITMQ_PORT=5672
+export I2_WORKERS_POOL=$(cat $SYSTEM_CONFIG_FILE | grep common_pool_size | cut -d ":" -f 2 | xargs)
+export I2_LOG_BULK_RATE=$(cat $SYSTEM_CONFIG_FILE | grep log_bulk_rate | cut -d ":" -f 2 | xargs)
+export I2_BULK_SIZE=$(cat $SYSTEM_CONFIG_FILE | grep input1_bulk_size | cut -d ":" -f 2 | xargs)
+export I2_FUNBIZ_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper2_instances | cut -d ":" -f 2 | xargs)
+export I2_WEEKDAYS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper3_instances | cut -d ":" -f 2 | xargs)
+export I2_HASHES_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper4_instances | cut -d ":" -f 2 | xargs)
+export I2_USERS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper5_instances | cut -d ":" -f 2 | xargs)
+export I2_STARS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper6_instances | cut -d ":" -f 2 | xargs)
+export I2_LOG_LEVEL=$(cat $SYSTEM_CONFIG_FILE | grep log_level | cut -d ":" -f 2 | xargs)
 
 # Running node
 go run cmd/nodes/inputs/reviews-scatter/main.go

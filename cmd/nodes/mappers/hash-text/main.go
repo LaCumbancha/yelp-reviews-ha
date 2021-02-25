@@ -10,6 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
 	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
 	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
 )
 
@@ -18,7 +19,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 
 	// Configure viper to read env variables with the USERMAP prefix
 	configEnv.AutomaticEnv()
-	configEnv.SetEnvPrefix("hashmap")
+	configEnv.SetEnvPrefix(props.MapperM4_Name)
 
 	// Add env variables supported
 	configEnv.BindEnv("instance")

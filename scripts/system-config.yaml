@@ -7,52 +7,36 @@ reviews_streaming: false
 common_pool_size: 16
 
 # Bulks.
-reviews_bulk_size: 10000
-business_bulk_size: 10000
-funbizagg_bulk_size: 10000
-funcitjoin_bulk_size: 10000
-funcitagg_bulk_size: 10000
-hashagg_bulk_size: 10000
-dishashagg_bulk_size: 10000
-useragg_bulk_size: 10000
-starsagg_bulk_size: 10000
+input1_bulk_size: 10000
+joiner1_bulk_size: 10000
+aggregator1_bulk_size: 10000
+aggregator7_bulk_size: 10000
+aggregator8_bulk_size: 10000
 
 # Logs
-funniest_cities_logging: true
-weekday_histogram_logging: true
-best_users_logging: true
-bot_users_logging: true
-top_users_logging: true
+funbiz_logging: true
+weekday_logging: true
+best_logging: true
+bots_logging: true
+top_logging: true
 
 # System specs.
-users_min_reviews: 50
-bots_min_reviews: 5
-funniest_cities_top_size: 10
+funbiz_top_size: 10
+bots_reviews_threshold: 5
+users_reviews_threshold: 50
 
-# Funniest cities flow.
-citbiz_mappers: 3
-funbiz_mappers: 2
-funbiz_filters: 1
-funbiz_aggregators: 1
-funcit_joiners: 1
-funcit_aggregators: 1
-funcit_tops: 1
+# Mappers
+mapper1_instances: 3
+mapper2_instances: 2
+mapper3_instances: 2
+mapper4_instances: 3
+mapper5_instances: 2
+mapper6_instances: 2
 
-# Weekday histogram flow.
-weekday_mappers: 2
-weekday_aggregators: 1
+# Filters
+filter1_instances: 3
+filter4_instances: 1
+filter5_instances: 2
 
-# Users w/+50 reviews.
-user_mappers: 2
-user_aggregators: 1
-user_filters: 1
-
-# Users w/+50 5-stars reviews.
-stars_mappers: 2
-stars_filters: 1
-stars_aggregators: 1
-bestuser_joiners: 1
-
-# Users w/+5 reviews with same text.
-hash_mappers: 3
-bots_aggregators: 1
+# Monitor
+monitor_instances: 5

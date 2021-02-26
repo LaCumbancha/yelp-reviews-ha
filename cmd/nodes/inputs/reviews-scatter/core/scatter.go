@@ -6,6 +6,7 @@ import (
     "time"
     "bufio"
     "bytes"
+    "strings"
     "strconv"
     "github.com/streadway/amqp"
     "github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
@@ -18,7 +19,6 @@ import (
 )
 
 type ScatterConfig struct {
-    Instance            string
     RabbitIp            string
     RabbitPort          string
     BulkSize            int
@@ -47,12 +47,12 @@ func NewScatter(config ScatterConfig) *Scatter {
     outputFanout := rabbit.NewRabbitOutputFanout(channel, props.InputI2_Output)
     
     scatter := &Scatter {
-        instance:           config.Instance,
+        instance:           "0",
         connection:         connection,
         channel:            channel,
         bulkSize:           config.BulkSize,
         outputFanout:       outputFanout,
-        outputSignals:      GenerateOutputSignals(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
+        outputSignals:      utils.MaxInt(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
         processedDatasets:  make([]int, 0),
         datasetNumber:      1,
     }
@@ -67,7 +67,7 @@ func (scatter *Scatter) Run() {
     for !exitFlag {
         scatter.printMenu()
         fmt.Print("Option: ")
-        option := utils.ReadInput(reader)
+        option := strings.ToUpper(utils.ReadInput(reader))
 
         for {
             if option == "S" {

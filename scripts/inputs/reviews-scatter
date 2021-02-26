@@ -3,7 +3,6 @@
 # Importing variables from system-config.yaml
 SYSTEM_CONFIG_FILE="./scripts/system-config.yaml"
 
-export I2_INSTANCE=0
 export I2_RABBITMQ_IP=localhost
 export I2_RABBITMQ_PORT=5672
 export I2_WORKERS_POOL=$(cat $SYSTEM_CONFIG_FILE | grep common_pool_size | cut -d ":" -f 2 | xargs)

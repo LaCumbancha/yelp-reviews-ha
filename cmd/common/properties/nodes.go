@@ -18,7 +18,6 @@ const FilterF5_Name = "F5"
 // Inputs
 const InputI1_Name = "I1"
 const InputI2_Name = "I2"
-const InputI3_Name = "I3"
 
 // Joiners
 const JoinerJ1_Name = "J1"

@@ -19,8 +19,7 @@ const FilterF5_Output = "F5-to-A8"
 
 // Inputs
 const InputI1_Output = "I1-to-M1"
-const InputI2_Output = "I2.0-to-M2,M3,M4,M5,M6"
-const InputI3_Output = "I2.1-to-M2,M3,M4,M5,M6"
+const InputI2_Output = "I2-to-M2,M3,M4,M5,M6"
 
 // Joiners
 const JoinerJ1_Output = "J1-to-A2"

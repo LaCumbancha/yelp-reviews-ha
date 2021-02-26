@@ -263,7 +263,7 @@ services:
     - M2_INSTANCE=0
     - M2_RABBITMQ_IP=rabbitmq
     - M2_RABBITMQ_PORT=5672
-    - M2_REVIEWS_INPUTS=1
+    - M2_REVIEWS_INPUTS=2
     - M2_FUNBIZ_FILTERS=3
     - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
@@ -285,7 +285,7 @@ services:
     - M2_INSTANCE=1
     - M2_RABBITMQ_IP=rabbitmq
     - M2_RABBITMQ_PORT=5672
-    - M2_REVIEWS_INPUTS=1
+    - M2_REVIEWS_INPUTS=2
     - M2_FUNBIZ_FILTERS=3
     - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
@@ -367,7 +367,7 @@ services:
     - M4_INSTANCE=0
     - M4_RABBITMQ_IP=rabbitmq
     - M4_RABBITMQ_PORT=5672
-    - M4_REVIEWS_INPUTS=1
+    - M4_REVIEWS_INPUTS=2
     - M4_BOTS_AGGREGATORS=1
     - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
@@ -387,7 +387,7 @@ services:
     - M4_INSTANCE=1
     - M4_RABBITMQ_IP=rabbitmq
     - M4_RABBITMQ_PORT=5672
-    - M4_REVIEWS_INPUTS=1
+    - M4_REVIEWS_INPUTS=2
     - M4_BOTS_AGGREGATORS=1
     - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
@@ -407,7 +407,7 @@ services:
     - M4_INSTANCE=2
     - M4_RABBITMQ_IP=rabbitmq
     - M4_RABBITMQ_PORT=5672
-    - M4_REVIEWS_INPUTS=1
+    - M4_REVIEWS_INPUTS=2
     - M4_BOTS_AGGREGATORS=1
     - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
@@ -520,7 +520,7 @@ services:
     - M6_INSTANCE=0
     - M6_RABBITMQ_IP=rabbitmq
     - M6_RABBITMQ_PORT=5672
-    - M6_REVIEWS_INPUTS=1
+    - M6_REVIEWS_INPUTS=2
     - M6_STARS_FILTERS=2
     - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
@@ -541,7 +541,7 @@ services:
     - M6_INSTANCE=1
     - M6_RABBITMQ_IP=rabbitmq
     - M6_RABBITMQ_PORT=5672
-    - M6_REVIEWS_INPUTS=1
+    - M6_REVIEWS_INPUTS=2
     - M6_STARS_FILTERS=2
     - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
@@ -624,7 +624,7 @@ services:
     - M5_INSTANCE=0
     - M5_RABBITMQ_IP=rabbitmq
     - M5_RABBITMQ_PORT=5672
-    - M5_REVIEWS_INPUTS=1
+    - M5_REVIEWS_INPUTS=2
     - M5_USER_AGGREGATORS=1
     - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
@@ -644,7 +644,7 @@ services:
     - M5_INSTANCE=1
     - M5_RABBITMQ_IP=rabbitmq
     - M5_RABBITMQ_PORT=5672
-    - M5_REVIEWS_INPUTS=1
+    - M5_REVIEWS_INPUTS=2
     - M5_USER_AGGREGATORS=1
     - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
@@ -684,7 +684,7 @@ services:
     - M3_INSTANCE=0
     - M3_RABBITMQ_IP=rabbitmq
     - M3_RABBITMQ_PORT=5672
-    - M3_REVIEWS_INPUTS=1
+    - M3_REVIEWS_INPUTS=2
     - M3_WEEKDAY_AGGREGATORS=1
     - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest
@@ -704,7 +704,7 @@ services:
     - M3_INSTANCE=1
     - M3_RABBITMQ_IP=rabbitmq
     - M3_RABBITMQ_PORT=5672
-    - M3_REVIEWS_INPUTS=1
+    - M3_REVIEWS_INPUTS=2
     - M3_WEEKDAY_AGGREGATORS=1
     - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest

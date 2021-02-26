@@ -4,7 +4,7 @@ import sys
 failures = int(sys.argv[1])
 
 import yaml
-input_yaml_file = open('./docker-compose-dev.yaml')
+input_yaml_file = open('./dockerized-system.yaml')
 input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
 
 #### SERVICES

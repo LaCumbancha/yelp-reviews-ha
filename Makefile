@@ -7,6 +7,8 @@ PROJECT_NAME = tp4
 GREEN = \033[0;32m
 RESET = \033[0m
 
+DOCKER_COMPOSE_YAML = dockerized-system.yaml
+
 default: build
 
 all:
@@ -100,21 +102,21 @@ system-build:
 
 system-hard-up: system-build
 	$(PYTHON) ./scripts/system-builder
-	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) up -d --build --remove-orphans
+	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) up -d --build --remove-orphans
 .PHONY: system-hard-up
 
 system-soft-up:
 	$(PYTHON) ./scripts/system-builder
-	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) up -d --build --remove-orphans
+	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) up -d --build --remove-orphans
 .PHONY: system-soft-up
 
 system-down:
-	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) stop -t 1
-	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) down
+	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) stop -t 1
+	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) down
 .PHONY: system-down
 
 system-logs:
-	docker-compose -f docker-compose-dev.yaml --project-name $(PROJECT_NAME) logs -f
+	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) logs -f
 .PHONY: system-logs
 
 system-connect:

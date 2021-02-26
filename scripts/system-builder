@@ -551,5 +551,5 @@ file['networks'] = {
 	}
 }
 
-with open('docker-compose-dev.yaml', 'w') as outfile:
+with open('dockerized-system.yaml', 'w') as outfile:
     yaml.dump(file, outfile, default_flow_style=False)

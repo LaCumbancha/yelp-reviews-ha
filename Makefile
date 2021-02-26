@@ -4,6 +4,8 @@ PYTHON := /usr/bin/python3.8
 GIT_REMOTE = github.com/LaCumbancha/yelp-review-ha
 
 PROJECT_NAME = tp4
+GREEN = \033[0;32m
+RESET = \033[0m
 
 default: build
 
@@ -122,3 +124,12 @@ system-connect:
 system-test:
 	$(SHELL) ./scripts/system-test
 .PHONE: system-test
+
+system-failing:
+	$(eval DOWN_SERVICES := $(shell ./scripts/system-failures $(failures)))
+	@for service in $(DOWN_SERVICES); do \
+		echo -n "Stopping service $$service... " ; \
+		docker stop $$service > /dev/null ; \
+		echo -e "$(GREEN)done$(RESET)" ; \
+	done
+.PHONY: system-failing

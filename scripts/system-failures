@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+import sys
+failures = int(sys.argv[1])
+
+import yaml
+input_yaml_file = open('./docker-compose-dev.yaml')
+input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
+
+#### SERVICES
+services = list(input_yaml['services'].keys())
+services.remove('rabbitmq')
+services.remove('biz_scatter')
+
+import random
+down_services = []
+for _ in range(0, failures):
+	down_service = random.choice(services)
+	down_services += [down_service]
+	services.remove(down_service)
+
+print(' '.join(list(down_services)))

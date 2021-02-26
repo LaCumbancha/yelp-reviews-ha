@@ -513,7 +513,7 @@ for idx in range(0, mapper5_instances):
 # monitors = list(map(lambda idx: f'{service}{idx}', list(range(0, monitor_instances))))
 # for idx in range(0, monitor_instances):
 # 	container = f'{service}{idx}'
-# 	nodes = ",".join(containers)
+# 	nodes = ','.join(containers)
 # 	other_monitors = monitors
 # 	other_monitors.remove(container)
 # 	file['services'][container] = {

@@ -30,6 +30,8 @@ Además del correcto funcionamiento del sistema, deben tenerse en cuenta las sig
 
 ## Desarrollo
 
+### Set Up
+
 Antes de poder levantar el sistema deberá colocarse el archivo de businesses en el siguiente directorio:
 
 ```bash
@@ -64,10 +66,8 @@ Una vez que el sistema se encuentre esperando recibir mensajes, deberá levantar
 go get github.com/streadway/amqp
 ```
 
-Finalmente, para poder usar el modo streaming, deberá contarse con Python3 y la librería Pika, ya que el cliente para enviar las reviews está desarrollado en dicho lenguaje.
+Finalmente, para poder usar el modo streaming, deberá previamente setearse en `true` la variable de configuración del `system-config.yaml`. Hecho esto y una vez levantado el sistema, deberá correrse el script `./scripts/inputs/reviews-streamer` con el cual podrán comenzar a streamearse nuevas reviews custom al sistema. Los requisitos del mismo en cuanto a dependencias son los mismos que para el script de procesamiento de datasets.
 
-```bash
-python3 -m pip install pika --upgrade
-```
+### Configuración adicional
 
-Luego de levantar el sistema, uno podrá iniciar el cliente de streaming ejecutando desde el directorio raíz `./scripts/inputs/reviews-streamer` especificando la IP y el puerto para conectarse con RabbitMQ. Finalmente, para poder editar la configuración del sistema, así como poder correr el mismo en distintos modos (incluyendo el ya dicho de streaming o el de testing), se podrá consultar la sección de [Configuración](docs/Configuration.md)
+Todas las distintas configuraciones con las que puede levantarse el sistema son customizables a través del archivo `./scripts/system-config.yaml`. Para más información de estas, se podrá consultar la sección de [Configuración](docs/Configuration.md)

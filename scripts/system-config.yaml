@@ -1,30 +1,33 @@
+## Environment
 # Logging
 log_level: "INFO"
 log_bulk_rate: 25
 
-# System configuration.
-reviews_streaming: false
-common_pool_size: 16
-
-# Bulks.
-input1_bulk_size: 10000
-joiner1_bulk_size: 10000
-aggregator1_bulk_size: 10000
-aggregator7_bulk_size: 10000
-aggregator8_bulk_size: 10000
-
-# Logs
+# Flows
 funbiz_logging: true
 weekday_logging: true
 best_logging: true
 bots_logging: true
 top_logging: true
 
-# System specs.
+# Specs
 funbiz_top_size: 10
 bots_reviews_threshold: 5
 users_reviews_threshold: 50
 
+## Nodes
+# System
+reviews_streaming: false
+common_pool_size: 16
+
+# Bulks
+input1_bulk_size: 10000
+joiner1_bulk_size: 10000
+aggregator1_bulk_size: 10000
+aggregator7_bulk_size: 10000
+aggregator8_bulk_size: 10000
+
+## Instances
 # Mappers
 mapper1_instances: 3
 mapper2_instances: 2

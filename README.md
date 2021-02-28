@@ -37,7 +37,7 @@ Antes de poder levantar el sistema deberá colocarse el archivo de businesses en
 ```bash
 root
 |-- data
-|    |-- businesses 
+|    |-- business
 |    |    |-- business.json
 ```
 

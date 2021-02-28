@@ -55,6 +55,9 @@ build: deps
 
 	# Outputs
 	GOOS=linux go build -o bin/sink $(GIT_REMOTE)/cmd/nodes/outputs/sink
+
+	# Monitors
+	GOOS=linux go build -o bin/monitor $(GIT_REMOTE)/cmd/nodes/montiros/common
 .PHONY: build
 
 system-build:
@@ -98,6 +101,9 @@ system-build:
 
 	# Outputs
 	docker build -f ./cmd/nodes/outputs/sink/Dockerfile -t "sink:latest" .
+
+	# Monitors
+	docker build -f ./cmd/nodes/monitors/common/Dockerfile -t "monitor:latest" .
 .PHONY: system-build
 
 system-hard-up: system-build

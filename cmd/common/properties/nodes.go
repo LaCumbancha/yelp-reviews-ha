@@ -41,3 +41,6 @@ const PrettierP5_Name = "P5"
 
 // Outputs
 const OutputO1_Name = "O1"
+
+// Monitors
+const Monitor_Name = "MON"

@@ -33,6 +33,7 @@ weekday_logging = input_yaml['weekday_logging']
 ## SYSTEM
 users_reviews_threshold = input_yaml['users_reviews_threshold']
 bots_reviews_threshold = input_yaml['bots_reviews_threshold']
+monitor_interval = input_yaml['monitor_interval']
 funbiz_top_size = input_yaml['funbiz_top_size']
 
 ## NODES
@@ -122,6 +123,7 @@ file['services'][service] = {
 	'depends_on': list(O1_DEPS),
 	'networks': ['testing_net'],
 }
+config_logs('funbiz_logging', 'weekday_logging', 'best_logging', 'bots_logging', 'top_logging', service=file['services'][service])
 
 ## Funniest Cities flow
 service = 'funcit_prettier'
@@ -509,23 +511,26 @@ for idx in range(0, mapper5_instances):
 	}
 	config_logs('top_logging', 'best_logging', 'bots_logging', service=file['services'][container])
 
-# service = 'monitor'
-# monitors = list(map(lambda idx: f'{service}{idx}', list(range(0, monitor_instances))))
-# for idx in range(0, monitor_instances):
-# 	container = f'{service}{idx}'
-# 	nodes = ','.join(containers)
-# 	other_monitors = monitors
-# 	other_monitors.remove(container)
-# 	file['services'][container] = {
-# 		'container_name': container,
-# 		'image': f'{service}:latest',
-# 		'entrypoint': '/monitor',
-# 		'restart': 'on-failure',
-# 		'environment': [f'MON_INSTANCE={idx}', f'MON_NODES={nodes}', f'MON_LOG_LEVEL={log_level}'],
-# 		'links': ['rabbitmq'],
-# 		'depends_on': list(MON_DEPS),
-# 		'networks': ['testing_net']
-# 	}
+service = 'monitor'
+monitors = list(map(lambda idx: f'{service}{idx}', list(range(0, monitor_instances))))
+for idx in range(0, monitor_instances):
+	container = f'{service}{idx}'
+	other_monitors = monitors[:]
+	other_monitors.remove(container)
+	observer_nodes  = ','.join(other_monitors)
+	observable_nodes = ','.join(containers + other_monitors)
+	file['services'][container] = {
+		'container_name': container,
+		'image': f'{service}:latest',
+		'entrypoint': '/monitor',
+		'restart': 'on-failure',
+		'environment': [f'MON_INSTANCE={idx}', f'MON_OBSERVABLE_NODES={observer_nodes}', f'MON_OBSERVER_NODES={observer_nodes}', f'MON_CHECK_INTERVAL={monitor_interval}', f'MON_LOG_LEVEL={log_level}'],
+		'links': ['rabbitmq'],
+		'depends_on': list(MON_DEPS),
+		'networks': ['testing_net'],
+		'volumes': ['/var/run/docker.sock:/var/run/docker.sock']
+	}
+	config_logs('monitors_logging', service=file['services'][container])
 
 #### VOLUMES
 file['volumes'] = {

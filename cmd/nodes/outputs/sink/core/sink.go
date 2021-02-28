@@ -115,7 +115,7 @@ func (sink *Sink) finishCallback(dataset int) {
 	if found {
 		log.Infof("Dataset #%d analysis finished in %s.", dataset, time.Now().Sub(startTime).String())
 	} else {
-		log.Warnf("Starting time not found for dataset %d.", dataset)
+		log.Debugf("Starting time not found for dataset %d.", dataset)
 		log.Infof("Dataset #%d analysis finished.", dataset)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+	proc "github.com/LaCumbancha/yelp-review-ha/cmd/common/processing"
 	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
 	comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
 	rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
@@ -64,7 +65,7 @@ func (scatter *Scatter) Run() {
     defer file.Close()
 
     // Sending Start-Message to consumers.
-    rabbit.OutputQueueStart(comms.StartMessageSigned(props.InputI1_Name, 1, "0"), scatter.outputQueue)
+    rabbit.OutputQueueStart(comms.StartMessageSigned(props.InputI1_Name, proc.DefaultDataset, "0"), scatter.outputQueue)
 
     bulkNumber := 0
     chunkNumber := 0
@@ -96,14 +97,14 @@ func (scatter *Scatter) Run() {
     }
 
     // Sending Finish-Message and Close-Message to consumers.
-    rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.InputI1_Name, 1, "0"), scatter.outputQueue)
+    rabbit.OutputQueueFinish(comms.FinishMessageSigned(props.InputI1_Name, proc.DefaultDataset, "0"), scatter.outputQueue)
     rabbit.OutputQueueClose(comms.CloseMessageSigned(props.InputI1_Name, "0"), scatter.outputQueue)
 
     log.Infof("Time: %s.", time.Now().Sub(start).String())
 }
 
 func (scatter *Scatter) sendData(bulkNumber int, bulk string) {
-	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(props.InputI1_Name, 1, "0", bulkNumber, bulk)))
+	err := scatter.outputQueue.PublishData([]byte(comms.SignMessage(props.InputI1_Name, proc.DefaultDataset, "0", bulkNumber, bulk)))
 
 	if err != nil {
 		log.Errorf("Error sending businesses bulk #%d to output queue %s. Err: '%s'", bulkNumber, scatter.outputQueue.Name, err)

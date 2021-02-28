@@ -50,8 +50,15 @@ func signalsControl(
 	signalsReceivedByInput map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
 	savedInputs []string,
-) (bool, bool, bool, bool, bool) {
-	firstInstanceSignaledByDataset := len(signalsReceivedByInput) == 0
+) (bool, bool, bool, bool, bool, bool) {
+	datasetStarterSignal := len(signalsReceivedByInput) == 0
+
+	firstCommonInstanceSignaledByDataset := !utils.StringInSlice(signaledInput, savedInputs)
+	for previouslySignaledInput, _ := range signalsReceivedByInput {
+		if !utils.StringInSlice(previouslySignaledInput, savedInputs) {
+			firstCommonInstanceSignaledByDataset = false
+		}
+	}
 
 	totalInputs := len(signalsNeededByInput)
 	inputSignalsNeeded := signalsNeededByInput[signaledInput]
@@ -92,7 +99,7 @@ func signalsControl(
 		everyInputAllSignalsReceived = false
 	}
 
-	return firstInstanceSignaledByDataset, inputFirstSignalReceived, inputNewInstanceSignaled, inputAllInstancesSignaled, everyInputAllSignalsReceived
+	return datasetStarterSignal, firstCommonInstanceSignaledByDataset, inputFirstSignalReceived, inputNewInstanceSignaled, inputAllInstancesSignaled, everyInputAllSignalsReceived
 }
 
 // Signals control for multiple datasets.
@@ -103,16 +110,12 @@ func MultiDatasetSignalsControl(
 	signalsByDataset map[int]map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
 	savedInputs []string,
-) (bool, bool, bool, bool, bool) {
+) (bool, bool, bool, bool, bool, bool) {
 	if _, found := signalsByDataset[signaledDataset]; !found {
 		signalsByDataset[signaledDataset] = make(map[string]map[string]bool)
 	}
 
-	if signaledDataset > 1 {
-		return signalsControl(signaledInput, signaledInstance, signalsByDataset[signaledDataset], signalsNeededByInput, savedInputs)
-	} else {
-		return signalsControl(signaledInput, signaledInstance, signalsByDataset[signaledDataset], signalsNeededByInput, make([]string, 0))
-	}
+	return signalsControl(signaledInput, signaledInstance, signalsByDataset[signaledDataset], signalsNeededByInput, savedInputs)
 }
 
 // Signals control for single dataset.
@@ -121,6 +124,6 @@ func SingleDatasetSignalsControl(
 	signaledInstance string, 
 	signalsByInput map[string]map[string]bool, 
 	signalsNeededByInput map[string]int,
-) (bool, bool, bool, bool, bool) {
+) (bool, bool, bool, bool, bool, bool) {
 	return signalsControl(signaledInput, signaledInstance, signalsByInput, signalsNeededByInput, make([]string, 0))
 }

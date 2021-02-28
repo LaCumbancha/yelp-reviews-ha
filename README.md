@@ -68,6 +68,16 @@ go get github.com/streadway/amqp
 
 Finalmente, para poder usar el modo streaming, deberá previamente setearse en `true` la variable de configuración del `system-config.yaml`. Hecho esto y una vez levantado el sistema, deberá correrse el script `./scripts/inputs/reviews-streamer` con el cual podrán comenzar a streamearse nuevas reviews custom al sistema. Los requisitos del mismo en cuanto a dependencias son los mismos que para el script de procesamiento de datasets.
 
-### Configuración adicional
+### Fallos
+
+Uno de los requisitos del sistema es que el mismo sea tolerante a fallos, lo que significa que ante la caída de nodos el mismo no deje de funcionar. En nuestro proyecto contamos con una red de nodos monitores que constantemente estarán buscando nodos caídos para levantarlos nuevamente y evitar que el sistema colapse. A su vez, para poder probar este comportamiento, proveemos un script que automatiza la caída de nodos. 
+
+```bash
+make system-failing failures=N
+```
+
+El mismo se encargará de tirar N nodos aleatorios cada 25 segundos, por lo que permitirá apreciar el comportamiento tolerante a fallos del sistema. Vale la pena notar que en caso de que N sea mayor o igual a la cantidad total de monitores del sistema, podría darse el escenario improbable dónde todos los nodos que fallen sean los que deben controlar al resto, por lo que el sistema no podría proseguir (siendo este un caso fatal previsto).
+
+### Configuración de entorno
 
 Todas las distintas configuraciones con las que puede levantarse el sistema son customizables a través del archivo `./scripts/system-config.yaml`. Para más información de estas, se podrá consultar la sección de [Configuración](docs/Configuration.md)

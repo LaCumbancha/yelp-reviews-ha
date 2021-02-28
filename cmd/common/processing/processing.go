@@ -87,16 +87,19 @@ func processStartSignal(
 	callback func(int),
 ) {
 	signalsMutex.Lock()
-	firstInstanceSignaledByDataset, firstInstanceSignaledByInput, newInstanceSignaledByInput, _, _ := 
+	starterSignalByDataset, firstCommonInstanceSignaledByDataset, firstInstanceSignaledByInput, newInstanceSignaledByInput, _, _ := 
 		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
 
-	if firstInstanceSignaledByDataset {
-		callback(dataset)
-
+	if starterSignalByDataset {		
 		receivedBkpMutex.Lock()
 		bkp.InitializeDatasetBackup(dataset)
 		receivedBkpMutex.Unlock()
+	}
+
+	if firstCommonInstanceSignaledByDataset {
+		log.Infof("Very first Start-Message from dataset #%d received.", dataset)
+		callback(dataset)
 	}
 
 	if firstInstanceSignaledByInput {
@@ -132,7 +135,7 @@ func processFinishSignal(
 	callback func(int),
 ) {
 	signalsMutex.Lock()
-	_, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+	_, _, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
 		comms.MultiDatasetSignalsControl(dataset, inputNode, instance, signalsMap, signalsNeeded, savedInputs)
 	signalsMutex.Unlock()
 
@@ -147,16 +150,18 @@ func processFinishSignal(
 		utils.WaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex).Wait()
 		utils.DeleteWaitGroupByDataset(dataset, procWgsByDataset, procWgsMutex)
 		callback(dataset)
-		finishWg.Done()
-
-		receivedBkpMutex.Lock()
-		bkp.RemoveDatasetBackup(dataset)
-		receivedBkpMutex.Unlock()
+		finishWg.Done()		
 	}
 
 	signalsMutex.Lock()
 	bkp.StoreSignalsBackup(signalsMap, bkp.FinishBkp)
 	signalsMutex.Unlock()
+
+	if everyInputAllInstancesSignaled {
+		receivedBkpMutex.Lock()
+		bkp.RemoveDatasetBackup(dataset)
+		receivedBkpMutex.Unlock()
+	}
 
 	if newInstanceSignaledByInput {
 		rabbit.AckMessage(message)
@@ -180,7 +185,7 @@ func processCloseSignal(
 	callback func(),
 ) {
 	signalsMutex.Lock()
-	_, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
+	_, _, _, newInstanceSignaledByInput, allInstancesSignaledByInput, everyInputAllInstancesSignaled := 
 		comms.SingleDatasetSignalsControl(inputNode, instance, signalsMap, signalsNeeded)
 	signalsMutex.Unlock()
 

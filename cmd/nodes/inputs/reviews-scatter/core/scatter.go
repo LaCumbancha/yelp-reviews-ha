@@ -201,7 +201,7 @@ func (scatter *Scatter) finishDataset(dataset int) {
 }
 
 func (scatter *Scatter) closeConnection() bool {
-    log.Errorf("Starting closing process.")
+    log.Infof("Starting closing process.")
 
     // Stopping every monitor.
     allStopped := true

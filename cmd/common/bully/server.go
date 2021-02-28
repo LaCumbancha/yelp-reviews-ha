@@ -13,9 +13,9 @@ func InitializeBullyServer(instance string, monitors []string, leader *string, l
 	http.HandleFunc("/" + LeaderEndpoint, leaderHandler(instance, monitors, leader, leaderMutex))
 
 	if err := http.ListenAndServe(":" + BullyPort, nil); err != nil {
-		log.Fatalf("Error listening to bully port. Err: %s", err)
+		log.Fatalf("Error listening to bully port (%s). Err: %s", BullyPort, err)
 	} else {
-		log.Debugf("Bully server initialized")
+		log.Debugf("Bully server initialized at port %s.", BullyPort)
 	}
 }
 

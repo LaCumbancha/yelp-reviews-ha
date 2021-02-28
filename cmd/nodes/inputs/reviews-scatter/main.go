@@ -31,6 +31,7 @@ func InitConfig() (*viper.Viper, *viper.Viper, error) {
 	configEnv.BindEnv("hashes", "mappers")
 	configEnv.BindEnv("users", "mappers")
 	configEnv.BindEnv("stars", "mappers")
+	configEnv.BindEnv("monitors")
 	configEnv.BindEnv("log", "bulk", "rate")
 	configEnv.BindEnv("log", "level")
 	configEnv.BindEnv("config", "file")
@@ -71,6 +72,7 @@ func main() {
 	hashesMappers := utils.GetConfigInt(configEnv, configFile, "hashes_mappers")
 	usersMappers := utils.GetConfigInt(configEnv, configFile, "users_mappers")
 	starsMappers := utils.GetConfigInt(configEnv, configFile, "stars_mappers")
+	monitors := utils.GetConfigString(configEnv, configFile, "monitors")
 
 	scatterConfig := core.ScatterConfig {
 		RabbitIp:				rabbitIp,
@@ -81,6 +83,7 @@ func main() {
 		HashesMappers:			hashesMappers,
 		UsersMappers:			usersMappers,
 		StarsMappers:			starsMappers,
+		Monitors:				monitors,
 	}
 
 	// Initializing custom logger.

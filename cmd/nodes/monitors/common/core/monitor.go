@@ -3,10 +3,12 @@ package core
 import (
 	"sync"
 	"strings"
+	"net/http"
 	"github.com/jasonlvhit/gocron"
 	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 
 	log "github.com/sirupsen/logrus"
+	down "github.com/LaCumbancha/yelp-review-ha/cmd/common/shutdown"
 	bully "github.com/LaCumbancha/yelp-review-ha/cmd/common/bully"
 	docker "github.com/LaCumbancha/yelp-review-ha/cmd/common/docker"
 	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
@@ -44,10 +46,9 @@ func (monitor *Monitor) Run() {
 	log.Infof("Starting monitoring system nodes.")
 
 	finishWg := &sync.WaitGroup{}
-	leaderWg := &sync.WaitGroup{}
 
 	finishWg.Add(1)
-	go initializeMonitorServer(finishWg, leaderWg)
+	go down.InitializeShutdownServer(shutdownHandler(finishWg))
 
 	go bully.InitializeBullyServer(monitor.instance, monitor.observerNodes, &monitor.leader, monitor.leaderMutex)
 	bully.Election(monitor.instance, monitor.observerNodes, &monitor.leader, monitor.leaderMutex)
@@ -56,6 +57,10 @@ func (monitor *Monitor) Run() {
 	gocron.Every(uint64(monitor.checkInterval)).Second().Do(monitor.routineCheck)
 
 	finishWg.Wait()
+}
+
+func shutdownHandler(finishWg *sync.WaitGroup) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request){ finishWg.Done() }
 }
 
 func (monitor *Monitor) routineCheck() {

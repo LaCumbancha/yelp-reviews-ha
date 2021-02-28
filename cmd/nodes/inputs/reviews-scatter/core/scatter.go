@@ -13,6 +13,7 @@ import (
 
     log "github.com/sirupsen/logrus"
     logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
+    down "github.com/LaCumbancha/yelp-review-ha/cmd/common/shutdown"
     props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
     comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
     rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
@@ -27,6 +28,7 @@ type ScatterConfig struct {
     HashesMappers       int
     UsersMappers        int
     StarsMappers        int
+    Monitors            string
 }
 
 type Scatter struct {
@@ -39,6 +41,7 @@ type Scatter struct {
     outputSignals       int
     processedDatasets   []int
     datasetNumber       int
+    monitors            []string
 }
 
 func NewScatter(config ScatterConfig) *Scatter {
@@ -55,6 +58,7 @@ func NewScatter(config ScatterConfig) *Scatter {
         outputSignals:      utils.MaxInt(config.FunbizMappers, config.WeekdaysMappers, config.HashesMappers, config.UsersMappers, config.StarsMappers),
         processedDatasets:  make([]int, 0),
         datasetNumber:      1,
+        monitors:           strings.Split(config.Monitors, ","),
     }
 
     return scatter
@@ -199,6 +203,9 @@ func (scatter *Scatter) finishDataset(dataset int) {
 
 func (scatter *Scatter) closeConnection() {
     // Sending Close-Message to consumers.
+    for _, monitor := range scatter.monitors {
+        down.ShutdownRequest(monitor)
+    }
     rabbit.OutputFanoutClose(comms.CloseMessageSigned(props.InputI2_Name, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 

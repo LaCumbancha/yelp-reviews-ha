@@ -15,5 +15,8 @@ export I2_USERS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper5_instances | cut
 export I2_STARS_MAPPERS=$(cat $SYSTEM_CONFIG_FILE | grep mapper6_instances | cut -d ":" -f 2 | xargs)
 export I2_LOG_LEVEL=$(cat $SYSTEM_CONFIG_FILE | grep log_level | cut -d ":" -f 2 | xargs)
 
+export I2_MONITORS=$(docker network inspect tp4_testing_net | \
+	python3 -c "import sys, json; print(','.join(list(map(lambda x: x['IPv4Address'].split('/')[0], filter(lambda x: x['Name'].startswith('monitor'), json.load(sys.stdin)[0]['Containers'].values())))))")
+
 # Running node
 go run cmd/nodes/inputs/reviews-scatter/main.go

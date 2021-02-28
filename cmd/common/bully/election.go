@@ -65,11 +65,14 @@ func announceNewLeadership(instance string, monitors []string) {
 			log.Debugf("Announcing new leader to service '%s'.", monitor)
 
 			if _, err := http.Post(url, "application/json", bytes.NewBuffer(msgJson)); err != nil {
+				errTxt := fmt.Sprintf("Err: %s", err)
 				if utils.IsNoSuchHost(err) {
-					log.Errorf("Error sending leader message to service '%s'. Couldn't find host.", monitor)
-				} else {
-					log.Errorf("Error sending leader message to service '%s'. Err: %s", monitor, err)
+					errTxt = "Couldn't find host."
 				}
+				if utils.IsConnectionRefused(err) {
+					errTxt = "Connection refused."
+				}
+				log.Errorf("Error sending leader message to service '%s'. %s.", monitor, errTxt)
 			}
 		}
 	}

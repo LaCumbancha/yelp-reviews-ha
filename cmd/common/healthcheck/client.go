@@ -13,11 +13,14 @@ func healthCheckPath(service string) string {
 
 func HealthCheckControl(service string) bool {
 	if response, err := http.Get(healthCheckPath(service)); err != nil {
+		errTxt := fmt.Sprintf("Err: %s", err)
 		if utils.IsNoSuchHost(err) {
-			log.Errorf("Error executing GET to service %s health-check. Couldn't find host.", service)
-		} else {
-			log.Errorf("Error executing GET to service %s health-check. Err: %s", service, err)
+			errTxt = "Couldn't find host."
 		}
+		if utils.IsConnectionRefused(err) {
+			errTxt = "Connection refused."
+		}
+		log.Errorf("Error executing GET to service '%s' health-check. %s.", service, errTxt)
 		return false
 	} else {
 		return response.StatusCode == HealthCheckStatusCode

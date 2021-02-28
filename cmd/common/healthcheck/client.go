@@ -20,7 +20,7 @@ func HealthCheckControl(service string) bool {
 		if utils.IsConnectionRefused(err) {
 			errTxt = "Connection refused."
 		}
-		log.Errorf("Error executing GET to service '%s' health-check. %s.", service, errTxt)
+		log.Errorf("Error executing GET to service '%s' health-check. %s", service, errTxt)
 		return false
 	} else {
 		return response.StatusCode == HealthCheckStatusCode

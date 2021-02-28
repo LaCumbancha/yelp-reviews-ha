@@ -19,12 +19,10 @@ services:
     - J3_INPUT_TOPIC=0
     - J3_STARS_AGGREGATORS=1
     - J3_USER_FILTERS=1
-    - J3_LOG_LEVEL=TRACE
+    - J3_LOG_LEVEL=INFO
     image: best_joiner:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -39,12 +37,10 @@ services:
     - P5_RABBITMQ_PORT=5672
     - P5_MIN_REVIEWS=50
     - P5_BESTUSER_JOINERS=1
-    - P5_LOG_LEVEL=TRACE
+    - P5_LOG_LEVEL=INFO
     image: best_prettier:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -64,12 +60,10 @@ services:
     - I1_RABBITMQ_PORT=5672
     - I1_BULK_SIZE=10000
     - I1_CITBIZ_MAPPERS=3
-    - I1_LOG_LEVEL=TRACE
+    - I1_LOG_LEVEL=INFO
     image: biz_scatter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -89,12 +83,10 @@ services:
     - A5_INPUT_TOPIC=0
     - A5_HASH_MAPPERS=3
     - A5_MIN_REVIEWS=5
-    - A5_LOG_LEVEL=TRACE
+    - A5_LOG_LEVEL=INFO
     image: bots_aggregator:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -109,12 +101,10 @@ services:
     - P3_RABBITMQ_PORT=5672
     - P3_MIN_REVIEWS=5
     - P3_BOTS_AGGREGATORS=1
-    - P3_LOG_LEVEL=TRACE
+    - P3_LOG_LEVEL=INFO
     image: bots_prettier:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -131,12 +121,10 @@ services:
     - M1_RABBITMQ_PORT=5672
     - M1_BUSINESSES_INPUTS=1
     - M1_FUNCIT_JOINERS=1
-    - M1_LOG_LEVEL=TRACE
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -153,12 +141,10 @@ services:
     - M1_RABBITMQ_PORT=5672
     - M1_BUSINESSES_INPUTS=1
     - M1_FUNCIT_JOINERS=1
-    - M1_LOG_LEVEL=TRACE
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -175,12 +161,10 @@ services:
     - M1_RABBITMQ_PORT=5672
     - M1_BUSINESSES_INPUTS=1
     - M1_FUNCIT_JOINERS=1
-    - M1_LOG_LEVEL=TRACE
+    - M1_LOG_LEVEL=INFO
     image: citbiz_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -199,12 +183,10 @@ services:
     - A1_FUNCIT_JOINERS=1
     - A1_INPUT_TOPIC=0
     - A1_OUTPUT_BULK_SIZE=10000
-    - A1_LOG_LEVEL=TRACE
+    - A1_LOG_LEVEL=INFO
     image: funbiz_aggregator:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -221,12 +203,10 @@ services:
     - F1_RABBITMQ_PORT=5672
     - F1_FUNBIZ_MAPPERS=2
     - F1_FUNBIZ_AGGREGATORS=1
-    - F1_LOG_LEVEL=TRACE
+    - F1_LOG_LEVEL=INFO
     image: funbiz_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -243,12 +223,10 @@ services:
     - F1_RABBITMQ_PORT=5672
     - F1_FUNBIZ_MAPPERS=2
     - F1_FUNBIZ_AGGREGATORS=1
-    - F1_LOG_LEVEL=TRACE
+    - F1_LOG_LEVEL=INFO
     image: funbiz_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -265,12 +243,10 @@ services:
     - F1_RABBITMQ_PORT=5672
     - F1_FUNBIZ_MAPPERS=2
     - F1_FUNBIZ_AGGREGATORS=1
-    - F1_LOG_LEVEL=TRACE
+    - F1_LOG_LEVEL=INFO
     image: funbiz_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -289,12 +265,10 @@ services:
     - M2_RABBITMQ_PORT=5672
     - M2_REVIEWS_INPUTS=1
     - M2_FUNBIZ_FILTERS=3
-    - M2_LOG_LEVEL=TRACE
+    - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -313,12 +287,10 @@ services:
     - M2_RABBITMQ_PORT=5672
     - M2_REVIEWS_INPUTS=1
     - M2_FUNBIZ_FILTERS=3
-    - M2_LOG_LEVEL=TRACE
+    - M2_LOG_LEVEL=INFO
     image: funbiz_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -338,12 +310,10 @@ services:
     - J1_FUNCIT_TOPS=1
     - J1_INPUT_TOPIC=0
     - J1_OUTPUT_BULK_SIZE=10000
-    - J1_LOG_LEVEL=TRACE
+    - J1_LOG_LEVEL=INFO
     image: funcit_joiner:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -358,12 +328,10 @@ services:
     - P1_RABBITMQ_PORT=5672
     - P1_TOP_SIZE=10
     - P1_FUNCIT_TOPS=1
-    - P1_LOG_LEVEL=TRACE
+    - P1_LOG_LEVEL=INFO
     image: funcit_prettier:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -380,13 +348,11 @@ services:
     - A2_RABBITMQ_PORT=5672
     - A2_TOP_SIZE=10
     - A2_FUNCIT_JOINERS=1
-    - A2_LOG_LEVEL=TRACE
+    - A2_LOG_LEVEL=INFO
     - A2_INPUT_TOPIC=0
     image: funcit_top:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -403,12 +369,10 @@ services:
     - M4_RABBITMQ_PORT=5672
     - M4_REVIEWS_INPUTS=1
     - M4_BOTS_AGGREGATORS=1
-    - M4_LOG_LEVEL=TRACE
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -425,12 +389,10 @@ services:
     - M4_RABBITMQ_PORT=5672
     - M4_REVIEWS_INPUTS=1
     - M4_BOTS_AGGREGATORS=1
-    - M4_LOG_LEVEL=TRACE
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -447,12 +409,10 @@ services:
     - M4_RABBITMQ_PORT=5672
     - M4_REVIEWS_INPUTS=1
     - M4_BOTS_AGGREGATORS=1
-    - M4_LOG_LEVEL=TRACE
+    - M4_LOG_LEVEL=INFO
     image: hash_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -473,10 +433,10 @@ services:
     entrypoint: /monitor
     environment:
     - MON_INSTANCE=0
-    - MON_OBSERVABLE_NODES=monitor1,monitor2,monitor3,monitor4
+    - MON_OBSERVABLE_NODES=sink,funcit_prettier,funcit_top0,funcit_joiner0,funbiz_aggregator0,funbiz_filter0,funbiz_filter1,funbiz_filter2,funbiz_mapper0,funbiz_mapper1,weekday_prettier,weekday_aggregator0,weekday_mapper0,weekday_mapper1,best_prettier,best_joiner0,stars_aggregator0,stars_filter0,stars_filter1,stars_mapper0,stars_mapper1,bots_prettier,bots_aggregator0,hash_mapper0,hash_mapper1,hash_mapper2,top_prettier,user_filter0,user_aggregator0,user_mapper0,user_mapper1,monitor1,monitor2,monitor3,monitor4
     - MON_OBSERVER_NODES=monitor1,monitor2,monitor3,monitor4
     - MON_CHECK_INTERVAL=5
-    - MON_LOG_LEVEL=TRACE
+    - MON_LOG_LEVEL=INFO
     image: monitor:latest
     links:
     - rabbitmq
@@ -502,10 +462,10 @@ services:
     entrypoint: /monitor
     environment:
     - MON_INSTANCE=1
-    - MON_OBSERVABLE_NODES=monitor0,monitor2,monitor3,monitor4
+    - MON_OBSERVABLE_NODES=sink,funcit_prettier,funcit_top0,funcit_joiner0,funbiz_aggregator0,funbiz_filter0,funbiz_filter1,funbiz_filter2,funbiz_mapper0,funbiz_mapper1,weekday_prettier,weekday_aggregator0,weekday_mapper0,weekday_mapper1,best_prettier,best_joiner0,stars_aggregator0,stars_filter0,stars_filter1,stars_mapper0,stars_mapper1,bots_prettier,bots_aggregator0,hash_mapper0,hash_mapper1,hash_mapper2,top_prettier,user_filter0,user_aggregator0,user_mapper0,user_mapper1,monitor0,monitor2,monitor3,monitor4
     - MON_OBSERVER_NODES=monitor0,monitor2,monitor3,monitor4
     - MON_CHECK_INTERVAL=5
-    - MON_LOG_LEVEL=TRACE
+    - MON_LOG_LEVEL=INFO
     image: monitor:latest
     links:
     - rabbitmq
@@ -531,10 +491,10 @@ services:
     entrypoint: /monitor
     environment:
     - MON_INSTANCE=2
-    - MON_OBSERVABLE_NODES=monitor0,monitor1,monitor3,monitor4
+    - MON_OBSERVABLE_NODES=sink,funcit_prettier,funcit_top0,funcit_joiner0,funbiz_aggregator0,funbiz_filter0,funbiz_filter1,funbiz_filter2,funbiz_mapper0,funbiz_mapper1,weekday_prettier,weekday_aggregator0,weekday_mapper0,weekday_mapper1,best_prettier,best_joiner0,stars_aggregator0,stars_filter0,stars_filter1,stars_mapper0,stars_mapper1,bots_prettier,bots_aggregator0,hash_mapper0,hash_mapper1,hash_mapper2,top_prettier,user_filter0,user_aggregator0,user_mapper0,user_mapper1,monitor0,monitor1,monitor3,monitor4
     - MON_OBSERVER_NODES=monitor0,monitor1,monitor3,monitor4
     - MON_CHECK_INTERVAL=5
-    - MON_LOG_LEVEL=TRACE
+    - MON_LOG_LEVEL=INFO
     image: monitor:latest
     links:
     - rabbitmq
@@ -560,10 +520,10 @@ services:
     entrypoint: /monitor
     environment:
     - MON_INSTANCE=3
-    - MON_OBSERVABLE_NODES=monitor0,monitor1,monitor2,monitor4
+    - MON_OBSERVABLE_NODES=sink,funcit_prettier,funcit_top0,funcit_joiner0,funbiz_aggregator0,funbiz_filter0,funbiz_filter1,funbiz_filter2,funbiz_mapper0,funbiz_mapper1,weekday_prettier,weekday_aggregator0,weekday_mapper0,weekday_mapper1,best_prettier,best_joiner0,stars_aggregator0,stars_filter0,stars_filter1,stars_mapper0,stars_mapper1,bots_prettier,bots_aggregator0,hash_mapper0,hash_mapper1,hash_mapper2,top_prettier,user_filter0,user_aggregator0,user_mapper0,user_mapper1,monitor0,monitor1,monitor2,monitor4
     - MON_OBSERVER_NODES=monitor0,monitor1,monitor2,monitor4
     - MON_CHECK_INTERVAL=5
-    - MON_LOG_LEVEL=TRACE
+    - MON_LOG_LEVEL=INFO
     image: monitor:latest
     links:
     - rabbitmq
@@ -589,10 +549,10 @@ services:
     entrypoint: /monitor
     environment:
     - MON_INSTANCE=4
-    - MON_OBSERVABLE_NODES=monitor0,monitor1,monitor2,monitor3
+    - MON_OBSERVABLE_NODES=sink,funcit_prettier,funcit_top0,funcit_joiner0,funbiz_aggregator0,funbiz_filter0,funbiz_filter1,funbiz_filter2,funbiz_mapper0,funbiz_mapper1,weekday_prettier,weekday_aggregator0,weekday_mapper0,weekday_mapper1,best_prettier,best_joiner0,stars_aggregator0,stars_filter0,stars_filter1,stars_mapper0,stars_mapper1,bots_prettier,bots_aggregator0,hash_mapper0,hash_mapper1,hash_mapper2,top_prettier,user_filter0,user_aggregator0,user_mapper0,user_mapper1,monitor0,monitor1,monitor2,monitor3
     - MON_OBSERVER_NODES=monitor0,monitor1,monitor2,monitor3
     - MON_CHECK_INTERVAL=5
-    - MON_LOG_LEVEL=TRACE
+    - MON_LOG_LEVEL=INFO
     image: monitor:latest
     links:
     - rabbitmq
@@ -624,12 +584,10 @@ services:
     environment:
     - O1_RABBITMQ_IP=rabbitmq
     - O1_RABBITMQ_PORT=5672
-    - O1_LOG_LEVEL=TRACE
+    - O1_LOG_LEVEL=INFO
     image: sink:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -648,12 +606,10 @@ services:
     - A8_STARS_FILTERS=2
     - A8_STARS_JOINERS=1
     - A8_OUTPUT_BULK_SIZE=10000
-    - A8_LOG_LEVEL=TRACE
+    - A8_LOG_LEVEL=INFO
     image: stars_aggregator:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -670,12 +626,10 @@ services:
     - F5_RABBITMQ_PORT=5672
     - F5_STARS_MAPPERS=2
     - F5_STARS_AGGREGATORS=1
-    - F5_LOG_LEVEL=TRACE
+    - F5_LOG_LEVEL=INFO
     image: stars_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -692,12 +646,10 @@ services:
     - F5_RABBITMQ_PORT=5672
     - F5_STARS_MAPPERS=2
     - F5_STARS_AGGREGATORS=1
-    - F5_LOG_LEVEL=TRACE
+    - F5_LOG_LEVEL=INFO
     image: stars_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -715,12 +667,10 @@ services:
     - M6_RABBITMQ_PORT=5672
     - M6_REVIEWS_INPUTS=1
     - M6_STARS_FILTERS=2
-    - M6_LOG_LEVEL=TRACE
+    - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -738,12 +688,10 @@ services:
     - M6_RABBITMQ_PORT=5672
     - M6_REVIEWS_INPUTS=1
     - M6_STARS_FILTERS=2
-    - M6_LOG_LEVEL=TRACE
+    - M6_LOG_LEVEL=INFO
     image: stars_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -759,12 +707,10 @@ services:
     - P4_RABBITMQ_PORT=5672
     - P4_MIN_REVIEWS=50
     - P4_USER_FILTERS=1
-    - P4_LOG_LEVEL=TRACE
+    - P4_LOG_LEVEL=INFO
     image: top_prettier:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -783,12 +729,10 @@ services:
     - A7_USER_MAPPERS=2
     - A7_USER_FILTERS=1
     - A7_OUTPUT_BULK_SIZE=10000
-    - A7_LOG_LEVEL=TRACE
+    - A7_LOG_LEVEL=INFO
     image: user_aggregator:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -807,12 +751,10 @@ services:
     - F4_MIN_REVIEWS=50
     - F4_USER_AGGREGATORS=1
     - F4_STARS_JOINERS=1
-    - F4_LOG_LEVEL=TRACE
+    - F4_LOG_LEVEL=INFO
     image: user_filter:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -829,12 +771,10 @@ services:
     - M5_RABBITMQ_PORT=5672
     - M5_REVIEWS_INPUTS=1
     - M5_USER_AGGREGATORS=1
-    - M5_LOG_LEVEL=TRACE
+    - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -851,12 +791,10 @@ services:
     - M5_RABBITMQ_PORT=5672
     - M5_REVIEWS_INPUTS=1
     - M5_USER_AGGREGATORS=1
-    - M5_LOG_LEVEL=TRACE
+    - M5_LOG_LEVEL=INFO
     image: user_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -873,12 +811,10 @@ services:
     - A4_RABBITMQ_PORT=5672
     - A4_INPUT_TOPIC=0
     - A4_WEEKDAY_MAPPERS=2
-    - A4_LOG_LEVEL=TRACE
+    - A4_LOG_LEVEL=INFO
     image: weekday_aggregator:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -895,12 +831,10 @@ services:
     - M3_RABBITMQ_PORT=5672
     - M3_REVIEWS_INPUTS=1
     - M3_WEEKDAY_AGGREGATORS=1
-    - M3_LOG_LEVEL=TRACE
+    - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -917,12 +851,10 @@ services:
     - M3_RABBITMQ_PORT=5672
     - M3_REVIEWS_INPUTS=1
     - M3_WEEKDAY_AGGREGATORS=1
-    - M3_LOG_LEVEL=TRACE
+    - M3_LOG_LEVEL=INFO
     image: weekday_mapper:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure
@@ -937,12 +869,10 @@ services:
     - P2_RABBITMQ_IP=rabbitmq
     - P2_RABBITMQ_PORT=5672
     - P2_WEEKDAY_AGGREGATORS=1
-    - P2_LOG_LEVEL=TRACE
+    - P2_LOG_LEVEL=INFO
     image: weekday_prettier:latest
     links:
     - rabbitmq
-    logging:
-      driver: none
     networks:
     - testing_net
     restart: on-failure

@@ -1,14 +1,14 @@
 ## Environment
 # Logging
-log_level: "TRACE"
+log_level: "INFO"
 log_bulk_rate: 25
 
 # Flows
-funbiz_logging: false
-weekday_logging: false
-best_logging: false
-bots_logging: false
-top_logging: false
+funbiz_logging: true
+weekday_logging: true
+best_logging: true
+bots_logging: true
+top_logging: true
 monitors_logging: true
 
 # Specs

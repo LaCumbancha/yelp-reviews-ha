@@ -179,7 +179,6 @@ for idx in range(0, joiner1_instances):
 service = 'citbiz_mapper'
 for idx in range(0, mapper1_instances):
 	container = f'{service}{idx}'
-	containers += [container]
 	I1_DEPS += [container]
 	file['services'][container] = {
 		'container_name': container,
@@ -194,7 +193,6 @@ for idx in range(0, mapper1_instances):
 	config_logs('funbiz_logging', service=file['services'][container])
 
 service = 'biz_scatter'
-containers += [service]
 file['services'][service] = {
 	'container_name': service,
 	'image': f'{service}:latest',
@@ -524,7 +522,7 @@ for idx in range(0, monitor_instances):
 		'image': f'{service}:latest',
 		'entrypoint': '/monitor',
 		'restart': 'on-failure',
-		'environment': [f'MON_INSTANCE={idx}', f'MON_OBSERVABLE_NODES={observer_nodes}', f'MON_OBSERVER_NODES={observer_nodes}', f'MON_CHECK_INTERVAL={monitor_interval}', f'MON_LOG_LEVEL={log_level}'],
+		'environment': [f'MON_INSTANCE={idx}', f'MON_OBSERVABLE_NODES={observable_nodes}', f'MON_OBSERVER_NODES={observer_nodes}', f'MON_CHECK_INTERVAL={monitor_interval}', f'MON_LOG_LEVEL={log_level}'],
 		'links': ['rabbitmq'],
 		'depends_on': list(MON_DEPS),
 		'networks': ['testing_net'],

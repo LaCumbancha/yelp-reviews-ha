@@ -1,22 +1,19 @@
-#!/usr/bin/env python3
+FAILURES=$1
 
-import sys
-failures = int(sys.argv[1])
+GREEN='\033[0;32m'
+RESET='\033[0m'
 
-import yaml
-input_yaml_file = open('./dockerized-system.yaml')
-input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
+NODES=$(./scripts/system-nodes)
+arrNODES=(${NODES//,/ })
+qNODES=${#arrNODES[@]}
 
-#### SERVICES
-services = list(input_yaml['services'].keys())
-services.remove('rabbitmq')
-services.remove('biz_scatter')
-
-import random
-down_services = []
-for _ in range(0, failures):
-	down_service = random.choice(services)
-	down_services += [down_service]
-	services.remove(down_service)
-
-print(' '.join(list(down_services)))
+while true; do
+	for i in $(seq 1 $FAILURES); do
+		rand=$[ $RANDOM % $qNODES ]
+		service=${arrNODES[$rand]}
+		echo -n "Stopping service ${service}... "
+		docker stop ${service} > /dev/null
+		echo -e "${GREEN}done${RESET}."
+	done
+	sleep 25
+done;

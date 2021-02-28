@@ -7,6 +7,7 @@ PROJECT_NAME = tp4
 GREEN = \033[0;32m
 RESET = \033[0m
 
+failures = 1
 DOCKER_COMPOSE_YAML = dockerized-system.yaml
 
 default: build
@@ -130,14 +131,9 @@ system-connect:
 .PHONY: system-connect
 
 system-test:
-	$(SHELL) ./scripts/system-test
+	@$(SHELL) ./scripts/system-test
 .PHONE: system-test
 
 system-failing:
-	$(eval DOWN_SERVICES := $(shell ./scripts/system-failures $(failures)))
-	@for service in $(DOWN_SERVICES); do \
-		echo -n "Stopping service $$service... " ; \
-		docker stop $$service > /dev/null ; \
-		echo -e "$(GREEN)done$(RESET)" ; \
-	done
+	@$(SHELL) ./scripts/system-failures $(failures)
 .PHONY: system-failing

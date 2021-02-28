@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+import yaml
+input_yaml_file = open('./dockerized-system.yaml')
+input_yaml = yaml.load(input_yaml_file, Loader=yaml.FullLoader)
+
+#### SERVICES
+services = list(input_yaml['services'].keys())
+services.remove('rabbitmq')
+services.remove('biz_scatter')
+out_services = [service for service in services if not service.startswith('citbiz_mapper')]
+
+print(','.join(out_services))

@@ -15,7 +15,7 @@ func Election(instance string, monitors []string, leader *string, leaderMutex *s
 	iAmNewLeader := startElection(instance, monitors)
 
 	if iAmNewLeader {
-		log.Infof("Monitor detected as new leader. Starting announce.")
+		log.Infof("Monitor detected itself as new leader. Starting announcement.")
 
 		/* It's important to first announce new leadership.
 		 * This way, if there's another node which thinks it should be the leader, it can immediately start new election, and this node won't be leader then.

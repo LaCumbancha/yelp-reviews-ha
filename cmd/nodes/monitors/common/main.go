@@ -9,6 +9,7 @@ import (
 	"github.com/LaCumbancha/yelp-review-ha/cmd/nodes/monitors/common/core"
 
 	log "github.com/sirupsen/logrus"
+	bkp "github.com/LaCumbancha/yelp-review-ha/cmd/common/backup"
 	props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
 	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
 )
@@ -55,6 +56,8 @@ func main() {
 
 	logLevel := utils.GetConfigString(configEnv, configFile, "log_level")
 	utils.SetLogLevel(logLevel)
+
+	bkp.InitializeMonitorBackup(core.Running)
 
 	instance := utils.GetConfigString(configEnv, configFile, "instance")
 	checkInterval := utils.GetConfigInt(configEnv, configFile, "check_interval")

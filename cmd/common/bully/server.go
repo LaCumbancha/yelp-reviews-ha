@@ -45,7 +45,7 @@ func leaderHandler(instance string, monitors []string, leader *string, leaderMut
 		leaderMutex.Unlock()
 
 		if response.Leader < instance {
-			log.Debugf("New leader message received from a smaller monitor. Re-throwing election.")
+			log.Infof("New leader message received from a smaller monitor. Re-throwing election.")
 			Election(instance, monitors, leader, leaderMutex)
 		}
 	}

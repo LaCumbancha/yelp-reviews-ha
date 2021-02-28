@@ -209,6 +209,7 @@ func (scatter *Scatter) closeConnection() bool {
         monitorIp := utils.MonitorIP(monitor)
         if !quit.StopRequest(monitorIp) {
             allStopped = false
+            break
         }
     }
 

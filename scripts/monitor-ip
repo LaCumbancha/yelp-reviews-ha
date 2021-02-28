@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+
+MONITOR=$1
+MONITOR_IP=$(docker network inspect tp4_testing_net | \
+	python3 -c "import sys, json; print(','.join(list(map(lambda x: x['IPv4Address'].split('/')[0], filter(lambda x: x['Name'] == '${MONITOR}', json.load(sys.stdin)[0]['Containers'].values())))))")
+
+echo $MONITOR_IP

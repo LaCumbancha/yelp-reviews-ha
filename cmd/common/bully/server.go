@@ -39,7 +39,7 @@ func leaderHandler(instance string, monitors []string, leader *string, leaderMut
 			return
 		}
 
-		log.Debugf("New leader received: Monitor %s.", response.Leader)
+		log.Infof("New leader received: Monitor %s.", response.Leader)
 		leaderMutex.Lock()
 		*leader = response.Leader
 		leaderMutex.Unlock()

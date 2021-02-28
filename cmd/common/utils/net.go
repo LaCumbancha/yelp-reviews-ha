@@ -1,13 +1,20 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 )
 
-func IsNoSuchHost(err error) bool {
-	return strings.HasSuffix(err.Error(), "no such host")
-}
+func NetworkErrorText(err error) string {
+	errTxt := fmt.Sprintf("%s", err)
 
-func IsConnectionRefused(err error) bool {
-	return strings.HasSuffix(err.Error(), "connection refused")
+	if strings.HasSuffix(err.Error(), "no such host") {
+		errTxt = "Couldn't find host."
+	}
+
+	if strings.HasSuffix(err.Error(), "connection refused") {
+		errTxt = "Connection refused."
+	}
+
+	return errTxt
 }

@@ -44,14 +44,8 @@ func startElection(instance string, monitors []string) bool {
 			log.Tracef("Sending election message to '%s'.", monitor)
 			_, err := http.Get(url)
 			if err != nil {
-				errTxt := fmt.Sprintf("Err: %s", err)
-				if utils.IsNoSuchHost(err) {
-					errTxt = "Couldn't find host."
-				}
-				if utils.IsConnectionRefused(err) {
-					errTxt = "Connection refused."
-				}
-				log.Warnf("Service '%s' detected as not running. %s", monitor, errTxt)
+				errText := utils.NetworkErrorText(err)
+				log.Warnf("Service '%s' detected as not running. %s", monitor, errText)
 			} else {
 				// If a bigger node responded, then there's no need to send extra messages to other bigger nodes because it will continue with the election anyway.
 				biggerNodeResponded = true
@@ -72,14 +66,8 @@ func announceNewLeadership(instance string, monitors []string) {
 			log.Debugf("Announcing new leader to service '%s'.", monitor)
 
 			if _, err := http.Post(url, "application/json", bytes.NewBuffer(msgJson)); err != nil {
-				errTxt := fmt.Sprintf("Err: %s", err)
-				if utils.IsNoSuchHost(err) {
-					errTxt = "Couldn't find host."
-				}
-				if utils.IsConnectionRefused(err) {
-					errTxt = "Connection refused."
-				}
-				log.Errorf("Error sending leader message to service '%s'. %s", monitor, errTxt)
+				errText := utils.NetworkErrorText(err)
+				log.Errorf("Error sending leader message to service '%s'. Err: %s", monitor, errText)
 			}
 		}
 	}

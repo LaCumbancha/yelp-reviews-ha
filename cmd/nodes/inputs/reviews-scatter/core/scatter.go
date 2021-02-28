@@ -12,8 +12,8 @@ import (
     "github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 
     log "github.com/sirupsen/logrus"
+    quit "github.com/LaCumbancha/yelp-review-ha/cmd/common/quit"
     logb "github.com/LaCumbancha/yelp-review-ha/cmd/common/logger"
-    down "github.com/LaCumbancha/yelp-review-ha/cmd/common/shutdown"
     props "github.com/LaCumbancha/yelp-review-ha/cmd/common/properties"
     comms "github.com/LaCumbancha/yelp-review-ha/cmd/common/communication"
     rabbit "github.com/LaCumbancha/yelp-review-ha/cmd/common/middleware"
@@ -90,8 +90,7 @@ func (scatter *Scatter) Run() {
                 break
             } else if option == "X" {
                 fmt.Println()
-                scatter.closeConnection()
-                exitFlag = true
+                exitFlag = scatter.closeConnection()
                 break
             } else {
                 fmt.Print("Wrong option. Retry: ")
@@ -201,12 +200,32 @@ func (scatter *Scatter) finishDataset(dataset int) {
     rabbit.OutputFanoutFinish(comms.FinishMessageSigned(props.InputI2_Name, dataset, scatter.instance), scatter.outputSignals, scatter.outputFanout)
 }
 
-func (scatter *Scatter) closeConnection() {
-    // Sending Close-Message to consumers.
+func (scatter *Scatter) closeConnection() bool {
+    log.Errorf("Starting closing process.")
+
+    // Stopping every monitor.
+    allStopped := true
     for _, monitor := range scatter.monitors {
-        down.ShutdownRequest(monitor)
+        monitorIp := utils.MonitorIP(monitor)
+        if !quit.StopRequest(monitorIp) {
+            allStopped = false
+        }
     }
+
+    if !allStopped {
+        log.Errorf("Couldn't stop every monitor. Aborting closing process.")
+        return false
+    }
+
+    // Shutdowning every monitor.
+    for _, monitor := range scatter.monitors {
+        monitorIp := utils.MonitorIP(monitor)
+        quit.ShutdownRequest(monitorIp)
+    }
+
+    // Sending Close-Message to consumers.
     rabbit.OutputFanoutClose(comms.CloseMessageSigned(props.InputI2_Name, scatter.instance), scatter.outputSignals, scatter.outputFanout)
+    return true
 }
 
 func (scatter *Scatter) Stop() {

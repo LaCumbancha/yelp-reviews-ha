@@ -3,12 +3,11 @@ package core
 import (
 	"sync"
 	"strings"
-	"net/http"
 	"github.com/jasonlvhit/gocron"
 	"github.com/LaCumbancha/yelp-review-ha/cmd/common/utils"
 
 	log "github.com/sirupsen/logrus"
-	down "github.com/LaCumbancha/yelp-review-ha/cmd/common/shutdown"
+	quit "github.com/LaCumbancha/yelp-review-ha/cmd/common/quit"
 	bully "github.com/LaCumbancha/yelp-review-ha/cmd/common/bully"
 	docker "github.com/LaCumbancha/yelp-review-ha/cmd/common/docker"
 	health "github.com/LaCumbancha/yelp-review-ha/cmd/common/healthcheck"
@@ -28,6 +27,8 @@ type Monitor struct {
 	observableNodes 	[]string
 	leader 				string
 	leaderMutex			*sync.Mutex
+	running 			bool
+	runningMutex		*sync.Mutex
 }
 
 func NewMonitor(config MonitorConfig) *Monitor {
@@ -37,6 +38,8 @@ func NewMonitor(config MonitorConfig) *Monitor {
 		observerNodes:		strings.Split(config.ObserverNodes, ","),
 		observableNodes:	strings.Split(config.ObservableNodes, ","),
 		leaderMutex:		&sync.Mutex{},
+		running:			true,
+		runningMutex:		&sync.Mutex{},
 	}
 
 	return monitor
@@ -48,7 +51,7 @@ func (monitor *Monitor) Run() {
 	finishWg := &sync.WaitGroup{}
 
 	finishWg.Add(1)
-	go down.InitializeShutdownServer(shutdownHandler(finishWg))
+	go quit.InitializeShutdownServer(monitor.stopHandler(), monitor.shutdownHandler(finishWg))
 
 	go bully.InitializeBullyServer(monitor.instance, monitor.observerNodes, &monitor.leader, monitor.leaderMutex)
 	bully.Election(monitor.instance, monitor.observerNodes, &monitor.leader, monitor.leaderMutex)
@@ -59,20 +62,40 @@ func (monitor *Monitor) Run() {
 	finishWg.Wait()
 }
 
-func shutdownHandler(finishWg *sync.WaitGroup) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request){ finishWg.Done() }
+func (monitor *Monitor) stopHandler() func() {
+	return func(){ 
+		monitor.runningMutex.Lock()
+		monitor.running = false
+		monitor.runningMutex.Unlock()
+		log.Infof("Monitor stopped.")
+	}
+}
+
+func (monitor *Monitor) shutdownHandler(finishWg *sync.WaitGroup) func() {
+	return func(){ 
+		finishWg.Done()
+		log.Infof("Monitor shutdown started.")
+	}
 }
 
 func (monitor *Monitor) routineCheck() {
-	monitor.leaderMutex.Lock()
-	currentlyLeadering := monitor.leader == monitor.instance
-	monitor.leaderMutex.Unlock()
+	monitor.runningMutex.Lock()
 	
-	if currentlyLeadering {
-		monitor.leaderRoutineCheck()
-	} else {
-		monitor.nonLeaderRoutineCheck()
+	if monitor.running {
+
+		monitor.leaderMutex.Lock()
+		currentlyLeadering := monitor.leader == monitor.instance
+		monitor.leaderMutex.Unlock()
+	
+		if currentlyLeadering {
+			monitor.leaderRoutineCheck()
+		} else {
+			monitor.nonLeaderRoutineCheck()
+		}
+
 	}
+
+	monitor.runningMutex.Unlock()
 }
 
 func (monitor *Monitor) leaderRoutineCheck() {

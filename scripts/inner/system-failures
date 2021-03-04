@@ -3,7 +3,7 @@ FAILURES=$1
 GREEN='\033[0;32m'
 RESET='\033[0m'
 
-NODES=$(./scripts/system-nodes)
+NODES=$(./scripts/inner/system-nodes)
 arrNODES=(${NODES//,/ })
 qNODES=${#arrNODES[@]}
 

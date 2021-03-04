@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+
+import sys
+import re
+
+EXPECTED_VALUES = {
+	0: ['Las Vegas (NV) w/ 513177p', 'Phoenix (AZ) w/ 184918p', 'Toronto (ON) w/ 112879p', 'Scottsdale (AZ) w/ 92797p', 'Charlotte (NC) w/ 64037p', 'Tempe (AZ) w/ 49241p', 'Henderson (NV) w/ 49042p', 'Pittsburgh (PA) w/ 46446p', 'Cleveland (OH) w/ 40973p', 'Mesa (AZ) w/ 37819p'],
+	1: ['SUN (1245863)', 'MON (1183732)', 'TUE (1112199)', 'WED (1124486)', 'THU (1080564)', 'FRI (1090099)', 'SAT (1184179)'],
+	2: ['9II6XRbZAf2koLK1lCjz6A (11)', 'k8Hw_ua1KjCPGVkhGOk7ew (6)', 'ImyvYbCzWhoYnbJzEvGGgw (6)', 'TV5s5qQKgMGoECfDLGdTmQ (5)'],
+	3: '15955, with 1774207 total reviews (average: 111.20 per user).',
+	4: ['8JwSmvviX2dEAgaPRZ70nQ (195)', 'uQ2w3yMEYxcspPrZLKObVw (80)', 'trGQ2nySSedAbXaaHhcmUQ (66)', 'nkhu7NjlIEimaJ-QD8S3SA (64)', 'aYV4_aVwexS-Zn34k_P0VQ (60)', '2bC-dBYN48wrmN-j0Bv-Jw (59)', 'caUyy1kvh-MxntoKoJr6kg (56)', 'MTl8QNjnenumWaORnXhing (55)', 'aGwONlR86ERk450Gp6Ih5A (55)', '2-PD6df20ge-k9SPHmcxiw (54)', 'xBxmaLiSLXN68Gqj_zdjkQ (54)']
+}
+
+def is_dataset_start(str):
+	return re.match('Dataset #[0-9]+ analysis started', str)
+
+def is_dataset_finish(str):
+	return re.match('Dataset #[0-9]+ analysis finished.*', str)
+
+def get_starting_datasorted(line):
+	starting = line.find('#')
+	finishing = line.find('analysis')
+	return line[starting+1:finishing-1]
+
+
+def check_flow1_result(dataset, line):
+	line = line.replace('Top Funniest Cities: ', '')
+	values = line.split(' ; ')
+
+	if sorted(values) != sorted(EXPECTED_VALUES[0]):
+		print(f"There are errors in the Top 10 Funniest Cities flow. Received: {values}")
+		return False
+
+	return True
+
+
+def check_flow2_result(dataset, line):
+	line = line.replace('Reviews by Weekday: ', '')
+	values = line.split(', ')
+
+	if sorted(values) != sorted(EXPECTED_VALUES[1]):
+		print(f"There are errors in the Weekday Histogram flow. Received: {values}")
+		return False
+
+	return True
+
+
+def check_flow3_result(dataset, line):
+	line = line.replace('Users with +5 reviews (all with same text): ', '')
+	values = line.split(' ; ')
+
+	if sorted(values) != sorted(EXPECTED_VALUES[2]):
+		print(f"There are errors in the Bots User flow. Received: {values}")
+		return False
+
+	return True
+		
+
+def check_flow4_result(dataset, line):
+	line = line.replace('Users with +50 reviews: ', '')
+
+	if line != EXPECTED_VALUES[3]:
+		print(f"There are errors in the Top Users flow. Received: '{line}'")
+		return False
+
+	return True
+		
+
+def check_flow5_result(dataset, line):
+	line = line.replace('Users with +50 reviews (only 5-stars): ', '')
+	values = line.split(' ; ')
+
+	if sorted(values) != sorted(EXPECTED_VALUES[4]):
+		print(f"There are errors in the Best Users flow. Received: {values}")
+		return False
+
+	return True
+		
+
+def check_result(dataset, line):
+	if line.startswith('Reviews by Weekday:'):
+		return check_flow2_result(dataset, line)
+	elif line.startswith('Users with +5 reviews (all with same text):'):
+		return check_flow3_result(dataset, line)
+	elif line.startswith('Top Funniest Cities:'):
+		return check_flow1_result(dataset, line)
+	elif line.startswith('Users with +50 reviews:'):
+		return check_flow4_result(dataset, line)
+	elif line.startswith('Users with +50 reviews (only 5-stars):'):
+		return check_flow5_result(dataset, line)
+	else:
+		print(f'Error! Unexpected result received: {line}')
+		return False
+
+def main():
+	current_dataset = 0
+	results_ok = True
+	for line in sys.stdin:
+		line = re.sub('.*msg="', '', line)
+		line = re.sub('"\n', '', line)
+
+		if is_dataset_start(line):
+			current_dataset = get_starting_datasorted(line)
+			results_ok = True
+			print(f'Starting dataset #{current_dataset}.')
+		elif is_dataset_finish(line):
+			if results_ok:
+				print(f'Dataset #{current_dataset} finished whitout errors.')
+			else:
+				print(f'Dataset #{current_dataset} with errors.')
+		else:
+			if not check_result(current_dataset, line):
+				results_ok = False
+
+if __name__ == '__main__':
+	main()

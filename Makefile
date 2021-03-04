@@ -4,11 +4,11 @@ PYTHON := /usr/bin/python3.8
 GIT_REMOTE = github.com/LaCumbancha/yelp-review-ha
 
 PROJECT_NAME = tp4
-GREEN = \033[0;32m
-RESET = \033[0m
+DOCKER_COMPOSE_YAML = dockerized-system.yaml
 
 failures = 1
-DOCKER_COMPOSE_YAML = dockerized-system.yaml
+iterations = 1
+dataset = ./data/reviews/reviews.json
 
 default: build
 
@@ -108,7 +108,7 @@ system-build:
 .PHONY: system-build
 
 system-hard-up: system-build
-	$(PYTHON) ./scripts/system-builder
+	$(PYTHON) ./scripts/system-builde
 	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) up -d --build --remove-orphans
 .PHONY: system-hard-up
 
@@ -126,14 +126,18 @@ system-logs:
 	docker-compose -f $(DOCKER_COMPOSE_YAML) --project-name $(PROJECT_NAME) logs -f
 .PHONY: system-logs
 
+system-failing:
+	@$(SHELL) ./scripts/inner/system-failures $(failures)
+.PHONY: system-failing
+
 system-connect:
 	docker container exec -it $(service) /bin/sh
 .PHONY: system-connect
 
-system-test:
-	@$(SHELL) ./scripts/system-test
+system-code-test:
+	@$(SHELL) ./scripts/inner/system-code-test
 .PHONE: system-test
 
-system-failing:
-	@$(SHELL) ./scripts/system-failures $(failures)
-.PHONY: system-failing
+system-test:
+	@$(SHELL) ./scripts/inner/system-test $(iterations) $(dataset) $(failures) $(SHELL) $(PYTHON) $(DOCKER_COMPOSE_YAML) $(PROJECT_NAME)
+.PHONY: system-test

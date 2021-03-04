@@ -12,7 +12,7 @@ func MonitorName(monitorIdx string) string {
 }
 
 func MonitorIP(monitorName string) string {
-	cmd := exec.Command("./scripts/monitor-ip", monitorName)
+	cmd := exec.Command("./scripts/inner/monitor-ip", monitorName)
 
     var out bytes.Buffer
     cmd.Stdout = &out

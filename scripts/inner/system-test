@@ -1,0 +1,42 @@
+#!/usr/bin/bash
+
+GREEN="\033[0;32m"
+RESET="\033[0m"
+
+ITERATIONS=$1
+DATASET=$2
+FAILURES=$3
+SHELL=$4
+PYTHON=$5
+DOCKER_COMPOSE_YAML=$6
+PROJECT_NAME=$7
+
+touch ./.parameters
+
+for idx in $(seq 1 $ITERATIONS); do \
+	echo "S" >> ./.parameters
+	echo "$DATASET" >> ./.parameters
+	echo "" >> ./.parameters
+done
+echo "X" >> ./.parameters
+
+$PYTHON ./scripts/system-builder
+echo -n "Initializing system... "
+docker-compose -f $DOCKER_COMPOSE_YAML --project-name $PROJECT_NAME up -d --build --remove-orphans >& /dev/null
+echo -e "${GREEN}done${RESET}."
+
+sleep 1
+echo "Starting to send data to test system."
+$SHELL ./scripts/inputs/reviews-scatter < ./.parameters > /dev/null >& /dev/null &
+./scripts/inner/system-failures $FAILURES > /dev/null &
+
+docker-compose -f $DOCKER_COMPOSE_YAML --project-name $PROJECT_NAME logs -f | grep --line-buffered -e "sink.*Dataset.*" -e "sink.*Funniest.*" -e "sink.*Weekday.*" -e "sink.*Users.*" | $PYTHON ./scripts/inner/system-check-results 2> /dev/null
+rm ./.parameters
+
+echo -n "Stopping system... "
+docker-compose -f $DOCKER_COMPOSE_YAML --project-name $PROJECT_NAME stop -t 1 >& /dev/null
+echo -e "${GREEN}done${RESET}."
+
+echo -n "Removing system... "
+docker-compose -f $DOCKER_COMPOSE_YAML --project-name $PROJECT_NAME down >& /dev/null
+echo -e "${GREEN}done${RESET}."
